@@ -32,6 +32,8 @@ All features are strictly tagged with their planned deployment phase:
 | `FEAT-CHAL-03` | Automated Countdown Timer & Expiration | Challenge Ops | `[P1]` | System |
 | `FEAT-CHAL-04` | Auto-Balancer Snake Draft & 15h Cap | Challenge Ops | `[V1]` | Admin |
 | `FEAT-CHAL-05` | Event Lock & Freeze Final Results | Challenge Ops | `[P0]` | Admin |
+| `FEAT-CHAL-06` | Duo Partner Self-Naming & Dynamic Team Identities | Challenge Ops | `[P0]` | Participant, Admin |
+| `FEAT-AUDIT-01` | Append-Only Immutable System Audit Trail | Admin & Audit | `[P0]` | Admin, System |
 | `FEAT-DECL-01` | Declared Target Hours (`HH:MM:SS`) | Declarations | `[P0]` | Participant |
 | `FEAT-DECL-02` | Mandatory Weekly Goals Checklist | Declarations | `[P0]` | Participant |
 | `FEAT-DECL-03` | Pre-Kickoff Declaration Lock | Declarations | `[P0]` | System |
@@ -78,13 +80,16 @@ All features are strictly tagged with their planned deployment phase:
 
 ## 4. Module Specifications: Challenge Operations & Lifecycle
 
-### §4.1 Multi-Format Challenge Creator `[P0]`
+### §4.1 Multi-Format Challenge Creator & Dynamic Identities `[P0]`
 - **Route:** `/admin/challenges/new`
 - **Supported Formats:**
-  1. `TEAM_VS_TEAM`: Two named rosters (e.g. *Bees vs Butterflies*).
+  1. `TEAM_VS_TEAM`: Two competing named rosters.
   2. `DUOS`: Pairs of $N=2$ accountability partners.
   3. `SOLOS`: Free-for-all individual leaderboard ($N=1$).
-- **Configuration Fields:** Title, Start Date/Time, End Date/Time, Format, Team Names/Colors, Participant Assignment, Punishment PFP image URL/asset.
+- **Dynamic Per-Event Team Themes:**
+  - Team identities are never hardcoded across challenges. Every challenge defines its own thematic team names, icons/emojis, mascot illustrations, and accent colors (e.g. *Honey Bees vs Lavender Butterflies*, *Owls vs Larks*, *Matcha vs Espresso*, *Sunflowers vs Ferns*, *Dragons vs Griffins*).
+  - Configurable during event creation via the host wizard and editable prior to kickoff.
+- **Configuration Fields:** Title, Start Date/Time, End Date/Time, Format, Dynamic Team Names/Colors/Mascots, Participant Assignment, Punishment PFP image URL/asset.
 
 ### §4.2 Host Manual Event Kickoff Trigger `[P0]`
 - **Mechanism:** Even after the scheduled start time arrives, the host retains a "Start Event Now" button to verify all rosters and declared goals before locking inputs.
@@ -104,6 +109,33 @@ All features are strictly tagged with their planned deployment phase:
 ### §4.5 Event Lock & Finalize Results `[P0]`
 - **Route:** `/admin/challenges/:id`
 - **Action:** Host clicks "Lock Final Results". Freezes all participant data rows and triggers the final punishment evaluation.
+
+### §4.6 Append-Only Immutable System Audit Trail `[P0]`
+- **Feature ID:** `FEAT-AUDIT-01`
+- **Description:** An immutable, tamper-proof audit log recording every single administrative action, manual hours adjustment, goal modification, pardon, and challenge status transition performed across the platform.
+- **Invariants:**
+  1. **Strict Immutability:** The audit log table and system log storage are strictly append-only. Zero `UPDATE` or `DELETE` permissions exist in the application or database layer, even for super-administrators.
+  2. **Audit Envelope Structure:** Every entry records:
+     - `id`: Unique identifier (CUID).
+     - `timestamp`: ISO 8601 UTC timestamp.
+     - `actorId`: Discord Snowflake ID of the executing admin or `SYSTEM`.
+     - `actorUsername`: Cached Discord username/display name at execution time.
+     - `actionType`: Enum (`HOURS_OVERRIDE`, `GOAL_EDIT`, `GOAL_UNLOCK`, `PARTICIPANT_PARDONED`, `CHALLENGE_KICKOFF`, `CHALLENGE_LOCKED`, `CHALLENGE_CREATED`).
+     - `targetEntityId`: Affected row ID (e.g. log ID, participant ID).
+     - `targetEntityType`: Entity type (`DAILY_STUDY_LOG`, `WEEKLY_GOAL`, `CHALLENGE`, `PARTICIPANT`).
+     - `previousValue`: JSON snapshot of prior state.
+     - `newValue`: JSON snapshot of updated state.
+     - `auditReason`: Brief human-written reason explaining the modification.
+  3. **Host Console Interface:** Streamlined 4-column timeline in the Host Console under the dedicated "Audit Trail" tab (Timestamp, Actor, Action & Details, Reason) with 1-click JSON export for offline archival. Zero unnecessary metric cards or mock bloat.
+
+### §4.7 Duo Partner Self-Naming & Pre-Kickoff Locking `[P0]`
+- **Feature ID:** `FEAT-CHAL-06`
+- **Description:** In `DUOS` format events (pairs of $N=2$ accountability partners), team naming autonomy is granted directly to the participants forming each pair.
+- **Rules & User Flow:**
+  1. **Self-Naming Window (`UPCOMING` Phase):** When enrolled into a Duo slot during the pre-kickoff phase, either partner can input or edit their custom Duo Name (e.g., *"Caffeine & Calculus"*, *"Midnight Chai"*, *"Late-Night Bio Chemists"*).
+  2. **Real-Time Synchronization:** When partner A updates the duo name, partner B sees the updated team badge immediately in their Cockpit and on the event roster.
+  3. **Permanent Pre-Kickoff Lock:** Once the event host triggers kickoff (`ACTIVE`), duo team names become permanently read-only along with declared target hours and weekly goals.
+  4. **Host Override Absolute (Law L5):** Community hosts retain administrative authority to rename offensive, disruptive, or duplicate duo names from `/admin/challenges/:id/roster` at any time, with all edits recorded in the audit trail (`FEAT-AUDIT-01`).
 
 ---
 
@@ -151,12 +183,12 @@ All features are strictly tagged with their planned deployment phase:
 ## 7. Module Specifications: Standings, Scoreboard & Calculations
 
 ### §7.1 Head-to-Head Live Match Scoreboard `[P0]`
-- **Layout:** High-contrast top banner displaying Team A vs Team B (e.g., *Bees vs Butterflies*).
+- **Layout:** High-contrast top banner displaying dynamic team identities (e.g. *Honey Bees vs Lavender Butterflies*, *Owls vs Larks*, or top contending Duo pairs in Duos mode).
 - **Metrics:** Total cumulative time (`HH:MM:SS`), leader crown icon, and lead margin delta (`+Xh Ym Zs ahead`).
 
 ### §7.2 Unified Roster Standings Table `[P0]`
-- **Columns:** Rank, Participant (Avatar + Discord Handle), Team Tag, Total Logged (`HH:MM:SS`), Target (`HH:MM:SS`), % Completed, Goals Done ($M/N$), Status Badge (`On Track` / `At Risk`).
-- **Filters:** "All", "Team A", "Team B".
+- **Columns:** Rank, Participant (Avatar + Discord Handle), Team / Duo Name Tag, Total Logged (`HH:MM:SS`), Target (`HH:MM:SS`), % Completed, Goals Done ($M/N$), Status Badge (`On Track` / `At Risk`).
+- **Filters:** "All", dynamic House tabs (e.g. "Team 1", "Team 2"), or Duo pair filter.
 
 ### §7.3 Dynamic Daily Catch-Up Deficit Engine `[P0]`
 - **Formula:**

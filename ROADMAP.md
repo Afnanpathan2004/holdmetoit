@@ -92,7 +92,7 @@ Eradicate manual host labor. Deliver a robust, reliable web application capable 
 
 ### 3.2 Core Capabilities
 1. **Discord OAuth Authentication:** One-click login; automatic avatar and display name sync; fallback spectator mode.
-2. **Multi-Format Challenge Creator:** Host-configured battles supporting `TEAM_VS_TEAM` (e.g. *Bees vs Butterflies*), `DUOS` ($N=2$), and `SOLOS` ($N=1$).
+2. **Multi-Format Challenge Creator:** Host-configured battles supporting dynamic per-event themes for `TEAM_VS_TEAM` (e.g. *Honey Bees vs Lavender Butterflies*, *Owls vs Larks*, *Matcha vs Espresso*), `DUOS` ($N=2$ with pre-kickoff participant duo self-naming), and `SOLOS` ($N=1$).
 3. **Pre-Event Declarations:** Mandatory submission of weekly target hours (`HH:MM:SS`) and weekly to-do list tasks; strict lock invariant once the challenge goes `ACTIVE`.
 4. **Clock-Time Self-Logging:** Daily hours entry in `HH:MM:SS` format with a 24-hour single-day safety limit.
 5. **Head-to-Head Live Scoreboard:** Team totals, current leader, lead margin delta, and unified participant leaderboard.

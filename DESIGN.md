@@ -20,131 +20,153 @@ Most competitive productivity and gaming apps rely on harsh, high-contrast neon 
 ```
 Visual Tone Attributes:
 ┌──────────────────┬────────────────────────────────────────────────────────┐
-│ Warmth           │ Deep roasted espresso, dark oatmeal, and soft charcoal  │
-│ Encouragement    │ Golden amber accents and soft sage green completions   │
+│ Warmth           │ Deep roasted espresso, dark walnut, and aged parchment │
+│ Encouragement    │ Candlelight honey lamp and soft dried sage completions │
 │ Precision        │ Monospace tabular clocks for HH:MM:SS precision        │
-│ Comfort          │ Generous rounded curves (rounded-2xl) and soft glows   │
+│ Comfort          │ Soft paper textures, gentle curves, tactile wooden tabs │
 └──────────────────┴────────────────────────────────────────────────────────┘
 ```
+
+### 1.2 The "Anti-Slop" Aesthetic Invariants (Mandatory Design Guardrails)
+To prevent the application from regressing into generic, overwhelming "AI slop" or loud crypto/esports dashboards, all engineers and autonomous agents must enforce these design guardrails:
+
+| Banned "AI Slop" / SaaS Trope | Required Cozy Café Standard | Rationale |
+| :--- | :--- | :--- |
+| ❌ **Harsh neon glows & electric ambers** (`blur-2xl`, high-saturation neon lights) | ✅ **Muted candlelight honey (`#d9822b`)** & soft ambient vignette lighting | Neon glows cause eye strain during 4+ hour study sessions. |
+| ❌ **Bouncing badges & pulsing LEDs** (`animate-bounce`, `animate-pulse` on crowns) | ✅ **Quiet, dignified typographic hierarchy** & static warm badges | Constant looping animations distract the student's peripheral vision. |
+| ❌ **Badge & chip clutter on every corner** (Overlapping status tags, "PROTOTYPE" pills) | ✅ **Clean whitespace, calm padding**, and generous breathing room | Visual density without clutter. Let the workspace breathe. |
+| ❌ **Alarming red emergency banners** (Loud warning boxes inducing failure panic) | ✅ **Warm pottery terracotta (`#c7634c`)** & gentle handwritten reflection notes | Study accountability is about sustainable redemption, not cruelty or shame. |
+| ❌ **Esports combat styling** (Aggressive "FIGHT", "VS" deathmatch tickers) | ✅ **"The House Cup" or café noticeboard** (Chalkboard/wooden plaque motif) | Teams are study companions encouraging mutual consistency, not gladiators. |
+| ❌ **Generic stock icons & flat corporate clip art** | ✅ **Bespoke warm assets** (Rainy window artwork, storybook forfeit avatars) | Tangible charm and community personality foster emotional attachment. |
 
 ---
 
 ## 2. Color Palette & Semantic Tokens
 
-All colors are calibrated for high legibility (WCAG AA/AAA compliant against dark backgrounds) with warm undertones rather than cold blues or greens.
+All colors are calibrated for high legibility (WCAG AA/AAA compliant against dark backgrounds) with warm organic undertones rather than cold blues, saturated neons, or sterile grays.
 
 ### 2.1 Core Palette
 
 ```
-Surface Layers (Dark Roast & Charcoal):
-  #121110 ─── Canvas / Body Background (Deep Roasted Espresso)
-  #1a1816 ─── Card Surface (Dark Cocoa Slate)
-  #24211e ─── Elevated Surface / Modals (Warm Hearth)
-  #36312b ─── Subtle Borders & Dividers (Warm Sepia Border)
+Surface Layers (Roasted Espresso & Dark Walnut):
+  #12100e ─── Canvas / Body Background (Deep Roasted Espresso Bean)
+  #181512 ─── Primary Desk Surface (Dark Walnut Wood)
+  #1e1a16 ─── Card & Panel Surface (Warm Cocoa Slate)
+  #26211c ─── Elevated Surface / Modals (Warm Hearth Mantle)
+  #2f2821 ─── Subtle Dividers (Soft Sepia Border)
+  #3d342b ─── Subtle Focus Border (Warm Sepia Highlight)
 
 Accents & Brand Identifiers:
-  #f59e0b ─── Primary Brand Amber (Warm Honey Lamp)
-  #fbbf24 ─── Highlight Amber (Golden Glow / Crown)
-  #d97706 ─── Active Press / Hover Amber
+  #d9822b ─── Primary Brand Amber (Candlelight Honey Lamp)
+  #ebb06e ─── Highlight Amber (Soft Golden Glow)
+  #b86a1e ─── Active Press / Dark Honey
 
 Semantic Status Signals:
-  #10b981 ─── Muted Sage Green (On Track / Goal Completed / Passed)
-  #f87171 ─── Terracotta Clay (Deficit / Catch-Up Needed / Punishment PFP)
-  #a78bfa ─── Dusty Lavender (Team Duo / Secondary Rival Badge)
+  #4b8b67 ─── Dried Sage Leaves (On Track / Intention Completed / Serene Pace)
+  #18271e ─── Calm Forest Tea Surface (Sage Background Tint)
+  #c7634c ─── Warm Pottery Terracotta (Deficit / Catch-Up Needed / Friendly Forfeit)
+  #2a1916 ─── Muted Clay Surface (Terracotta Background Tint)
+  #9986b8 ─── Dried Lavender Sprigs (Secondary Team House / Companion Badge)
+  #211c2b ─── Deep Dusk Surface (Lavender Background Tint)
 
 Text Hierarchy:
-  #f5f4f0 ─── Primary Headings & High-Emphasis Text (Warm Cream)
-  #d6d3cd ─── Secondary Body Text (Soft Linen)
-  #a8a29e ─── Muted / Auxiliary Labels (Oatmeal Dust)
-  #78716c ─── Subtle Timestamps / Inactive Placeholders (Warm Ash)
+  #f5f0e6 ─── Primary Headings & Reading Text (Aged Warm Parchment)
+  #d8cfc4 ─── Secondary Body Text (Soft Linen)
+  #9e9284 ─── Muted / Auxiliary Labels (Oatmeal Dust)
+  #6e6459 ─── Subtle Timestamps / Quiet Counters (Warm Ash)
 ```
 
 ### 2.2 Semantic Token Mapping
 
 | Semantic Token | Hex Value | Tailwind Token | Context / Usage |
 | :--- | :--- | :--- | :--- |
-| `bg-app` | `#121110` | `bg-stone-950` (warm tint) | Full viewport background |
-| `bg-surface` | `#1a1816` | `bg-stone-900` | Standard cards, panels, table containers |
-| `bg-surface-elevated` | `#24211e` | `bg-stone-850` | Modals, dropdowns, sticky action bars |
-| `border-warm` | `#36312b` | `border-stone-800` | Card borders, table divider lines |
-| `text-primary` | `#f5f4f0` | `text-stone-50` | Screen titles, participant names, clock digits |
-| `text-muted` | `#a8a29e` | `text-stone-400` | Helper text, secondary stats, dates |
-| `accent-amber` | `#f59e0b` | `text-amber-500` | Primary buttons, active tabs, leader crown |
-| `accent-sage` | `#10b981` | `text-emerald-500` | Checked goals, "On Track" pill, positive deltas |
-| `accent-terracotta`| `#f87171`| `text-rose-400` | "Catch-Up Needed" pill, hours deficit, punishment |
+| `bg-app` | `#12100e` | `bg-stone-950` (warm espresso tint) | Full viewport canvas |
+| `bg-desk` | `#181512` | `bg-stone-900` (walnut tint) | Main workspace & desk panels |
+| `bg-surface` | `#1e1a16` | `bg-stone-850` (cocoa tint) | Standard cards, logbooks, tables |
+| `bg-surface-elevated`| `#26211c` | `bg-stone-800` (hearth tint) | Modals, elevated trays, toolbars |
+| `border-warm` | `#2f2821` | `border-stone-800` | Subtle card borders, notebook lines |
+| `text-primary` | `#f5f0e6` | `text-amber-50` (parchment) | Screen titles, clocks, reading text |
+| `text-muted` | `#9e9284` | `text-stone-400` (oatmeal) | Helper text, secondary stats, notes |
+| `accent-honey` | `#d9822b` | `text-amber-600` (honey) | Primary buttons, active tabs, leader indicator |
+| `accent-sage` | `#4b8b67` | `text-emerald-600` (sage) | Checked intentions, "Serene Pace" badge |
+| `accent-terracotta`| `#c7634c` | `text-rose-500` (terracotta) | "Catch-Up Needed", forfeit avatar, deficit rate |
 
 ---
 
 ## 3. Typography System
 
-The typography pairs a clean, humanistic sans-serif for reading comfort with a dedicated tabular monospace font for clock numbers (`HH:MM:SS`) to eliminate layout jitter.
+The typography pairs an artisanal, humanist literary serif (`Fraunces`) for atmospheric headings and house plaques with a warm, geometric-humanist sans (`DM Sans`) for comfortable reading and clean UI controls, a dedicated tabular monospace font (`JetBrains Mono`) for rock-solid clock numbers (`HH:MM:SS`), and a subtle handwritten script (`Caveat`) for casual study notes and marginalia.
 
 ### 3.1 Typefaces
-1. **Primary Interface Sans:** `Plus Jakarta Sans`, `Geist Sans`, or `Inter`
-   - *Characteristics:* Wide aperture, warm human geometry, highly legible at small sizes.
-2. **Tabular Monospace (Clocks & Numbers):** `JetBrains Mono` or `Geist Mono`
-   - *Characteristics:* Equal-width numbers (`tabular-nums`), distinct zero and digits, perfect clock alignment.
+1. **Primary Literary Serif (Headings, House Plaques & Brand):** `Fraunces` (Fallback: `Newsreader`, `Georgia`, `serif`)
+   - *Characteristics:* Variable optical-sized (`opsz 9..144`) old-style soft serif. Warm, organic terminal curves, vintage letterpress rhythm, and high editorial tactile depth. Replaces generic dry serifs (`Lora`) and corporate SaaS fonts.
+2. **Interface & Reading Sans (Body, Cards, Labels & Controls):** `DM Sans` (Fallback: `-apple-system`, `sans-serif`)
+   - *Characteristics:* Warm geometric-humanist proportions, generous x-height, and soft friendly apertures. Highly legible in dark mode across amber and espresso cards without cold clinical sterile vibes.
+3. **Tabular Monospace (Clocks, Timers & Verification Numbers):** `JetBrains Mono`
+   - *Characteristics:* Equal-width tabular digits (`font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "zero" 1`), zero layout jump during timer updates.
+4. **Handwritten Marginalia Accent (Study Notes, Stamps & Quotes):** `Caveat`
+   - *Characteristics:* Natural handwriting script evoking a tutor's encouraging pencil remark or sticky note in a student's paper planner.
 
 ### 3.2 Type Scale
 
-| Scale Role | Font Size | Line Height | Weight | Tracking | Usage |
+| Scale Role | Font Size | Font Family | Weight | Tracking | Usage |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Display / Score** | `36px` (`2.25rem`) | `1.1` | Bold (`700`) | `-0.02em` | Scoreboard total hours, leader time |
-| **Heading 1 (H1)** | `28px` (`1.75rem`) | `1.2` | SemiBold (`600`) | `-0.01em` | Challenge title, main dashboard heading |
-| **Heading 2 (H2)** | `20px` (`1.25rem`) | `1.3` | SemiBold (`600`) | `0em` | Card section titles ("Log Hours", "Standings") |
-| **Heading 3 (H3)** | `16px` (`1.0rem`) | `1.4` | Medium (`500`) | `0em` | Modal headers, roster subheadings |
-| **Body Large** | `15px` (`0.938rem`)| `1.5` | Regular (`400`) | `0em` | Goal checklist text, encouragement prompts |
-| **Body Small / Meta**| `13px` (`0.812rem`)| `1.4` | Regular (`400`) | `0.01em` | Table headers, badges, timestamps |
-| **Clock Monospace** | `14px–24px` | `1.0` | Medium (`500`) | `0.02em` | All `HH:MM:SS` durations & input dials |
+| **Plaque Display** | `28px–36px` (`1.75–2.25rem`) | Serif (`Fraunces`) | SemiBold (`600`) | `-0.02em` | Welcome lounge headline, house titles |
+| **Scoreboard Hours**| `24px–32px` (`1.5–2.0rem`) | Monospace | SemiBold (`600`) | `0em` | Cumulative house total hours |
+| **Heading 1 (H1)** | `20px–24px` (`1.25–1.5rem`)| Serif (`Fraunces`) | SemiBold (`600`) | `-0.015em` | Section headers ("Study Desk Log", "Intentions") |
+| **Heading 2 (H2)** | `15px–17px` (`0.938–1.063rem`)| Sans (`DM Sans`) | SemiBold (`600`) | `-0.01em` | Card headers, table titles |
+| **Body Reading** | `13px–15px` (`0.813–0.938rem`)| Sans (`DM Sans`) | Regular (`400`) | `-0.01em` | Reflection notes, goal checklist text |
+| **Handwritten Note**| `14px–18px` (`0.875–1.125rem`)| Script (`Caveat`) | Medium (`500`) | `0.02em` | Margin tips, sticky notes, tutor encouragements |
+| **Auxiliary / Meta**| `10px–12px` (`0.625–0.75rem`)| Sans / Mono | Medium (`500`) | `0.02em` | Table headers, timestamps, day pills |
+| **Tabular Clock** | `14px–24px` | Monospace | Medium (`500`) | `0.02em` | All `HH:MM:SS` duration inputs and logs |
 
 ---
 
 ## 4. Component Visual Specifications
 
-### 4.1 Head-to-Head Live Scoreboard Banner
-- **Container:** Rounded `rounded-2xl`, bordered in soft `#36312b`, with a warm ambient background gradient (`linear-gradient(135deg, #1c1917 0%, #24211e 100%)`).
-- **Team Modules:** Left side (e.g. *Honey Bees* in warm amber glow), Right side (e.g. *Butterflies* in soft lavender).
-- **Center Element:** Cozy circular badge displaying `VS` with a warm amber pill underneath indicating the live margin delta:
-  $$\text{“Bees lead by +03h 45m 12s”}$$
-- **Leader Crown:** Subtle, glowing amber crown icon (`👑`) above the leading team's cumulative total.
+### 4.1 The House Cup Matchup Plaque (Noticeboard Style)
+- **Container:** Rounded `rounded-3xl` with subtle 1px border in `#2f2821`, textured like a warm walnut library plaque or café chalkboard.
+- **Atmospheric Background:** Soft lofi rain-on-glass illustration (`hero_cafe.jpg`) layered under a dark walnut vignette gradient (`linear-gradient(to top, #181512 0%, rgba(24, 21, 18, 0.7) 100%)`).
+- **House Modules:**
+  - Left: *Honey Bees* 🐝 with candlelight honey digits (`#ebb06e`). Static "In Lead" pill.
+  - Center: Quiet, dignified `vs` divider with muted lead margin delta (`+04h 12m`).
+  - Right: *Lavender Butterflies* 🦋 with soft linen digits (`#d8cfc4`).
+- **Anti-Slop Invariant:** Zero bouncing crowns (`animate-bounce`), zero pulsing neon borders, and zero aggressive esports combat badges.
 
-### 4.2 The "Cozy Hearth" Participant Cockpit
-The logging experience is designed to feel as effortless as jotting a note in a leather-bound journal:
-1. **Day Selector:** Horizontal chip carousel showing the 7 days of the challenge week (e.g., `Tue`, `Wed`, `Thu`, `Fri`, `Sat`, `Sun`, `Mon`) with active days highlighted in warm amber borders.
-2. **Clock-Time Dial Inputs (`HH:MM:SS`):**
-   - Three soft dark input boxes (`[ 04 ]h [ 30 ]m [ 00 ]s`).
-   - Quick-add shortcut chips below the inputs: `[+30m]`, `[+1h]`, `[+2h]`, `[Copy Yesterday]`.
-   - Clear, satisfying **"Record Study Time"** button with warm amber background and gentle scale feedback.
-3. **Encouraging Dynamic Deficit Gauge:**
-   - Soft circular or bar progress meter showing percentage of weekly target completed.
-   - Warm human copy:
-     - *On Track:* 🌿 *"You're 2h 15m ahead of pace! Keep up the serene grinding."*
-     - *Catch-Up Needed:* ☕ *"Need 3h 20m/day over the next 2 days to hit your target. Totally doable."*
+### 4.2 The "Study Desk" Cockpit & Logbook
+The logging experience is designed to feel like sitting at a quiet wooden desk with an analog clock and open leather-bound journal:
+1. **Day Selector:** Horizontal row of calm wooden tabs showing weekly days (`Mon` through `Sun`). The active day is highlighted with a gentle honey border and soft elevation.
+2. **Tactile Clock Dials (`HH:MM:SS`):**
+   - Three soft dark walnut inset boxes (`[ 04 ] : [ 30 ] : [ 00 ]`).
+   - Understated tactile quick-add chips below: `[+15m]`, `[+30m]`, `[+1h]`, `[+2h]`, `[Copy Wed]`.
+   - Quiet, satisfying **"Record Today's Study Time"** button in warm candlelight honey (`#d9822b`).
+3. **Gentle Deficit & Catch-Up Reflection Note:**
+   - Soft dried-sage card (`#18271e` surface with `#4b8b67` border).
+   - Calm, encouraging handwritten-style reflection copy:
+     - *On Pace:* 🌿 *"On serene pace. You are 2h 15m ahead today. To hit your 35h target, you only need ~4h 05m/day over the remaining 3 days."*
+     - *Catch-Up Needed:* ☕ *"Gentle catch-up. Need 3h 20m/day over the next 2 days to hit your target. Deficit rolls forward seamlessly."*
 
-### 4.3 Interactive Weekly Goals Checklist
-- **Tasks:** Styled as neat cards with rounded corners (`rounded-xl`).
-- **Uncompleted State:** Oatmeal text with a clean empty checkbox bordered in warm sepia.
-- **Completed State:** Soft strike-through text, opacity reduced to `0.65`, with an animated emerald checkmark (`✓`).
-- **Counter Pill:** Small tag in header showing progress: `3 of 5 Goals Completed`.
+### 4.3 Parchment Weekly Intentions Checklist
+- **Notebook Aesthetics:** Styled as clean paper notebook cards with rounded corners (`rounded-2xl`).
+- **Uncompleted State:** Warm cream text with a clean empty square bordered in soft sepia.
+- **Completed State:** Soft strike-through text, opacity gracefully lowered, with a serene dried-sage checkmark (`✓`).
+- **Counter:** Muted header counter: `3 / 5 Finished`.
 
-### 4.4 Community Standings Table
-- **Clean Rhythm:** Alternating subtle row backgrounds (`#1a1816` and `#1f1c19`) with comfortable `py-3.5` vertical padding.
+### 4.4 Study Lounge Standings Table
+- **Noticeboard Rhythm:** Subtle alternating row hover states on dark walnut backgrounds with generous line-height for effortless scanning.
 - **Podium Styling:**
-  - 🥇 1st Place: Soft warm gold background tint with amber medal icon.
-  - 🥈 2nd Place: Soft warm silver tint.
-  - 🥉 3rd Place: Soft bronze tint.
-- **Status Badges:**
-  - `On Track`: Soft emerald capsule (`bg-emerald-950/60 text-emerald-400 border border-emerald-800/40`).
-  - `Needs Catch-Up`: Soft terracotta capsule (`bg-rose-950/60 text-rose-300 border border-rose-800/40`).
-- **Direct Goal Progress:** Visual indicator showing fraction of mandatory tasks complete (e.g. `4/4` or `2/5`).
+  - 1st Place: Subtle gold numeral with warm honey text.
+  - 2nd Place: Soft silver linen numeral.
+  - 3rd Place: Soft oatmeal bronze numeral.
+- **Pace Badges:** Muted text tags (`Serene` in sage, `Deficit (-4h)` in terracotta), avoiding screaming high-contrast capsules.
 
-### 4.5 The Punishment Wall & PFP Hub
-- **Purpose:** Accountability without cruelty. Playful, community-spirited aesthetic.
-- **Flagged Member Cards:** Outlined in soft terracotta with avatar, missing hours deficit, and unfinished tasks clearly stated.
-- **Punishment PFP Asset:** Prominent, rounded button:
-  - Text: **"Download Punishment PFP"** (icon: 🖼️ / ⬇️)
-  - Color: Warm terracotta accent (`bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-950/40`).
-  - Action: Triggers instant direct browser download of the challenge's assigned profile picture.
+### 4.5 The Accountability Nook & Forfeits Corner
+- **Purpose:** Friendly community stakes with zero cruelty or shame.
+- **Forfeit Avatar Asset:** High-resolution storybook illustration (e.g. the whimsical clown bee studying atop antique books, `punishment_pfp.jpg`).
+- **Download Action:** Prominent, rounded button:
+  - Text: **"Download Event Avatar (.jpg)"** (icon: 🖼️ / ⬇️).
+  - Color: Warm cocoa card button with subtle border hover.
+  - Action: Triggers instant browser download of the assigned weekly forfeit picture.
 
 ---
 
@@ -179,32 +201,38 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        cozy: {
-          bg: "#121110",
-          surface: "#1a1816",
-          elevated: "#24211e",
-          border: "#36312b",
-          cream: "#f5f4f0",
-          linen: "#d6d3cd",
-          oatmeal: "#a8a29e",
-          ash: "#78716c",
-          amber: {
-            DEFAULT: "#f59e0b",
-            light: "#fbbf24",
-            dark: "#d97706",
+        cafe: {
+          bg: "#12100e",          // Deep roasted espresso bean
+          wood: "#181512",        // Dark walnut study desk
+          card: "#1e1a16",        // Warm cocoa board
+          elevated: "#26211c",    // Warm hearth mantle
+          border: "#2f2821",      // Soft sepia divider
+          borderLight: "#3d342b", // Subtle focus border
+          parchment: "#f5f0e6",   // Aged warm cream reading text
+          linen: "#d8cfc4",       // Soft secondary linen text
+          oatmeal: "#9e9284",     // Muted note text
+          ash: "#6e6459",         // Quiet timestamp text
+          honey: {
+            DEFAULT: "#d9822b",   // Candlelight honey lamp (muted, non-neon)
+            light: "#ebb06e",     // Soft amber glow
+            dark: "#b86a1e",
           },
           sage: {
-            DEFAULT: "#10b981",
-            surface: "rgba(16, 185, 129, 0.12)",
+            DEFAULT: "#4b8b67",   // Dried sage leaves
+            surface: "#18271e",   // Calm forest tea surface tint
           },
           terracotta: {
-            DEFAULT: "#f87171",
-            surface: "rgba(248, 113, 113, 0.12)",
+            DEFAULT: "#c7634c",   // Warm pottery terracotta
+            surface: "#2a1916",   // Muted clay surface tint
           },
-          lavender: "#a78bfa",
+          lavender: {
+            DEFAULT: "#9986b8",   // Dried lavender sprigs
+            surface: "#211c2b",   // Deep dusk surface tint
+          },
         },
       },
       fontFamily: {
+        serif: ["var(--font-serif)", "Lora", "Georgia", "serif"],
         sans: ["var(--font-sans)", "Plus Jakarta Sans", "Inter", "sans-serif"],
         mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
       },
@@ -213,8 +241,8 @@ const config: Config = {
         "3xl": "1.5rem",
       },
       boxShadow: {
-        cozy: "0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(245, 158, 11, 0.05)",
-        "cozy-glow": "0 0 25px -4px rgba(245, 158, 11, 0.25)",
+        cafe: "0 8px 30px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
+        "amber-subtle": "0 0 20px -3px rgba(217, 130, 43, 0.15)",
       },
     },
   },
