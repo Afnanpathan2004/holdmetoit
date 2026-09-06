@@ -124,7 +124,7 @@ graph TD
 
 > [!IMPORTANT]  
 > **EXACT NEXT STEP FOR THE INCOMING AGENT:**  
-> Phase 0 (MVP Core) is **100% Complete and Certified**. Proceed to **Phase 1: Automation & Integrations**:
+> Phase 0 (MVP Core) + Operational Usability Enablers are **100% Complete and Certified**. Proceed to **Phase 1: Automation & Integrations**:
 > 1. Implement Direct YPT API Bot Ingestion Endpoint (`FEAT-LOG-03`) at `POST /api/v1/ingest/ypt` with Bearer token authentication to ingest automated daily logs from teammate YPT bots.
 > 2. Implement Automated Countdown Timer & Challenge Expiration (`FEAT-CHAL-03`).
 > 3. Scaffold `@HoldMeToItBot` 24/7 Discord daemon (`FEAT-DISC-02`) with slash commands (`/stats`, `/standings`, `/deficit`).
@@ -144,12 +144,7 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 ## 7. Session Changelog
 
 ### Previous Sessions (Summarized)
-- **Sessions 1–7 (2026-09-06):** Repository architecture, Rule §9.3 enactment, cozy aesthetic tokens, typography upgrade, dynamic per-event team themes, duo partner self-naming (`FEAT-CHAL-06`), Spiced Cinnamon palette upgrade.
-
-### Session 8 — 2026-09-06
-- **Agent Role:** Participant UI & Fullstack Engineer Agent
-- **Git Branch:** `afnan`
-- **Changes Completed (Slices 0–3):** Scaffolding Next.js 14 App Router, Tailwind CSS, TypeScript strict, Vitest; domain engine (`duration.ts`, `deficit.ts`, `leaderboard.ts`, `punishment.ts`); Prisma schema & Auth.js Discord OAuth; participant cockpit at `/dashboard`.
+- **Sessions 1–8 (2026-09-06):** Repository architecture, Rule §9.3 enactment, cozy aesthetic tokens, typography upgrade, dynamic per-event team themes, duo partner self-naming (`FEAT-CHAL-06`), Spiced Cinnamon palette upgrade, core domain engines, participant cockpit.
 
 ### Session 9 — 2026-09-07
 - **Agent Role:** Participant UI & Scoring Agent
@@ -173,12 +168,22 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 - **Git Branch:** `krish`
 - **Changes Completed (Slice 6: E2E Quality Verification & Release Gate):**
   - Authored comprehensive E2E Quality Matrix test suite: `features/e2e/quality-matrix-j1-j6.test.ts`.
-  - Automated verification for all 6 user journeys:
-    - **J1:** Auth & Public Spectator Mode (read-only spectator access + Discord OAuth profile sync).
-    - **J2:** Admin Challenge Creation & Rostering (Law L1 mathematical unity).
-    - **J3:** Pre-Kickoff Declarations & Permanent Lock Invariant on kickoff.
-    - **J4:** Daily Logging & Dynamic Catch-Up Deficit Model (Law L3).
-    - **J5:** Host Manual Override with `is_override = true` and immutable audit log (Law L5).
-    - **J6:** Event Lock, Dual-Failure Auto-Punishment (Law L6), Forfeit Avatar download, and 1-Click Discord summary generation.
+  - Automated verification for all 6 user journeys (J1–J6).
   - Verified 24 test files (143 tests, 100% green), zero TypeScript errors, and zero production build errors.
-  - Certified Phase 0 (MVP Core) as complete!
+  - Certified Phase 0 (MVP Core) as complete.
+
+### Session 12 — 2026-09-07
+- **Agent Role:** Fullstack Engineer & Operational Enablers Agent
+- **Git Branch:** `krish`
+- **Changes Completed (Operational Usability & Enrollment Slices):**
+  - **Step 1 (Discord Remote Avatars):** Configured `next.config.mjs` with `images.remotePatterns` for `cdn.discordapp.com` and `images.unsplash.com`.
+  - **Step 2 (Participant Self-Enrollment Flow):**
+    - Implemented `enrollParticipantInChallenge()` in `features/challenges/data/participant.repository.ts` enforcing challenge status and team `maxMembers` capacity.
+    - Implemented `enrollInChallengeAction()` in `features/challenges/api/enroll-participant.action.ts` validating weekly target hours ($\ge 1\text{h}$, $\le 105\text{h}$) and revalidating routes.
+    - Built `JoinChallengeModal` (`features/challenges/presentation/join-challenge-modal.tsx`) and integrated into `challenge-view.tsx` with responsive drawer/dialog controls.
+  - **Step 3 (Admin Manual Roster Assignment Flow):**
+    - Implemented `adminEnrollParticipant()` in `features/challenges/data/challenge-admin.repository.ts` with immutable `ROSTER_EDIT` audit trail logging.
+    - Added `listAllUsersForAdmin()` in `features/auth/data/user.repository.ts` and wired into `getAdminChallengeData()`.
+    - Integrated `+ Enroll Member` button and modal into `AdminRosterGrid` (`features/challenges/presentation/admin-roster-grid.tsx`).
+    - Added `defaultTab="roster"` prop on `/admin/challenges/[id]/roster/page.tsx`.
+  - **Quality Gates:** 26 test suites (158 unit & integration tests, 100% green), zero TypeScript errors (`npm run typecheck`), and successful Next.js production build (`npm run build`).

@@ -54,7 +54,7 @@ export default async function AdminChallengeRosterPage({
         <span className="text-cafe-linen">Roster & Overrides</span>
       </div>
 
-      <AdminChallengeConsole initialData={challengeData} />
+      <AdminChallengeConsole initialData={challengeData} defaultTab="roster" />
     </div>
   );
 }

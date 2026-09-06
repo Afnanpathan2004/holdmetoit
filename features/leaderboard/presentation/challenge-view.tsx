@@ -8,6 +8,7 @@ import type { ChallengeScoreboardViewModel } from "../data/leaderboard-data";
 import { MatchBanner } from "./match-banner";
 import { PunishmentWall } from "./punishment-wall";
 import { StandingsTable } from "./standings-table";
+import { JoinChallengeModal } from "@/features/challenges/presentation/join-challenge-modal";
 
 interface ChallengeViewProps {
   challenge: ChallengeScoreboardViewModel;
@@ -64,10 +65,17 @@ export function ChallengeView({ challenge }: ChallengeViewProps) {
             </Link>
           </Button>
         </div>
+      ) : challenge.status !== "COMPLETED" ? (
+        <JoinChallengeModal
+          challengeId={challenge.id}
+          challengeTitle={challenge.title}
+          format={challenge.format}
+          teams={challenge.teams}
+        />
       ) : (
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-cafe-border bg-cafe-card/70 p-3.5 text-xs text-cafe-oatmeal">
           <span className="flex items-center gap-2">
-            <span>👁️</span> Signed in as spectator. Not enrolled as a participant in this sprint.
+            <span>👁️</span> Signed in as spectator. This event is completed.
           </span>
           <Button asChild variant="outline" size="sm" className="min-h-[36px]">
             <Link href="/dashboard">View Dashboard</Link>

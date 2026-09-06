@@ -9,11 +9,13 @@ import {
   Edit3,
   ShieldCheck,
   UserCheck,
+  UserPlus,
   Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { adminEnrollParticipantAction } from "@/features/challenges/api/challenge-admin.actions";
 import { adminOverrideStudyHoursAction } from "@/features/study-logs/api/admin-override.action";
 import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
 
@@ -40,14 +42,34 @@ export interface AdminRosterParticipant {
   goalsCompletedCount: number;
 }
 
+export interface AdminRosterTeamOption {
+  id: string;
+  name: string;
+  color: string | null;
+  iconEmoji: string | null;
+  participantCount?: number;
+}
+
+export interface AdminAvailableUserOption {
+  id: string;
+  displayName: string;
+  username: string | null;
+  image: string | null;
+  isEnrolled: boolean;
+}
+
 interface AdminRosterGridProps {
   challengeId: string;
   participants: AdminRosterParticipant[];
+  teams?: AdminRosterTeamOption[];
+  availableUsers?: AdminAvailableUserOption[];
 }
 
 export function AdminRosterGrid({
   challengeId,
   participants,
+  teams,
+  availableUsers,
 }: AdminRosterGridProps) {
   const [selectedParticipant, setSelectedParticipant] =
     useState<AdminRosterParticipant | null>(null);
@@ -58,6 +80,18 @@ export function AdminRosterGrid({
   const [reason, setReason] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Enroll modal state
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [enrollUserId, setEnrollUserId] = useState("");
+  const [enrollTeamId, setEnrollTeamId] = useState("");
+  const [enrollHours, setEnrollHours] = useState<number>(35);
+  const [enrollReason, setEnrollReason] = useState<string>(
+    "Manual host assignment",
+  );
+  const [enrollError, setEnrollError] = useState<string | null>(null);
+  const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
+
   const [isPending, startTransition] = useTransition();
 
   const openOverrideModal = (
@@ -114,9 +148,50 @@ export function AdminRosterGrid({
     });
   };
 
+  const handleOpenEnrollModal = () => {
+    const unenrolledUser = availableUsers?.find((u) => !u.isEnrolled);
+    setEnrollUserId(unenrolledUser?.id || "");
+    setEnrollTeamId(teams && teams.length > 0 ? teams[0].id : "");
+    setEnrollHours(35);
+    setEnrollReason("Manual host assignment");
+    setEnrollError(null);
+    setEnrollSuccess(null);
+    setIsEnrollModalOpen(true);
+  };
+
+  const handleSaveEnrollment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enrollUserId || !enrollTeamId) {
+      setEnrollError("Please select a user and a team.");
+      return;
+    }
+
+    setEnrollError(null);
+    setEnrollSuccess(null);
+
+    startTransition(async () => {
+      const res = await adminEnrollParticipantAction({
+        challengeId,
+        userId: enrollUserId,
+        teamId: enrollTeamId,
+        targetSeconds: enrollHours * 3600,
+        reason: enrollReason,
+      });
+
+      if (res.ok) {
+        setEnrollSuccess("Member enrolled successfully into tournament roster.");
+        setTimeout(() => {
+          setIsEnrollModalOpen(false);
+        }, 1200);
+      } else {
+        setEnrollError(res.message);
+      }
+    });
+  };
+
   return (
     <div className="rounded-2xl border border-cafe-border bg-cafe-card p-5 md:p-6 shadow-cafe">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-5 border-b border-cafe-border">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-5 border-b border-cafe-border">
         <div>
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cafe-honey/15 text-cafe-honey">
@@ -130,6 +205,17 @@ export function AdminRosterGrid({
             Host authority to manually correct crashed timers, resolve disputes, and audit adjustments (Law L5 / FEAT-LOG-04).
           </p>
         </div>
+
+        {teams && teams.length > 0 && (
+          <Button
+            type="button"
+            onClick={handleOpenEnrollModal}
+            className="min-h-[44px] gap-2 bg-cafe-honey text-cafe-bg hover:bg-cafe-honey-light font-semibold shadow-cafe shrink-0"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>+ Enroll Member</span>
+          </Button>
+        )}
       </div>
 
       {participants.length === 0 ? (
@@ -383,6 +469,155 @@ export function AdminRosterGrid({
                   className="gap-2"
                 >
                   {isPending ? "Saving Override..." : "Save Override"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Enroll Member Modal */}
+      {isEnrollModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-cafe-border bg-cafe-elevated p-6 shadow-cafe animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-cafe-border">
+              <h4 className="font-serif text-base font-semibold text-cafe-parchment flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-cafe-honey" />
+                <span>Assign Member to Challenge</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => setIsEnrollModalOpen(false)}
+                className="text-cafe-ash hover:text-cafe-parchment text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEnrollment} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-cafe-linen mb-1">
+                  Select Registered User
+                </label>
+                {availableUsers && availableUsers.length > 0 ? (
+                  <select
+                    value={enrollUserId}
+                    onChange={(e) => setEnrollUserId(e.target.value)}
+                    required
+                    className="w-full rounded-xl border border-cafe-border bg-cafe-bg px-3 py-2 text-sm text-cafe-parchment focus:border-cafe-honey focus:outline-none"
+                  >
+                    <option value="" disabled>
+                      Select a user...
+                    </option>
+                    {availableUsers.map((u) => (
+                      <option
+                        key={u.id}
+                        value={u.id}
+                        disabled={u.isEnrolled}
+                      >
+                        {u.displayName} {u.username ? `(@${u.username})` : ""}{" "}
+                        {u.isEnrolled ? "— Already Enrolled" : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-xl border border-cafe-border bg-cafe-bg/60 p-3 text-xs text-cafe-oatmeal">
+                    No registered users found. Users must log in with Discord once to appear in the platform roster.
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-cafe-linen mb-1">
+                  Assign House / Team
+                </label>
+                <select
+                  value={enrollTeamId}
+                  onChange={(e) => setEnrollTeamId(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-cafe-border bg-cafe-bg px-3 py-2 text-sm text-cafe-parchment focus:border-cafe-honey focus:outline-none"
+                >
+                  <option value="" disabled>
+                    Select a team...
+                  </option>
+                  {teams?.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.iconEmoji || "🛡️"} {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-cafe-linen mb-1">
+                  Weekly Target (Hours)
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={168}
+                  value={enrollHours}
+                  onChange={(e) => setEnrollHours(Math.max(1, Number(e.target.value)))}
+                  required
+                  className="bg-cafe-bg font-mono"
+                />
+                <span className="text-[11px] text-cafe-ash mt-1 block">
+                  Standard weekly baseline is 35 hours (5h/day).
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-cafe-linen mb-1">
+                  Audit Reason (Mandatory)
+                </label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Host roster placement / Discord signup"
+                  value={enrollReason}
+                  onChange={(e) => setEnrollReason(e.target.value)}
+                  required
+                  minLength={3}
+                  className="bg-cafe-bg"
+                />
+                <span className="text-[11px] text-cafe-ash mt-1 block italic">
+                  Recorded in the immutable host audit trail (Law L5).
+                </span>
+              </div>
+
+              {enrollError && (
+                <div className="flex items-center gap-2 rounded-xl border border-cafe-terracotta/40 bg-cafe-terracotta/10 p-3 text-xs text-cafe-parchment">
+                  <AlertCircle className="h-4 w-4 text-cafe-terracotta shrink-0" />
+                  <span>{enrollError}</span>
+                </div>
+              )}
+
+              {enrollSuccess && (
+                <div className="flex items-center gap-2 rounded-xl border border-cafe-sage/40 bg-cafe-sage/10 p-3 text-xs text-cafe-parchment">
+                  <CheckCircle2 className="h-4 w-4 text-cafe-sage shrink-0" />
+                  <span>{enrollSuccess}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsEnrollModalOpen(false)}
+                  disabled={isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    isPending ||
+                    !enrollUserId ||
+                    !enrollTeamId ||
+                    !enrollReason.trim()
+                  }
+                  className="gap-2 bg-cafe-honey text-cafe-bg hover:bg-cafe-honey-light font-semibold shadow-cafe"
+                >
+                  {isPending ? "Enrolling..." : "Enroll Member"}
                 </Button>
               </div>
             </form>

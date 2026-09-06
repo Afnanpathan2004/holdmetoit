@@ -1,6 +1,7 @@
 import { auth } from "@/core/auth";
 
 export class AdminAccessError extends Error {
+  readonly code = "FORBIDDEN_NOT_ADMIN";
   constructor(message = "Host administrative permissions required.") {
     super(message);
     this.name = "AdminAccessError";

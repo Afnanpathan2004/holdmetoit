@@ -1,5 +1,6 @@
 import { prisma } from "@/core/db";
 import { getAuditTrail } from "@/features/audit/data/audit-log.repository";
+import { listAllUsersForAdmin } from "@/features/auth/data/user.repository";
 import type {
   AdminChallengeViewModel,
 } from "@/features/challenges/presentation/admin-challenge-console";
@@ -203,6 +204,16 @@ export async function getAdminChallengeData(
     punishedMembers,
   };
 
+  const allUsers = await listAllUsersForAdmin();
+  const enrolledUserIds = new Set(challenge.participants.map((p) => p.userId));
+  const availableUsers = allUsers.map((u) => ({
+    id: u.id,
+    displayName: u.displayName ?? u.username ?? "Anonymous User",
+    username: u.username,
+    image: u.image,
+    isEnrolled: enrolledUserIds.has(u.id),
+  }));
+
   return {
     id: challenge.id,
     title: challenge.title,
@@ -217,5 +228,6 @@ export async function getAdminChallengeData(
     goalsAndPardons,
     auditTrail: auditEvents,
     discordSummary,
+    availableUsers,
   };
 }

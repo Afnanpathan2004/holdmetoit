@@ -37,6 +37,14 @@ import type { AuditEvent } from "@/features/audit/domain/audit-log";
 import type { DiscordSummaryInput } from "@/features/notifications/domain/discord-summary";
 import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
 
+export interface AvailableUserOption {
+  id: string;
+  displayName: string;
+  username: string | null;
+  image: string | null;
+  isEnrolled: boolean;
+}
+
 export interface AdminChallengeViewModel {
   id: string;
   title: string;
@@ -61,18 +69,21 @@ export interface AdminChallengeViewModel {
   goalsAndPardons: ParticipantWithGoalsAndPunishment[];
   auditTrail: AuditEvent[];
   discordSummary: DiscordSummaryInput;
+  availableUsers?: AvailableUserOption[];
 }
 
 interface AdminChallengeConsoleProps {
   initialData: AdminChallengeViewModel;
+  defaultTab?: "overview" | "roster" | "goals" | "audit";
 }
 
 export function AdminChallengeConsole({
   initialData,
+  defaultTab = "overview",
 }: AdminChallengeConsoleProps) {
   const [activeTab, setActiveTab] = useState<
     "overview" | "roster" | "goals" | "audit"
-  >("overview");
+  >(defaultTab);
 
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -326,6 +337,8 @@ export function AdminChallengeConsole({
         <AdminRosterGrid
           challengeId={initialData.id}
           participants={initialData.roster}
+          teams={initialData.teams}
+          availableUsers={initialData.availableUsers}
         />
       )}
 

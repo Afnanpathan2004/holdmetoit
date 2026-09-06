@@ -3,8 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { requireAdminUser } from "@/features/auth/api/require-admin";
 import {
+  AdminAccessError,
+  requireAdminUser,
+} from "@/features/auth/api/require-admin";
+import {
+  adminEnrollParticipant,
   createAdminChallenge,
   kickoffChallenge,
   lockChallengeResults,
@@ -135,3 +139,65 @@ export async function lockChallengeResultsAction(
     };
   }
 }
+
+const adminEnrollParticipantSchema = z.object({
+  challengeId: z.string().min(1),
+  userId: z.string().min(1),
+  teamId: z.string().min(1),
+  targetSeconds: z.number().int().min(0).default(126000),
+  reason: z.string().min(3, "Audit reason must be at least 3 characters."),
+});
+
+export async function adminEnrollParticipantAction(
+  input: z.infer<typeof adminEnrollParticipantSchema>,
+): Promise<AdminActionResult> {
+  try {
+    const admin = await requireAdminUser();
+    const parsed = adminEnrollParticipantSchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: "INVALID_INPUT",
+        message: parsed.error.issues[0]?.message ?? "Invalid enrollment data.",
+      };
+    }
+
+    await adminEnrollParticipant({
+      challengeId: parsed.data.challengeId,
+      userId: parsed.data.userId,
+      teamId: parsed.data.teamId,
+      targetSeconds: parsed.data.targetSeconds,
+      reason: parsed.data.reason,
+      admin: {
+        id: admin.id,
+        username: admin.username,
+      },
+    });
+
+    revalidatePath(`/admin/challenges/${parsed.data.challengeId}`);
+    revalidatePath(`/admin/challenges/${parsed.data.challengeId}/roster`);
+    revalidatePath(`/challenge/${parsed.data.challengeId}`);
+    revalidatePath("/dashboard");
+
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof AdminAccessError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
+
+    return {
+      ok: false,
+      code: "ENROLLMENT_FAILED",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to enroll member in challenge.",
+    };
+  }
+}
+

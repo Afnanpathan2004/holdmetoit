@@ -264,3 +264,86 @@ export async function lockChallengeResults(
     return completedChallenge;
   });
 }
+
+export async function adminEnrollParticipant(params: {
+  challengeId: string;
+  userId: string;
+  teamId: string;
+  targetSeconds?: number;
+  reason: string;
+  admin: { id: string; username: string };
+}) {
+  const challenge = await prisma.challenge.findUnique({
+    where: { id: params.challengeId },
+  });
+
+  if (!challenge) {
+    throw new Error("Challenge not found.");
+  }
+
+  const existing = await prisma.challengeParticipant.findUnique({
+    where: {
+      challengeId_userId: {
+        challengeId: params.challengeId,
+        userId: params.userId,
+      },
+    },
+  });
+
+  if (existing) {
+    throw new Error("User is already enrolled in this challenge.");
+  }
+
+  const team = await prisma.team.findUnique({
+    where: { id: params.teamId },
+    include: {
+      _count: {
+        select: { participants: true },
+      },
+    },
+  });
+
+  if (!team || team.challengeId !== params.challengeId) {
+    throw new Error("Selected team does not belong to this challenge.");
+  }
+
+  if (team.maxMembers && team._count.participants >= team.maxMembers) {
+    throw new Error(
+      `Team ${team.name} is full (max ${team.maxMembers} member${team.maxMembers === 1 ? "" : "s"}).`,
+    );
+  }
+
+  const participant = await prisma.challengeParticipant.create({
+    data: {
+      userId: params.userId,
+      challengeId: params.challengeId,
+      teamId: params.teamId,
+      targetSeconds: params.targetSeconds ?? 0,
+      status: "NORMAL",
+    },
+    include: {
+      team: true,
+      challenge: true,
+      user: true,
+    },
+  });
+
+  await recordAuditEvent({
+    actorId: params.admin.id,
+    actorUsername: params.admin.username,
+    actionType: "ROSTER_EDIT",
+    targetEntityId: participant.id,
+    targetEntityType: "PARTICIPANT",
+    challengeId: params.challengeId,
+    previousValue: null,
+    newValue: {
+      userId: params.userId,
+      teamId: params.teamId,
+      targetSeconds: params.targetSeconds ?? 0,
+    },
+    auditReason: params.reason.trim(),
+  });
+
+  return participant;
+}
+

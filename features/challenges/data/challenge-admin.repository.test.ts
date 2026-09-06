@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/core/db";
 import {
+  adminEnrollParticipant,
   createAdminChallenge,
   kickoffChallenge,
   listAllChallengesForAdmin,
@@ -16,7 +17,12 @@ vi.mock("@/core/db", () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    team: {
+      findUnique: vi.fn(),
+    },
     challengeParticipant: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
       update: vi.fn(),
     },
     punishmentRecord: {
@@ -24,6 +30,10 @@ vi.mock("@/core/db", () => ({
     },
     $transaction: vi.fn((cb) => cb(prisma)),
   },
+}));
+
+vi.mock("@/features/audit/data/audit-log.repository", () => ({
+  recordAuditEvent: vi.fn().mockResolvedValue({ id: "audit_1" }),
 }));
 
 describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)", () => {
@@ -149,6 +159,82 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
           }),
         }),
       );
+    });
+  });
+
+  describe("adminEnrollParticipant", () => {
+    it("successfully enrolls user and records audit trail (Law L5)", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+      } as never);
+
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(null);
+
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({
+        id: "t_1",
+        name: "Butterflies",
+        challengeId: "c_1",
+        maxMembers: 10,
+        _count: { participants: 3 },
+      } as never);
+
+      const mockParticipant = {
+        id: "part_admin_assigned",
+        userId: "u_2",
+        challengeId: "c_1",
+        teamId: "t_1",
+        targetSeconds: 126000,
+        status: "NORMAL",
+      };
+
+      vi.mocked(prisma.challengeParticipant.create).mockResolvedValue(
+        mockParticipant as never,
+      );
+
+      const result = await adminEnrollParticipant({
+        challengeId: "c_1",
+        userId: "u_2",
+        teamId: "t_1",
+        targetSeconds: 126000,
+        reason: "Manual host placement from Discord",
+        admin: { id: "admin_1", username: "HostAdmin" },
+      });
+
+      expect(result).toEqual(mockParticipant);
+      expect(prisma.challengeParticipant.create).toHaveBeenCalledWith({
+        data: {
+          userId: "u_2",
+          challengeId: "c_1",
+          teamId: "t_1",
+          targetSeconds: 126000,
+          status: "NORMAL",
+        },
+        include: {
+          team: true,
+          challenge: true,
+          user: true,
+        },
+      });
+    });
+
+    it("rejects when user is already enrolled", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+      } as never);
+
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue({
+        id: "part_existing",
+      } as never);
+
+      await expect(
+        adminEnrollParticipant({
+          challengeId: "c_1",
+          userId: "u_2",
+          teamId: "t_1",
+          reason: "Host override",
+          admin: { id: "admin_1", username: "HostAdmin" },
+        }),
+      ).rejects.toThrow("User is already enrolled in this challenge.");
     });
   });
 });
