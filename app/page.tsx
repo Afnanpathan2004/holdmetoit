@@ -1,23 +1,37 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { auth } from "@/core/auth";
+import {
+  SignInWithDiscordButton,
+  UserNav,
+} from "@/features/auth/presentation/auth-nav";
 
 const SEED_CHALLENGE_ID = "seed-honey-bees-vs-lavender-butterflies";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth();
+
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-8 px-4 py-16 sm:px-6">
+      {/* Top Header / Auth Bar */}
+      <div className="flex items-center justify-between border-b border-cafe-border/60 pb-4">
+        <span className="font-serif text-sm font-semibold tracking-tight text-cafe-parchment">
+          ☕ HoldMeToIt
+        </span>
+        <UserNav user={session?.user} />
+      </div>
+
       <header className="space-y-3">
         <p className="text-xs font-medium uppercase tracking-widest text-cafe-oatmeal">
-          Study Café
+          Study Café & Accountability
         </p>
         <h1 className="font-serif text-3xl font-semibold tracking-tight text-cafe-parchment sm:text-4xl">
-          HoldMeToIt
+          Quiet hours lounge, real-time study duels.
         </h1>
         <p className="max-w-xl text-sm leading-relaxed text-cafe-linen">
-          Quiet hours study lounge and accountability — warm, precise, and
-          guilt-free. Head-to-head match scoreboard, unified standings table,
-          and forfeit wall are now live.
+          Automated study tournaments and deficit accountability — warm, precise, and
+          guilt-free. Connect with Discord to participate, or spectate ongoing sprints freely.
         </p>
       </header>
 
@@ -48,11 +62,15 @@ export default function HomePage() {
             </Link>
           </Button>
 
-          <Button asChild variant="secondary" className="min-h-[44px]">
-            <Link href="/dashboard">
-              Open Participant Cockpit
-            </Link>
-          </Button>
+          {session?.user ? (
+            <Button asChild variant="secondary" className="min-h-[44px]">
+              <Link href="/dashboard">
+                Open Participant Cockpit
+              </Link>
+            </Button>
+          ) : (
+            <SignInWithDiscordButton redirectTo="/dashboard" className="min-h-[44px]" />
+          )}
 
           <Button asChild variant="outline" className="min-h-[44px] text-cafe-honey hover:text-cafe-honey-light">
             <Link href="/admin">
@@ -75,3 +93,4 @@ export default function HomePage() {
     </main>
   );
 }
+

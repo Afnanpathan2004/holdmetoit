@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { auth } from "@/core/auth";
+import { UserNav } from "@/features/auth/presentation/auth-nav";
 
 export default async function ChallengeLayout({
   children,
@@ -47,35 +48,7 @@ export default async function ChallengeLayout({
               My Cockpit
             </Link>
 
-            {session?.user ? (
-              <div className="flex items-center gap-2 rounded-full border border-cafe-border bg-cafe-card/70 px-2.5 py-1 text-xs">
-                <div className="relative h-5 w-5 overflow-hidden rounded-full border border-cafe-honey/40 bg-cafe-honey/20">
-                  {session.user.image ? (
-                    <Image
-                      src={session.user.image}
-                      alt={session.user.name ?? "User"}
-                      fill
-                      sizes="20px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center font-serif text-[10px] font-bold text-cafe-honey">
-                      {(session.user.name ?? "U").slice(0, 1)}
-                    </span>
-                  )}
-                </div>
-                <span className="max-w-[120px] truncate text-cafe-parchment">
-                  {session.user.name ?? "Companions"}
-                </span>
-              </div>
-            ) : (
-              <Link
-                href="/api/auth/signin"
-                className="rounded-lg bg-cafe-honey px-3 py-1.5 font-semibold text-cafe-bg transition-colors hover:bg-cafe-honey-light"
-              >
-                Sign In
-              </Link>
-            )}
+            <UserNav user={session?.user} />
           </nav>
         </div>
       </header>

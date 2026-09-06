@@ -1,11 +1,16 @@
 import Link from "next/link";
 import { Shield, Sparkles, Trophy, UserCheck } from "lucide-react";
 
-export default function AdminLayout({
+import { auth } from "@/core/auth";
+import { UserNav } from "@/features/auth/presentation/auth-nav";
+
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
   return (
     <div className="min-h-screen bg-cafe-bg text-cafe-parchment font-sans flex flex-col">
       {/* Top Cozy Ambient Glow */}
@@ -54,6 +59,7 @@ export default function AdminLayout({
             >
               Public Lounge ↗
             </Link>
+            <UserNav user={session?.user} />
           </nav>
         </div>
       </header>
