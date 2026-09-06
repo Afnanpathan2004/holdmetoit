@@ -20,7 +20,7 @@ The repository currently contains the authoritative 5-document specification sui
 | :--- | :---: | :--- |
 | **`AGENTS.md`** | **Active** | Absolute authority on agent protocol, locked technology stack, 9 non-negotiable Product & Stack Laws (L1–L9), 6 E2E user journeys (J1–J6), git safety rules, and DoD. Section 9.3 governs strict handoff obsolescence pruning. |
 | **`FEATURES.md`** | **Active** | Absolute authority on product behavior, screen layouts, and roadmap phases (`[P0]` to `[V2]`). Catalogs 22 granular feature IDs (`FEAT-AUTH-01` to `FEAT-DUEL-01`) and specifies rejected anti-features (no in-browser timers, no grace passes). |
-| **`DESIGN.md`** | **Active** | Absolute authority on visual identity: *Cozy Study Café & Late-Night Library*. Defines complete warm color palette (`#121110` roasted espresso, `#f59e0b` amber, `#10b981` sage, `#f87171` terracotta), monospace tabular clocks (`HH:MM:SS`), component specs, and strict 360px+ mobile responsiveness. |
+| **`DESIGN.md`** | **Active** | Absolute authority on visual identity: *Cozy Study Café & Late-Night Library*. Defines complete warm color palette (`#14110f` roasted espresso, `#e08a32` honey, `#529e72` sage, `#c87948` spiced cinnamon), monospace tabular clocks (`HH:MM:SS`), component specs, and strict 360px+ mobile responsiveness. |
 | **`ROADMAP.md`** | **Active** | Milestone-gated evolutionary trajectory across 4 phases: Phase 0 (MVP Core) $\rightarrow$ Phase 1 (YPT Ingestion & Bot) $\rightarrow$ Phase 2 (Gamification & Fair Balancing) $\rightarrow$ Phase 3 (Spontaneous 1v1 Duels & Multi-Guild). Defines architectural evolution and risk mitigation. |
 | **`README.md`** | **Active** | High-level project mission, locked technology matrix, team roles, and local developer environment onboarding. |
 
@@ -179,12 +179,7 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 ## 7. Session Changelog
 
 ### Previous Sessions (Summarized)
-- **Sessions 1 & 2 (2026-09-06):** Repository architecture analysis, Rule §9.3 enactment, cozy aesthetic ratification, and initial prototype scaffolding.
-
-### Session 3 — 2026-09-06
-- **Agent Role:** Admin Operations & System Architecture Agent
-- **Git Branch:** `krish`
-- **Changes Completed:** Organized Host Screen (user dossier, hours override, goal revisions), streamlined immutable audit trail (`FEAT-AUDIT-01`), and updated prototype.
+- **Sessions 1–3 (2026-09-06):** Repository architecture analysis, Rule §9.3 enactment, cozy aesthetic ratification, initial prototype scaffolding, host screen organization (user dossier, hours override, goal revisions), and immutable audit trail (`FEAT-AUDIT-01`).
 
 ### Session 4 — 2026-09-06
 - **Agent Role:** Participant UI & Brand Asset Artist
@@ -199,17 +194,20 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 ### Session 6 — 2026-09-06
 - **Agent Role:** Product Architecture & Feature Lead
 - **Git Branch:** `krish`
+- **Changes Completed:** Dynamic per-event team themes codified (`FEATURES.md` §4.1, §7.1, §7.2, `ROADMAP.md` §3.2); Duo Partner Self-Naming (`FEAT-CHAL-06`) specified and implemented in prototype Pre-Kickoff view; Challenge Creator format tabs added; synchronized to `prototype/index.html`.
+
+### Session 7 — 2026-09-06
+- **Agent Role:** Participant UI & Cozy Aesthetics Lead
+- **Git Branch:** `krish`
 - **User Feedback & Changes:**
-  1. **Dynamic Per-Event Team Themes:** Codified that team identities are never hardcoded across challenges. Every challenge configures its own themes, names, icons, and colors (e.g. *Owls vs Larks*, *Matcha vs Espresso*). Updated `FEATURES.md` §4.1, §7.1, §7.2 and `ROADMAP.md` §3.2.
-  2. **Duo Partner Self-Naming (`FEAT-CHAL-06`):**
-     - Formally specified `FEAT-CHAL-06` in `FEATURES.md` §4.7.
-     - In `DUOS` format ($N=2$ pairs), participants name their own duo teams in the Cockpit during the pre-kickoff phase.
-     - Duo team names lock permanently once the host triggers kickoff (`ACTIVE`), with host override authority preserved (Law L5).
-  3. **Interactive Prototype Integration:**
-     - Added Duo Team Name self-naming input block in the Pre-Kickoff view (`#submode-prekickoff-view`).
-     - Added dynamic format tabs (`Team vs Team`, `Duos`, `Solos`) in the Challenge Creator modal (`modal-creator`).
-     - Tested with Node.js; verified 100% valid JavaScript syntax; synchronized `prototype/index.html`.
+  1. **Calming Spiced Cinnamon Palette Upgrade:** Eliminated punitive, alarmist red and terracotta accents across all deficit badges, countdown pills, deficit paces, and lock buttons. Replaced with soothing, restorative **Warm Spiced Cinnamon / Baked Amber** (`#c87948` / `#271c14`) to honor Law L3 (Catch-Up Deficit Model — redemption without anxiety or guilt).
+  2. **Lively & Cozy Dark Mode Theme Re-anchoring:**
+     - Enriched dark surfaces from a flat void into warm espresso and roasted oak (`#14110f`, `#1b1713`, `#231d18`, `#2c241e`, `#382e25`, `#483c30`).
+     - Luminous parchment reading text (`#f8f3ea`).
+     - Radiant candlelight honey (`#e08a32` / `#f5ba73`).
+     - Fresh botanical sage/matcha (`#529e72` / `#17271c`).
+     - Ambient golden lighting: added dual radial overlays (top pendant candlelight `rgba(224, 138, 50, 0.13)` at 50% 0% and matcha window garden `rgba(82, 158, 114, 0.08)` at 100% 100%) to provide depth and warmth.
+     - Lively micro-details: glowing amber header status pulse (`Study Café • Open`), higher hero asset visibility (reduced dark vignette, 48% opacity), warm handwritten motto (`~ "quiet study, warm tea, serene progress" ~`).
+  3. **Documentation Alignment:** Updated `DESIGN.md` §1.2, §2.1, §2.2, and §4.4 with the ratified color tokens and ambient lighting specifications.
+  4. **Interactive Prototype Sync & Verification:** Synchronized `prototype.html` artifact to `prototype/index.html`. Verified 100% valid JavaScript parsing with Node.js parser test runner.
 - **Next Up:** Proceed to Phase 0 Next.js 14 App Router scaffolding (Slice 0) & Pure Domain Engine (Slice 1).
-
-
-

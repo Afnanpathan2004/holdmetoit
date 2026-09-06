@@ -35,7 +35,7 @@ To prevent the application from regressing into generic, overwhelming "AI slop" 
 | ❌ **Harsh neon glows & electric ambers** (`blur-2xl`, high-saturation neon lights) | ✅ **Muted candlelight honey (`#d9822b`)** & soft ambient vignette lighting | Neon glows cause eye strain during 4+ hour study sessions. |
 | ❌ **Bouncing badges & pulsing LEDs** (`animate-bounce`, `animate-pulse` on crowns) | ✅ **Quiet, dignified typographic hierarchy** & static warm badges | Constant looping animations distract the student's peripheral vision. |
 | ❌ **Badge & chip clutter on every corner** (Overlapping status tags, "PROTOTYPE" pills) | ✅ **Clean whitespace, calm padding**, and generous breathing room | Visual density without clutter. Let the workspace breathe. |
-| ❌ **Alarming red emergency banners** (Loud warning boxes inducing failure panic) | ✅ **Warm pottery terracotta (`#c7634c`)** & gentle handwritten reflection notes | Study accountability is about sustainable redemption, not cruelty or shame. |
+| ❌ **Alarming red emergency banners** (Loud warning boxes inducing failure panic) | ✅ **Calming Spiced Cinnamon (`#c87948`)** & gentle handwritten reflection notes | Study accountability is about sustainable redemption, not cruelty or shame. |
 | ❌ **Esports combat styling** (Aggressive "FIGHT", "VS" deathmatch tickers) | ✅ **"The House Cup" or café noticeboard** (Chalkboard/wooden plaque motif) | Teams are study companions encouraging mutual consistency, not gladiators. |
 | ❌ **Generic stock icons & flat corporate clip art** | ✅ **Bespoke warm assets** (Rainy window artwork, storybook forfeit avatars) | Tangible charm and community personality foster emotional attachment. |
 
@@ -49,47 +49,54 @@ All colors are calibrated for high legibility (WCAG AA/AAA compliant against dar
 
 ```
 Surface Layers (Roasted Espresso & Dark Walnut):
-  #12100e ─── Canvas / Body Background (Deep Roasted Espresso Bean)
-  #181512 ─── Primary Desk Surface (Dark Walnut Wood)
-  #1e1a16 ─── Card & Panel Surface (Warm Cocoa Slate)
-  #26211c ─── Elevated Surface / Modals (Warm Hearth Mantle)
-  #2f2821 ─── Subtle Dividers (Soft Sepia Border)
-  #3d342b ─── Subtle Focus Border (Warm Sepia Highlight)
+  #14110f ─── Canvas / Body Background (Deep Roasted Espresso Bean)
+  #1b1713 ─── Primary Desk Surface (Dark Walnut Wood)
+  #231d18 ─── Card & Panel Surface (Warm Cocoa Slate)
+  #2c241e ─── Elevated Surface / Modals (Warm Hearth Mantle)
+  #382e25 ─── Subtle Dividers (Soft Sepia Border)
+  #483c30 ─── Subtle Focus Border (Warm Sepia Highlight)
 
 Accents & Brand Identifiers:
-  #d9822b ─── Primary Brand Amber (Candlelight Honey Lamp)
-  #ebb06e ─── Highlight Amber (Soft Golden Glow)
-  #b86a1e ─── Active Press / Dark Honey
+  #e08a32 ─── Primary Brand Amber (Candlelight Honey Lamp)
+  #f5ba73 ─── Highlight Amber (Soft Golden Glow)
+  #b86c1c ─── Active Press / Dark Honey
 
 Semantic Status Signals:
-  #4b8b67 ─── Dried Sage Leaves (On Track / Intention Completed / Serene Pace)
-  #18271e ─── Calm Forest Tea Surface (Sage Background Tint)
-  #c7634c ─── Warm Pottery Terracotta (Deficit / Catch-Up Needed / Friendly Forfeit)
-  #2a1916 ─── Muted Clay Surface (Terracotta Background Tint)
-  #9986b8 ─── Dried Lavender Sprigs (Secondary Team House / Companion Badge)
-  #211c2b ─── Deep Dusk Surface (Lavender Background Tint)
+  #529e72 ─── Dried Sage Leaves & Matcha (On Track / Intention Completed / Serene Pace)
+  #17271c ─── Calm Forest Tea Surface (Sage Background Tint)
+  #c87948 ─── Calming Spiced Cinnamon (Deficit / Catch-Up Needed / Friendly Forfeit)
+  #271c14 ─── Soft Toasted Cinnamon Surface (Cinnamon Bark Tint)
+  #9f8dc0 ─── Dried Lavender Sprigs (Secondary Team House / Companion Badge)
+  #221b2c ─── Deep Dusk Surface (Lavender Background Tint)
 
 Text Hierarchy:
-  #f5f0e6 ─── Primary Headings & Reading Text (Aged Warm Parchment)
+  #f8f3ea ─── Primary Headings & Reading Text (Luminous Aged Warm Parchment)
   #d8cfc4 ─── Secondary Body Text (Soft Linen)
   #9e9284 ─── Muted / Auxiliary Labels (Oatmeal Dust)
   #6e6459 ─── Subtle Timestamps / Quiet Counters (Warm Ash)
+
+Ambient Lighting Specification:
+  Top Pendant Candlelight Radial Overlay:
+    radial-gradient(ellipse 90% 55% at 50% 0%, rgba(224, 138, 50, 0.13), transparent 75%)
+  Window Garden Matcha Radial Overlay:
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(82, 158, 114, 0.08), transparent 70%)
 ```
 
 ### 2.2 Semantic Token Mapping
 
 | Semantic Token | Hex Value | Tailwind Token | Context / Usage |
 | :--- | :--- | :--- | :--- |
-| `bg-app` | `#12100e` | `bg-stone-950` (warm espresso tint) | Full viewport canvas |
-| `bg-desk` | `#181512` | `bg-stone-900` (walnut tint) | Main workspace & desk panels |
-| `bg-surface` | `#1e1a16` | `bg-stone-850` (cocoa tint) | Standard cards, logbooks, tables |
-| `bg-surface-elevated`| `#26211c` | `bg-stone-800` (hearth tint) | Modals, elevated trays, toolbars |
-| `border-warm` | `#2f2821` | `border-stone-800` | Subtle card borders, notebook lines |
-| `text-primary` | `#f5f0e6` | `text-amber-50` (parchment) | Screen titles, clocks, reading text |
-| `text-muted` | `#9e9284` | `text-stone-400` (oatmeal) | Helper text, secondary stats, notes |
-| `accent-honey` | `#d9822b` | `text-amber-600` (honey) | Primary buttons, active tabs, leader indicator |
-| `accent-sage` | `#4b8b67` | `text-emerald-600` (sage) | Checked intentions, "Serene Pace" badge |
-| `accent-terracotta`| `#c7634c` | `text-rose-500` (terracotta) | "Catch-Up Needed", forfeit avatar, deficit rate |
+| `bg-app` | `#14110f` | `bg-cafe-bg` | Full viewport canvas |
+| `bg-desk` | `#1b1713` | `bg-cafe-surface` | Main workspace & desk panels |
+| `bg-surface` | `#231d18` | `bg-cafe-card` | Standard cards, logbooks, tables |
+| `bg-surface-elevated`| `#2c241e` | `bg-cafe-elevated` | Modals, elevated trays, toolbars |
+| `border-warm` | `#382e25` | `border-cafe-border` | Subtle card borders, notebook lines |
+| `text-primary` | `#f8f3ea` | `text-cafe-parchment` | Screen titles, clocks, reading text |
+| `text-muted` | `#9e9284` | `text-cafe-oatmeal` | Helper text, secondary stats, notes |
+| `accent-honey` | `#e08a32` | `text-cafe-honey` / `bg-cafe-honey` | Primary buttons, active tabs, leader indicator |
+| `accent-sage` | `#529e72` | `text-cafe-sage` / `bg-cafe-sage` | Checked intentions, "Serene Pace" badge |
+| `accent-cinnamon`| `#c87948` | `text-cafe-cinnamon` / `bg-cafe-cinnamon` | "Catch-Up Needed", forfeit avatar, deficit rate |
+
 
 ---
 
@@ -158,7 +165,7 @@ The logging experience is designed to feel like sitting at a quiet wooden desk w
   - 1st Place: Subtle gold numeral with warm honey text.
   - 2nd Place: Soft silver linen numeral.
   - 3rd Place: Soft oatmeal bronze numeral.
-- **Pace Badges:** Muted text tags (`Serene` in sage, `Deficit (-4h)` in terracotta), avoiding screaming high-contrast capsules.
+- **Pace Badges:** Muted text tags (`Serene` in sage, `Deficit (-4h)` in calming cinnamon), avoiding screaming high-contrast capsules.
 
 ### 4.5 The Accountability Nook & Forfeits Corner
 - **Purpose:** Friendly community stakes with zero cruelty or shame.

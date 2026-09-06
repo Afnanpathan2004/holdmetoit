@@ -15,32 +15,36 @@
         extend: {
           colors: {
             cafe: {
-              bg: '#12100e',          /* Deep roasted espresso bean */
-              wood: '#181512',        /* Dark walnut study desk */
-              card: '#1e1a16',        /* Warm cocoa board */
-              elevated: '#26211c',    /* Hearth mantle */
-              border: '#2f2821',      /* Soft sepia divider */
-              borderLight: '#3d342b', /* Subtle focus border */
-              parchment: '#f5f0e6',   /* Aged warm cream reading text */
-              linen: '#d8cfc4',       /* Soft secondary linen text */
-              oatmeal: '#9e9284',     /* Muted note text */
-              ash: '#6e6459',         /* Quiet timestamp text */
+              bg: '#14110f',          /* Rich dark roast espresso bean */
+              wood: '#1b1713',        /* Warm dark walnut study desk */
+              card: '#231d18',        /* Warm cocoa board */
+              elevated: '#2c241e',    /* Hearth mantle */
+              border: '#382e25',      /* Soft sepia divider */
+              borderLight: '#4c3e32', /* Subtle focus border */
+              parchment: '#f8f3ea',   /* Luminous aged cream reading text */
+              linen: '#ded4c7',       /* Soft secondary linen text */
+              oatmeal: '#a39687',     /* Muted warm note text */
+              ash: '#72675b',         /* Quiet timestamp text */
               honey: {
-                DEFAULT: '#d9822b',   /* Candlelight honey lamp */
-                light: '#ebb06e',     /* Soft amber glow */
-                dark: '#b86a1e',
+                DEFAULT: '#e08a32',   /* Candlelight honey lamp */
+                light: '#f5ba73',     /* Soft golden amber glow */
+                dark: '#b86c1c',
               },
               sage: {
-                DEFAULT: '#4b8b67',   /* Dried sage leaves */
-                surface: '#18271e',   /* Calm forest tea surface tint */
+                DEFAULT: '#529e72',   /* Fresh dried sage leaves & matcha */
+                surface: '#17271c',   /* Calm forest tea surface tint */
+              },
+              cinnamon: {
+                DEFAULT: '#c87948',   /* Calming Spiced Cinnamon (non-punitive alert) */
+                surface: '#271c14',   /* Soft toasted cinnamon bark tint */
               },
               terracotta: {
-                DEFAULT: '#c7634c',   /* Warm pottery clay */
-                surface: '#2a1916',   /* Muted clay surface tint */
+                DEFAULT: '#c87948',   /* Alias to Calming Spiced Cinnamon */
+                surface: '#271c14',
               },
               lavender: {
-                DEFAULT: '#9986b8',   /* Dried lavender sprigs */
-                surface: '#211c2b',   /* Deep dusk surface tint */
+                DEFAULT: '#9f8dc0',   /* Blooming dried lavender */
+                surface: '#221b2c',   /* Deep dusk surface tint */
               },
             }
           },
@@ -83,18 +87,19 @@
     }
 
     body {
-      background-color: #12100e;
-      color: #f5f0e6;
+      background-color: #14110f;
+      color: #f8f3ea;
       font-family: var(--font-body);
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       letter-spacing: -0.01em;
       background-image: 
-        radial-gradient(rgba(217, 130, 43, 0.04) 1px, transparent 1px),
-        radial-gradient(rgba(217, 130, 43, 0.02) 1px, transparent 1px);
-      background-size: 40px 40px, 20px 20px;
-      background-position: 0 0, 20px 20px;
+        radial-gradient(ellipse 75% 35% at 50% 0%, rgba(224, 138, 50, 0.13), transparent 75%),
+        radial-gradient(ellipse 45% 25% at 85% 15%, rgba(82, 158, 114, 0.08), transparent 60%),
+        radial-gradient(rgba(224, 138, 50, 0.04) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 28px 28px;
+      background-attachment: fixed;
     }
 
     .font-serif {
@@ -119,12 +124,17 @@
     }
 
     .texture-paper {
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 30px -4px rgba(0, 0, 0, 0.6);
+      box-shadow: inset 0 1px 0 rgba(245, 186, 115, 0.06), 0 8px 30px -4px rgba(0, 0, 0, 0.55);
     }
     
     .wood-card {
-      background: linear-gradient(180deg, rgba(32, 27, 23, 0.9) 0%, rgba(24, 21, 18, 0.95) 100%);
-      border: 1px solid #2f2821;
+      background: linear-gradient(180deg, rgba(36, 30, 24, 0.94) 0%, rgba(26, 22, 18, 0.98) 100%);
+      border: 1px solid rgba(224, 138, 50, 0.14);
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+    }
+
+    .wood-card-glow {
+      box-shadow: 0 0 25px -5px rgba(224, 138, 50, 0.14), 0 4px 20px -2px rgba(0, 0, 0, 0.45);
     }
 
     ::-webkit-scrollbar {
@@ -132,14 +142,14 @@
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #12100e;
+      background: #14110f;
     }
     ::-webkit-scrollbar-thumb {
-      background: #2f2821;
+      background: #382e25;
       border-radius: 999px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #3d342b;
+      background: #4c3e32;
     }
   </style>
 </head>
@@ -163,7 +173,8 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-serif text-lg font-semibold tracking-tight text-cafe-parchment">HoldMeToIt</h1>
-            <span class="text-[10px] text-cafe-oatmeal font-sans uppercase tracking-widest px-1.5 py-0.5 rounded bg-cafe-elevated border border-cafe-border/60">
+            <span class="text-[10px] text-cafe-honey-light font-sans tracking-wide px-2 py-0.5 rounded-full bg-cafe-elevated border border-cafe-honey/30 flex items-center gap-1.5 shadow-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-cafe-honey animate-pulse"></span>
               Study Café
             </span>
           </div>
@@ -251,7 +262,7 @@
         </button>
 
         <!-- Event Lock & Finalize Results (FEAT-CHAL-05) -->
-        <button onclick="lockResults()" class="px-3 py-1.5 rounded-lg bg-cafe-terracotta-surface border border-cafe-terracotta/40 hover:border-cafe-terracotta text-cafe-terracotta text-xs transition-all flex items-center gap-1.5">
+        <button onclick="lockResults()" class="px-3 py-1.5 rounded-lg bg-cafe-card hover:bg-cafe-wood border border-cafe-honey/40 hover:border-cafe-honey text-cafe-honey-light hover:text-cafe-parchment text-xs transition-all flex items-center gap-1.5 shadow-sm">
           <span>🔒</span>
           <span>Lock Final Results</span>
         </button>
@@ -271,24 +282,24 @@
         
         <!-- Illustrated Background Asset with Soft Vignette -->
         <div class="absolute inset-0 z-0">
-          <img src="./assets/hero_cafe.jpg" alt="Cozy Study Café with rain outside" class="w-full h-full object-cover object-center opacity-35 filter blur-[0.5px]" />
-          <div class="absolute inset-0 bg-gradient-to-t from-cafe-wood via-cafe-wood/75 to-cafe-wood/40"></div>
-          <div class="absolute inset-0 bg-gradient-to-r from-cafe-wood via-transparent to-cafe-wood/60"></div>
+          <img src="./assets/hero_cafe.jpg" alt="Cozy Study Café with rain outside" class="w-full h-full object-cover object-center opacity-48 filter blur-[0.2px]" />
+          <div class="absolute inset-0 bg-gradient-to-t from-cafe-wood via-cafe-wood/75 to-cafe-wood/35"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-cafe-wood/90 via-transparent to-cafe-wood/60"></div>
         </div>
 
         <!-- Content Layer -->
         <div class="relative z-10 p-6 sm:p-8 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-cafe-oatmeal">
-            <span class="flex items-center gap-1.5 font-medium text-cafe-linen">
-              <span class="inline-block w-2 h-2 rounded-full bg-cafe-honey"></span>
+            <span class="flex items-center gap-2 font-medium text-cafe-linen">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-cafe-honey animate-pulse shadow-[0_0_8px_#e08a32]"></span>
               Midterm Reading Week Sprint • Day 4 of 7
             </span>
-            <span class="font-mono text-cafe-oatmeal">
+            <span class="font-mono text-cafe-oatmeal bg-cafe-card/80 px-2.5 py-1 rounded-lg border border-cafe-border/60">
               Event concludes in 02d 14h 22m
             </span>
           </div>
 
-          <div class="max-w-xl space-y-1.5">
+          <div class="max-w-xl space-y-2">
             <h2 class="font-serif text-2xl sm:text-3xl font-medium text-cafe-parchment leading-tight">
               Rain on the glass, warm mug on the desk.
             </h2>
@@ -296,6 +307,9 @@
               Welcome to the quiet room. Track your study hours without rush or guilt. 
               Deficits roll forward gently with our catch-up model—just stay consistent today.
             </p>
+            <div class="pt-0.5">
+              <span class="font-script text-base text-cafe-honey-light/95 tracking-wide">~ "quiet study, warm tea, serene progress" ~</span>
+            </div>
           </div>
 
           <!-- HOUSE CUP BATTLE BANNER (FEAT-LEAD-01) -->
@@ -743,8 +757,8 @@
               <span class="font-sans font-medium text-cafe-parchment">SlothBrain</span>
               <p class="text-[10px] text-cafe-oatmeal">4 Incomplete Goals • Deficit: -4h</p>
             </div>
-            <span class="text-[10px] text-cafe-terracotta bg-cafe-terracotta-surface px-2 py-0.5 rounded border border-cafe-terracotta/30">
-              Deficit
+            <span class="text-[10px] text-cafe-cinnamon bg-cafe-cinnamon-surface px-2 py-0.5 rounded border border-cafe-cinnamon/30 font-medium">
+              Catch-Up
             </span>
           </div>
 
@@ -754,8 +768,8 @@
               <span class="font-sans font-medium text-cafe-parchment">CramKing</span>
               <p class="text-[10px] text-cafe-oatmeal">2 Incomplete Goals • Deficit: -6h</p>
             </div>
-            <span class="text-[10px] text-cafe-terracotta bg-cafe-terracotta-surface px-2 py-0.5 rounded border border-cafe-terracotta/30">
-              Deficit
+            <span class="text-[10px] text-cafe-cinnamon bg-cafe-cinnamon-surface px-2 py-0.5 rounded border border-cafe-cinnamon/30 font-medium">
+              Catch-Up
             </span>
           </div>
 
@@ -856,8 +870,8 @@
                   <span id="dossier-house-tag" class="text-[10px] font-sans px-2 py-0.5 rounded-md bg-cafe-card border border-cafe-border text-cafe-lavender">
                     🦋 Lavender Butterflies
                   </span>
-                  <span id="dossier-status-pill" class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-terracotta-surface border border-cafe-terracotta/40 text-cafe-terracotta">
-                    DEFICIT (-4h)
+                  <span id="dossier-status-pill" class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-cinnamon-surface border border-cafe-cinnamon/40 text-cafe-cinnamon font-medium">
+                    CATCH-UP PACE (-4h)
                   </span>
                 </div>
                 <p id="dossier-id" class="text-[10px] font-mono text-cafe-ash mt-0.5">Discord ID: 398102938471920194 • Enrolled: 2026-09-02</p>
@@ -906,7 +920,7 @@
             <!-- Goals Finished -->
             <div class="p-3.5 rounded-2xl bg-cafe-card/50 border border-cafe-border">
               <span class="block text-[10px] text-cafe-ash uppercase tracking-wider font-mono">Mandatory Goals</span>
-              <span id="dossier-goals-summary" class="font-mono-tabular text-xl font-semibold text-cafe-terracotta mt-0.5 block">
+              <span id="dossier-goals-summary" class="font-mono-tabular text-xl font-semibold text-cafe-cinnamon mt-0.5 block">
                 1 / 5 Completed
               </span>
               <span class="text-[10px] text-cafe-oatmeal">4 Remaining commitments</span>
@@ -1008,7 +1022,7 @@
               </div>
               <div class="flex items-center justify-between py-1">
                 <span class="text-cafe-linen">CramKing</span>
-                <span class="font-mono text-cafe-terracotta">12:20:00 (2/4 goals - Deficit)</span>
+                <span class="font-mono text-cafe-cinnamon font-medium">12:20:00 (2/4 goals - Catch-Up)</span>
               </div>
             </div>
           </div>
@@ -1040,7 +1054,7 @@
               </div>
               <div class="flex items-center justify-between py-1">
                 <span class="text-cafe-linen">SlothBrain</span>
-                <span class="font-mono text-cafe-terracotta">11:15:00 (1/5 goals - Deficit)</span>
+                <span class="font-mono text-cafe-cinnamon font-medium">11:15:00 (1/5 goals - Catch-Up)</span>
               </div>
             </div>
           </div>
@@ -1717,7 +1731,7 @@
         const isUser = user.username === 'AuraStudier';
         const rankColor = idx === 0 ? 'text-cafe-honey' : (idx === 1 ? 'text-cafe-linen' : 'text-cafe-oatmeal');
         const pace = loggedSec >= (targetSec * 0.5) ? 'Serene' : 'Deficit';
-        const paceColor = pace === 'Serene' ? 'text-cafe-sage' : 'text-cafe-terracotta';
+        const paceColor = pace === 'Serene' ? 'text-cafe-sage' : 'text-cafe-cinnamon';
 
         const tr = document.createElement('tr');
         tr.className = 'table-row hover:bg-cafe-card/40 transition-colors cursor-pointer';
@@ -1794,11 +1808,11 @@
         const totalLogged = getUserTotalSeconds(user);
         const goalsDone = user.goals.filter(g => g.completed).length;
 
-        let statusBadge = `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-sage-surface text-cafe-sage border border-cafe-sage/30">Normal</span>`;
+        let statusBadge = `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-sage-surface text-cafe-sage border border-cafe-sage/30 font-medium">Normal</span>`;
         if (user.status === 'DEFICIT') {
-          statusBadge = `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-terracotta-surface text-cafe-terracotta border border-cafe-terracotta/30">Deficit</span>`;
+          statusBadge = `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-cinnamon-surface text-cafe-cinnamon border border-cafe-cinnamon/30 font-medium">Catch-Up</span>`;
         } else if (user.status === 'EXCUSED') {
-          statusBadge = `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-elevated text-cafe-honey border border-cafe-honey/30">Excused</span>`;
+          statusBadge = `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-elevated text-cafe-honey border border-cafe-honey/30 font-medium">Excused</span>`;
         }
 
         const div = document.createElement('div');
@@ -1843,13 +1857,13 @@
       // Status Pill
       const pill = document.getElementById('dossier-status-pill');
       if (user.status === 'NORMAL') {
-        pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-sage-surface border border-cafe-sage/40 text-cafe-sage';
+        pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-sage-surface border border-cafe-sage/40 text-cafe-sage font-medium';
         pill.innerText = 'ON TRACK (NORMAL)';
       } else if (user.status === 'DEFICIT') {
-        pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-terracotta-surface border border-cafe-terracotta/40 text-cafe-terracotta';
-        pill.innerText = 'DEFICIT (-4h)';
+        pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-cinnamon-surface border border-cafe-cinnamon/40 text-cafe-cinnamon font-medium';
+        pill.innerText = 'CATCH-UP PACE (-4h)';
       } else if (user.status === 'EXCUSED') {
-        pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-elevated border border-cafe-honey/40 text-cafe-honey';
+        pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-elevated border border-cafe-honey/40 text-cafe-honey font-medium';
         pill.innerText = 'EXCUSED (PARDONED)';
       }
 
@@ -2227,7 +2241,7 @@
       if (confirm('Lock and finalize this challenge? Dual-failure auto punishments will be evaluated and logging frozen.')) {
         challengeState = 'COMPLETED';
         const badge = document.getElementById('challenge-status-badge');
-        badge.className = 'px-2.5 py-0.5 rounded-md font-mono text-[10px] bg-cafe-terracotta-surface border border-cafe-terracotta/40 text-cafe-terracotta font-medium';
+        badge.className = 'px-2.5 py-0.5 rounded-md font-mono text-[10px] bg-cafe-elevated border border-cafe-honey/40 text-cafe-honey-light font-medium';
         badge.innerText = 'COMPLETED (Locked)';
 
         appendAuditLog('LOCK_RESULTS', 'Challenge #5', 'ACTIVE → COMPLETED', 'Host locked challenge and finalized dual-failure forfeits');
