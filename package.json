@@ -13,6 +13,8 @@
     "db:generate": "prisma generate",
     "db:validate": "DATABASE_URL=postgresql://localhost:5432/holdmetoit prisma validate",
     "db:push": "prisma db push",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
     "db:seed": "prisma db seed",
     "postinstall": "prisma generate"
   },

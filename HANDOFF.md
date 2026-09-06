@@ -26,8 +26,8 @@ The repository contains the authoritative 5-document specification suite ratifie
 
 ### 1.2 Current Development State
 - **Specification Phase:** 100% Complete. All 5 core documents are aligned with zero conflicting requirements.
-- **Codebase Implementation:** Slices 0, 1, 2, 3, 4, 5, and 6 are complete. Full test suite (254 tests across 39 files) is 100% green.
-- **Git State:** Branch `afnan`, working tree clean and verified.
+- **Codebase Implementation:** Slices 0, 1, 2, 3, 4, 5, 6, and 7 are complete. Full test suite (254 tests across 39 files) is 100% green.
+- **Deployment Readiness:** **DEPLOYMENT-READY** (Infrastructure & baseline migrations prepared; awaiting human operator configuration of live PostgreSQL, Discord OAuth, and Vercel project).
 - **Git State:** Branch `afnan`, working tree verified against all quality gates (ready for staging/commit upon user instruction).
 
 ---
@@ -91,6 +91,7 @@ graph TD
     S2 --> S4
     S3 & S4 --> S5["Slice 5: Admin Operations & Discord Broadcaster (Admin Agent)"]
     S5 --> S6["Slice 6: E2E Quality Matrix J1–J6 Gate Verification"]
+    S6 --> S7["Slice 7: Production Deployment & Go-Live Readiness"]
 ```
 
 ### Slice 0: Foundation, Project Scaffolding & Tooling (Completed)
@@ -113,25 +114,30 @@ graph TD
 - **Deliverables:** Multi-format challenge wizard, manual kickoff controls with prerequisite validation, finalize results with auto-punishment evaluation, Duo renaming, inline hours override grid, goal unlock modals, pardon controls, 1-click Discord summary generator, append-only system audit trail.
 
 ### Slice 6: E2E Quality Verification & Release Gate (Completed)
+- **Deliverables:** Automated integration test suite (`journey-j1.test.ts` through `journey-j6.test.ts`), cross-challenge security boundary validation, 254 tests green across 39 files, strict typecheck and build validation.
+
+### Slice 7: Production Deployment & Go-Live Readiness (Completed)
 - **Deliverables:**
-  - Automated integration test suite under `features/quality/journeys/` (`journey-j1.test.ts` through `journey-j6.test.ts`).
-  - Security hardening: Cross-challenge entity ID forgery protection on admin overrides, goals, pardons, and team renaming.
-  - Quality gates: 254 unit and integration tests passing across 39 test files (100% green exit); `npm run typecheck` exits with 0; `npm run build` exits with 0.
+  - Baseline PostgreSQL migration (`prisma/migrations/0_init/migration.sql`) and lock file (`prisma/migrations/migration_lock.toml`) for automated `prisma migrate deploy`.
+  - Auth.js Vercel hardening (`trustHost: true` in `core/auth/index.ts`).
+  - Deployment scripts in `package.json` (`db:migrate:deploy`, `db:migrate:status`).
+  - Production environment template [`.env.example`](file:///home/afnanesakpathan/projects/holdmetoit/.env.example).
+  - Production runbook & smoke-test checklist in [`DEPLOYMENT.md`](file:///home/afnanesakpathan/projects/holdmetoit/DEPLOYMENT.md).
+  - Status: **DEPLOYMENT-READY (Awaiting Operator Infrastructure Configuration)**.
 
 ---
 
-## 5. Immediate Next Step (For Incoming Agent)
+## 5. Immediate Next Step (For Operator / Incoming Agent)
 
 > [!IMPORTANT]  
-> **EXACT NEXT STEP FOR THE INCOMING AGENT:**  
-> **Phase 0 Deployment Prerequisites & Production Go-Live:**  
-> 1. Provision a production PostgreSQL instance (e.g. Supabase or Neon).  
-> 2. Configure environment variables in `.env` or cloud hosting dashboard:  
->    - `DATABASE_URL`: PostgreSQL connection URI  
->    - `AUTH_DISCORD_ID` & `AUTH_DISCORD_SECRET`: Discord OAuth Application credentials  
->    - `AUTH_SECRET`: NextAuth session signing key  
-> 3. Run database migrations: `npx prisma migrate deploy` and seed initial challenge via `npm run db:seed`.  
-> 4. Deploy to Vercel and execute smoke tests against the live deployment environment.  
+> **EXACT OPERATOR ACTION REQUIRED FOR PRODUCTION GO-LIVE:**  
+> The codebase is fully hardened and deployment-ready. The human operator must execute the real infrastructure provisioning following [`DEPLOYMENT.md`](file:///home/afnanesakpathan/projects/holdmetoit/DEPLOYMENT.md):  
+> 1. **Provision PostgreSQL Database:** Create a Supabase or Neon PostgreSQL instance and obtain the pooled connection string.  
+> 2. **Configure Discord Developer Portal:** Register an application at [discord.com/developers](https://discord.com/developers/applications), obtain `AUTH_DISCORD_ID` & `AUTH_DISCORD_SECRET`, and whitelist `https://[YOUR-DOMAIN]/api/auth/callback/discord`.  
+> 3. **Generate Auth Secret:** Run `openssl rand -base64 32` to generate `AUTH_SECRET`.  
+> 4. **Deploy Database Schema:** Execute `npm run db:migrate:deploy` against the production database. (Optionally seed via `npm run db:seed`).  
+> 5. **Deploy to Vercel:** Import the GitHub repo into Vercel, inject the environment variables (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET`, `AUTH_TRUST_HOST=true`), and click Deploy.  
+> 6. **Execute Smoke Tests:** Run through the 6-phase Production Smoke-Test Checklist in [`DEPLOYMENT.md`](file:///home/afnanesakpathan/projects/holdmetoit/DEPLOYMENT.md#4-production-smoke-test-checklist) against the live URL.  
 
 ---
 
@@ -148,12 +154,7 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 ## 7. Session Changelog
 
 ### Previous Sessions (Summarized)
-- **Sessions 1–6 (2026-09-06):** Scaffold, domain engine, persistence & Discord OAuth profile mapping, cozy theme tokens, and prototype alignment.
-
-### Session 7 — 2026-09-06
-- **Agent Role:** Participant UI & Fullstack Engineer Agent
-- **Git Branch:** `afnan`
-- **Changes Completed (Slice 3):** Cockpit at `/dashboard`, `DailyStudyLog` UTC date normalization and 24h limit, weekly goals transactional replacement, catch-up deficit gauge, and Law L9 loading/empty/error states.
+- **Sessions 1–7 (2026-09-06):** Scaffold, domain engine, persistence & Discord OAuth profile mapping, cozy theme tokens, participant cockpit at `/dashboard`, UTC date normalization, and 24h limit checks.
 
 ### Session 8 — 2026-09-06
 - **Agent Role:** Participant UI & Scoring Agent
@@ -165,16 +166,21 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 - **Git Branch:** `afnan`
 - **Changes Completed (Slice 5):** Added append-only `AuditLog` model and repository; challenge state machine (`lifecycle.ts`); Discord markdown summary generator; multi-format challenge creation with Law L1 parity; kickoff declaration locking; finalize dual-failure punishment evaluation; inline hours override grid; goal unlock and pardon controls; host dashboard and challenge hub pages.
 
-### Session 10 — 2026-09-06 (Current Session)
+### Session 10 — 2026-09-06
 - **Agent Role:** Senior QA Engineer, Integration Engineer & Release Gatekeeper
 - **Git Branch:** `afnan`
 - **Changes Completed (Slice 6: E2E Quality Verification & Release Gate):**
-  - **Security Hardening (Cross-Challenge Forgery Remediation):** Added challenge ownership boundary validation across all admin operations (`adminOverrideDailyStudyLog`, `adminEditGoal`, `adminToggleGoalCompletion`, `adminAddGoal`, `adminPardonParticipant`, `adminRevokePardon`, and `renameDuoTeam`). Ensures hosts can never mutate entities belonging to other challenges.
-  - **Journey Integration Suite (`features/quality/journeys/`):** Created full automated integration test suite for Journeys J1 through J6:
-    - `journey-j1.test.ts`: Discord OAuth profile provisioning, spectator public access, and RBAC authentication gating.
-    - `journey-j2.test.ts`: Challenge creation parity (Law L1: Solo=1, Duo=2, Team=uncapped), team capacity limits, duplicate enrollment prevention, Duo team renaming.
-    - `journey-j3.test.ts`: Pre-kickoff declarations (1–105h target, 1–10 goals), kickoff prerequisite checks, permanent post-kickoff declaration lock.
-    - `journey-j4.test.ts`: Daily study logging ($\le 86,400\text{s}$), lifecycle status gating, goal completion toggles, catch-up deficit recalculation (Law L3), team score & lead delta re-aggregation.
-    - `journey-j5.test.ts`: Admin inline hours override (`isOverride=true`, audit log), mid-event goal management, cross-challenge forgery rejection, unauthorized caller rejection.
-    - `journey-j6.test.ts`: Challenge finalization (`ACTIVE` $\rightarrow$ `COMPLETED`), dual-failure auto-punishment evaluation across all 4 permutations (Law L6), host pardon/revocation workflows (Law L5), 1-click Discord summary generator.
+  - **Security Hardening:** Cross-challenge ownership boundary validation across admin operations (`adminOverrideDailyStudyLog`, `adminEditGoal`, `adminToggleGoalCompletion`, `adminAddGoal`, `adminPardonParticipant`, `adminRevokePardon`, and `renameDuoTeam`).
+  - **Journey Integration Suite (`features/quality/journeys/`):** Full automated integration suite for Journeys J1 through J6 (`journey-j1.test.ts` to `journey-j6.test.ts`).
   - **Quality Gates:** 254 total tests passing across 39 test files (100% green exit); `npm run typecheck` exits 0; `npm run build` exits 0.
+
+### Session 11 — 2026-09-07 (Current Session)
+- **Agent Role:** DevOps & Release Reliability Engineer
+- **Git Branch:** `afnan`
+- **Changes Completed (Slice 7: Production Deployment & Go-Live Readiness):**
+  - **Prisma Baseline Migrations:** Created `prisma/migrations/0_init/migration.sql` and `prisma/migrations/migration_lock.toml` for automated production schema provisioning via `npm run db:migrate:deploy`.
+  - **Auth.js Vercel Hardening:** Added `trustHost: true` to `core/auth/index.ts` to guarantee proper reverse-proxy host resolution on Vercel preview/production domains.
+  - **Deployment Scripts:** Added `db:migrate:deploy` and `db:migrate:status` to `package.json`.
+  - **Environment Documentation:** Created comprehensive `.env.example` template with zero exposed secrets.
+  - **Operator Manual:** Authored [`DEPLOYMENT.md`](file:///home/afnanesakpathan/projects/holdmetoit/DEPLOYMENT.md) runbook covering PostgreSQL setup (Supabase/Neon), Discord Developer Portal OAuth configuration, Vercel build/environment setup, and a 6-phase production smoke-test checklist.
+  - **Release Status:** **DEPLOYMENT-READY** (Infrastructure & baseline migrations prepared; awaiting human operator configuration of live PostgreSQL, Discord OAuth, and Vercel project).
