@@ -14,6 +14,7 @@ import {
 
 const logStudyTimeSchema = z.object({
   challengeId: z.string().min(1),
+  participantId: z.string().optional(),
   logDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   hours: z.number().int().min(0).max(24),
   minutes: z.number().int().min(0).max(59),
@@ -21,8 +22,8 @@ const logStudyTimeSchema = z.object({
 });
 
 export type ActionResult =
-  | { ok: true }
-  | { ok: false; code: string; message: string };
+  | { ok: true; error?: undefined; code?: undefined; message?: undefined }
+  | { ok: false; code: string; message: string; error?: string };
 
 export async function logStudyTimeAction(
   input: z.infer<typeof logStudyTimeSchema>,
@@ -91,3 +92,4 @@ export async function logStudyTimeAction(
     };
   }
 }
+

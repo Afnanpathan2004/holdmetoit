@@ -216,6 +216,28 @@ model PunishmentRecord {
 }
 
 // ---------------------------------------------------------------------------
+// Audit Trail (FEAT-AUDIT-01 — Append-only immutable admin audit trail)
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id               String   @id @default(cuid())
+  timestamp        DateTime @default(now())
+  actorId          String
+  actorUsername    String
+  actionType       String
+  targetEntityId   String
+  targetEntityType String
+  previousValue    String?  @db.Text
+  newValue         String?  @db.Text
+  auditReason      String?  @db.Text
+
+  @@index([actionType])
+  @@index([targetEntityId])
+  @@index([actorId])
+  @@index([timestamp])
+}
+
+// ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
 

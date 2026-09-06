@@ -55,6 +55,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = user.role;
         session.user.discordId = user.discordId;
         session.user.displayName = user.displayName;
+        session.user.username = user.username ?? null;
       }
 
       return session;

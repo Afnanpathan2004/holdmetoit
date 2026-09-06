@@ -53,3 +53,18 @@ export async function promoteFirstUserToAdminIfNeeded(
 
   return updated.role;
 }
+
+export async function findAllUsers() {
+  return prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      displayName: true,
+      image: true,
+      role: true,
+    },
+  });
+}
+

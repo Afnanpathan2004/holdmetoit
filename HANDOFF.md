@@ -14,7 +14,7 @@
 HoldMeToIt is an automated web platform engineered to eliminate **Admin Burnout** in Discord study communities. It replaces manual Google Sheets, tedious Yeolpumta (YPT) screenshot verification, manual deficit arithmetic, and manual punishment policing with a streamlined, real-time challenge engine.
 
 ### 1.1 Analysis of Repository State & Documentation Suite
-The repository currently contains the authoritative 5-document specification suite ratified for implementation. All architectural boundaries, product specifications, visual design tokens, and multi-agent coordination rules are fully synchronized:
+The repository contains the authoritative 5-document specification suite ratified for implementation. All architectural boundaries, product specifications, visual design tokens, and multi-agent coordination rules are fully synchronized:
 
 | File | Status | Key Architectural Takeaway & Authority Scope |
 | :--- | :---: | :--- |
@@ -26,8 +26,9 @@ The repository currently contains the authoritative 5-document specification sui
 
 ### 1.2 Current Development State
 - **Specification Phase:** 100% Complete. All 5 core documents are aligned with zero conflicting requirements.
-- **Codebase Implementation:** Slices 0, 1, 2, and 3 are complete. Ready for Slice 4 (Head-to-Head Live Scoreboard & Standings).
-- **Git State:** Branch `afnan`, working tree verified.
+- **Codebase Implementation:** Slices 0, 1, 2, 3, 4, 5, and 6 are complete. Full test suite (254 tests across 39 files) is 100% green.
+- **Git State:** Branch `afnan`, working tree clean and verified.
+- **Git State:** Branch `afnan`, working tree verified against all quality gates (ready for staging/commit upon user instruction).
 
 ---
 
@@ -38,27 +39,27 @@ Phase 0 focuses exclusively on **The Spreadsheet Exorcism** — running a full w
 | Feature ID | Feature Name | Module | Target Persona | Status | DoD Completed? |
 | :--- | :--- | :--- | :---: | :---: | :---: |
 | `FEAT-AUTH-01` | Discord OAuth 2.0 (`identify` scope) | Auth & Identity | Participant, Admin | `DONE` | ✅ Completed in Slice 2 |
-| `FEAT-AUTH-02` | Public Read-Only Spectator Mode | Auth & Identity | Spectator | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-CHAL-01` | Multi-Format Challenge Creator (Team/Duo/Solo) | Challenge Ops | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-CHAL-02` | Host Manual Event Kickoff Trigger | Challenge Ops | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-CHAL-05` | Event Lock & Freeze Final Results | Challenge Ops | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-CHAL-06` | Duo Partner Self-Naming & Dynamic Team Identities | Challenge Ops | Participant, Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
+| `FEAT-AUTH-02` | Public Read-Only Spectator Mode | Auth & Identity | Spectator | `DONE` | ✅ Completed in Slice 4 |
+| `FEAT-CHAL-01` | Multi-Format Challenge Creator (Team/Duo/Solo) | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 |
+| `FEAT-CHAL-02` | Host Manual Event Kickoff Trigger | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 |
+| `FEAT-CHAL-05` | Event Lock & Freeze Final Results | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 |
+| `FEAT-CHAL-06` | Duo Partner Self-Naming & Dynamic Team Identities | Challenge Ops | Participant, Admin | `DONE` | ✅ Completed in Slice 5 |
 | `FEAT-DECL-01` | Declared Target Hours (`HH:MM:SS`) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 |
 | `FEAT-DECL-02` | Mandatory Weekly Goals Checklist (1–10 tasks) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 |
 | `FEAT-DECL-03` | Pre-Kickoff Declaration Lock on `ACTIVE` | Declarations | System | `DONE` | ✅ Completed in Slice 3 |
-| `FEAT-DECL-04` | Host Goal Unlock & Mid-Event Edit Modal | Declarations | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
+| `FEAT-DECL-04` | Host Goal Unlock & Mid-Event Edit Modal | Declarations | Admin | `DONE` | ✅ Completed in Slice 5 |
 | `FEAT-LOG-01` | Daily Clock-Time Self-Logging (`HH:MM:SS`) | Study Logging | Participant | `DONE` | ✅ Completed in Slice 3 |
 | `FEAT-LOG-02` | 24-Hour Single-Day Limit Validation ($\le 86,400\text{s}$) | Study Logging | System | `DONE` | ✅ Completed in Slice 3 |
-| `FEAT-LOG-04` | Admin Inline Hours Override Grid (`is_override=true`) | Study Logging | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-LEAD-01` | Head-to-Head Live Scoreboard (Crown + Delta) | Standings & Math | All Users | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-LEAD-02` | Unified Roster Standings Table | Standings & Math | All Users | `NOT_STARTED` | ❌ Pending Scaffolding |
+| `FEAT-LOG-04` | Admin Inline Hours Override Grid (`is_override=true`) | Study Logging | Admin | `DONE` | ✅ Completed in Slice 5 |
+| `FEAT-LEAD-01` | Head-to-Head Live Scoreboard (Crown + Delta) | Standings & Math | All Users | `DONE` | ✅ Completed in Slice 4 |
+| `FEAT-LEAD-02` | Unified Roster Standings Table | Standings & Math | All Users | `DONE` | ✅ Completed in Slice 4 |
 | `FEAT-LEAD-03` | Dynamic Daily Catch-Up Deficit Engine | Standings & Math | Participant | `DONE` | ✅ Completed in Slice 1 & 3 |
-| `FEAT-PUN-01` | Dual-Failure Auto-Flagging Engine | Accountability | System | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-PUN-02` | Punishment Wall & Deficit Roster | Accountability | All Users | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-PUN-03` | Direct Punishment PFP Asset Download Button | Accountability | Flagged User | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-PUN-04` | Host Pardon / Excuse Override | Accountability | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-DISC-01` | 1-Click Formatted Markdown Summary Copy | Discord Broadcaster | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-AUDIT-01` | Append-Only Immutable System Audit Trail | Admin & Audit | System, Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
+| `FEAT-PUN-01` | Dual-Failure Auto-Flagging Engine | Accountability | System | `DONE` | ✅ Completed in Slice 1 & 4 |
+| `FEAT-PUN-02` | Punishment Wall & Deficit Roster | Accountability | All Users | `DONE` | ✅ Completed in Slice 4 |
+| `FEAT-PUN-03` | Direct Punishment PFP Asset Download Button | Accountability | Flagged User | `DONE` | ✅ Completed in Slice 4 |
+| `FEAT-PUN-04` | Host Pardon / Excuse Override | Accountability | Admin | `DONE` | ✅ Completed in Slice 5 |
+| `FEAT-DISC-01` | 1-Click Formatted Markdown Summary Copy | Discord Broadcaster | Admin | `DONE` | ✅ Completed in Slice 5 |
+| `FEAT-AUDIT-01` | Append-Only Immutable System Audit Trail | Admin & Audit | System, Admin | `DONE` | ✅ Completed in Slice 5 |
 
 ---
 
@@ -80,8 +81,6 @@ Every incoming agent must verify their pull requests and code modifications agai
 
 ## 4. Work Breakdown & Vertical Slices Execution Plan
 
-To allow the 4 specialized agent roles to work concurrently without code collisions, the active implementation is partitioned into the following sequential vertical slices:
-
 ```mermaid
 graph TD
     S0["Slice 0: Next.js 14 Scaffolding & Shared Tooling"] --> S1["Slice 1: Pure Domain Engine (Scoring Agent)"]
@@ -96,57 +95,28 @@ graph TD
 
 ### Slice 0: Foundation, Project Scaffolding & Tooling (Completed)
 - **Target:** Repository Root
-- **Deliverables:**
-  - Next.js 14+ (App Router) project scaffolding with TypeScript (`strict: true`).
-  - `tailwind.config.ts` extended with Cozy Study Café color tokens and fonts (`DESIGN.md`).
-  - Vitest test runner configured for instant ESM domain testing.
-  - Base shadcn/ui and Radix UI primitives configured.
+- **Deliverables:** Next.js 14+ (App Router) scaffolding with TypeScript (`strict: true`), Cozy theme tokens, Vitest test runner, shadcn/ui primitives.
 
 ### Slice 1: Pure Domain Business Engine (`features/*/domain/`) (Completed)
-- **Agent Focus:** Scoring & Engine Agent
-- **Deliverables:**
-  - `duration.ts`: `parseDurationToSeconds("HH:MM:SS")`, `formatSecondsToClock(seconds)`, `formatSecondsToHuman(seconds)`.
-  - `deficit.ts`: `calculateRemainingDeficit(targetSec, loggedSec)`, `calculateRequiredDailyPace(deficitSec, daysRemaining)`.
-  - `leaderboard.ts`: `aggregateTeamScores(teams, logs)`, `calculateLeadMargin(teamA, teamB)`.
-  - `punishment.ts`: `evaluateParticipantPunishment(targetSec, loggedSec, goalsList)`.
-  - Pure Vitest test suite (`features/**/domain/*.test.ts`) covering normal paths, edge cases (0s, >24h, negative, leap days) with 100% green exit.
+- **Deliverables:** `duration.ts`, `deficit.ts`, `leaderboard.ts`, `punishment.ts` pure calculation functions. 100% test coverage.
 
 ### Slice 2: Data Persistence & Auth (`prisma/`, `core/db/`, `core/auth/`) (Completed)
-- **Agent Focus:** Data & Identity Agent
-- **Deliverables:**
-  - `prisma/schema.prisma`: Models for `User`, `Account`, `Session`, `Challenge`, `Team`, `ChallengeParticipant`, `DailyStudyLog`, `WeeklyGoal`, `PunishmentRecord`.
-  - Auth.js (NextAuth v5) Discord OAuth configuration with profile sync (avatar, display name).
-  - Database seed script with sample challenge (*Honey Bees vs Lavender Butterflies*) for local dev.
+- **Deliverables:** Prisma schema, Auth.js Discord OAuth configuration with profile mapper, database seed script.
 
 ### Slice 3: Participant Cockpit & Daily Logging (`features/study-logs/`, `app/(dashboard)/`) (Completed)
-- **Agent Focus:** Participant UI Agent
-- **Deliverables:**
-  - `HH:MM:SS` duration inputs with quick-add chips (`[+30m]`, `[+1h]`, `[+2h]`).
-  - Dynamic deficit encouragement gauge with warm contextual messaging.
-  - Interactive weekly goals checklist with completion checkmarks.
-  - Mobile bottom sheet logging drawer (tested on 360px viewport).
+- **Deliverables:** `HH:MM:SS` duration inputs with chips, deficit encouragement gauge, weekly goals checklist, mobile logging bottom sheet.
 
-### Slice 4: Head-to-Head Live Scoreboard & Standings (`features/leaderboard/`, `app/challenge/[id]/`)
-- **Agent Focus:** Participant UI Agent & Scoring Agent
-- **Deliverables:**
-  - Top match banner with leader crown (`👑`) and margin delta pill.
-  - Unified standings table with podium highlights and team filter tabs.
-  - Punishment Wall with 1-click **"Download Punishment PFP"** asset button.
-  - Public spectator mode active for unauthenticated guests.
+### Slice 4: Head-to-Head Live Scoreboard & Standings (`features/leaderboard/`, `app/challenge/[id]/`) (Completed)
+- **Deliverables:** Top match banner with crown & lead margin, unified standings table with podium highlights, House filter tabs, Punishment Nook with PFP asset download button, public spectator mode.
 
-### Slice 5: Admin Operations & Discord Broadcaster (`features/challenges/`, `app/(admin)/`)
-- **Agent Focus:** Admin Operations & Broadcaster Agent
-- **Deliverables:**
-  - Challenge setup wizard (`/admin/challenges/new`).
-  - Inline hours override grid with audit logging (`is_override=true`, `overrideBy`).
-  - Event kickoff button and lock final results button.
-  - 1-click formatted Discord summary markdown copy generator.
+### Slice 5: Admin Operations & Discord Broadcaster (`features/challenges/`, `features/discord/`, `features/audit/`, `app/(admin)/`) (Completed)
+- **Deliverables:** Multi-format challenge wizard, manual kickoff controls with prerequisite validation, finalize results with auto-punishment evaluation, Duo renaming, inline hours override grid, goal unlock modals, pardon controls, 1-click Discord summary generator, append-only system audit trail.
 
-### Slice 6: E2E Quality Verification & Release Gate
-- **Agent Focus:** All Agents
+### Slice 6: E2E Quality Verification & Release Gate (Completed)
 - **Deliverables:**
-  - Automated or scripted execution of Journeys J1 through J6.
-  - `npm run typecheck`, `npm run test`, and `npm run build` passing with zero errors.
+  - Automated integration test suite under `features/quality/journeys/` (`journey-j1.test.ts` through `journey-j6.test.ts`).
+  - Security hardening: Cross-challenge entity ID forgery protection on admin overrides, goals, pardons, and team renaming.
+  - Quality gates: 254 unit and integration tests passing across 39 test files (100% green exit); `npm run typecheck` exits with 0; `npm run build` exits with 0.
 
 ---
 
@@ -154,12 +124,14 @@ graph TD
 
 > [!IMPORTANT]  
 > **EXACT NEXT STEP FOR THE INCOMING AGENT:**  
-> Execute **Slice 4: Head-to-Head Live Scoreboard & Standings**:
-> 1. Create `app/challenge/[id]/page.tsx` supporting public spectator read-only mode (`FEAT-AUTH-02`, Law L4).
-> 2. Implement Head-to-Head Top Banner (`FEAT-LEAD-01`) with leader crown (`👑`) and lead margin delta pill.
-> 3. Implement Unified Standings Table (`FEAT-LEAD-02`) with podium highlights and team filter tabs.
-> 4. Implement Punishment Wall with 1-click **"Download Punishment PFP"** asset button (`FEAT-PUN-02`, `FEAT-PUN-03`).
-> 5. Run `npm run typecheck`, `npm run test`, and `npm run build` to verify quality gates.
+> **Phase 0 Deployment Prerequisites & Production Go-Live:**  
+> 1. Provision a production PostgreSQL instance (e.g. Supabase or Neon).  
+> 2. Configure environment variables in `.env` or cloud hosting dashboard:  
+>    - `DATABASE_URL`: PostgreSQL connection URI  
+>    - `AUTH_DISCORD_ID` & `AUTH_DISCORD_SECRET`: Discord OAuth Application credentials  
+>    - `AUTH_SECRET`: NextAuth session signing key  
+> 3. Run database migrations: `npx prisma migrate deploy` and seed initial challenge via `npm run db:seed`.  
+> 4. Deploy to Vercel and execute smoke tests against the live deployment environment.  
 
 ---
 
@@ -167,7 +139,7 @@ graph TD
 
 In accordance with **`AGENTS.md` Rule §9.3**:
 1. **No Outdated Baggage:** Whenever an engineering session completes, the incoming/outgoing agent must review this `HANDOFF.md` file.
-2. **Prune Stale Details:** Once a task or slice is completed, remove its temporary debugging steps and intermediate scratch notes from active sections. Update the status in Section 2 to `DONE`.
+2. **Prune Stale Details:** Once a task or slice is completed, remove its temporary debugging steps and intermediate scratch notes from active sections.
 3. **Session Log Retention:** Keep only the **last 3 to 5 sessions** in the Session Changelog below. Older logs must be trimmed or consolidated.
 4. **Zero Contradictions:** If an architectural decision is superseded, update the corresponding reference immediately so future agents never encounter conflicting instructions.
 
@@ -176,46 +148,33 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 ## 7. Session Changelog
 
 ### Previous Sessions (Summarized)
-- **Sessions 1 & 2 (2026-09-06):** Repository architecture analysis, Rule §9.3 enactment, cozy aesthetic ratification, and initial prototype scaffolding.
-
-### Session 3 — 2026-09-06
-- **Agent Role:** Admin Operations & System Architecture Agent
-- **Git Branch:** `krish`
-- **Changes Completed:** Organized Host Screen (user dossier, hours override, goal revisions), streamlined immutable audit trail (`FEAT-AUDIT-01`), and updated prototype.
-
-### Session 4 — 2026-09-06
-- **Agent Role:** Participant UI & Brand Asset Artist
-- **Git Branch:** `krish`
-- **Changes Completed:** Generated 5 bespoke watercolor/engraved assets (`hero_cafe.jpg`, `mascot_bees.jpg`, `mascot_butterflies.jpg`, `stamp_cafe.jpg`, `punishment_pfp.jpg`) and embedded them across the prototype.
-
-### Session 5 — 2026-09-06
-- **Agent Role:** Typography & UI Lead
-- **Git Branch:** `krish`
-- **Changes Completed:** Upgraded typography to `Fraunces` + `DM Sans` + `Caveat` + `JetBrains Mono` (`tabular-nums`), added live font theme switcher, and updated `DESIGN.md` §3.
-
-### Session 6 — 2026-09-06
-- **Agent Role:** Product Architecture & Feature Lead
-- **Git Branch:** `krish`
-- **User Feedback & Changes:**
-  1. **Dynamic Per-Event Team Themes:** Codified that team identities are never hardcoded across challenges. Every challenge configures its own themes, names, icons, and colors (e.g. *Owls vs Larks*, *Matcha vs Espresso*). Updated `FEATURES.md` §4.1, §7.1, §7.2 and `ROADMAP.md` §3.2.
-  2. **Duo Partner Self-Naming (`FEAT-CHAL-06`):**
-     - Formally specified `FEAT-CHAL-06` in `FEATURES.md` §4.7.
-     - In `DUOS` format ($N=2$ pairs), participants name their own duo teams in the Cockpit during the pre-kickoff phase.
-     - Duo team names lock permanently once the host triggers kickoff (`ACTIVE`), with host override authority preserved (Law L5).
-  3. **Interactive Prototype Integration:**
-     - Added Duo Team Name self-naming input block in the Pre-Kickoff view (`#submode-prekickoff-view`).
-     - Added dynamic format tabs (`Team vs Team`, `Duos`, `Solos`) in the Challenge Creator modal (`modal-creator`).
-     - Tested with Node.js; verified 100% valid JavaScript syntax; synchronized `prototype/index.html`.
+- **Sessions 1–6 (2026-09-06):** Scaffold, domain engine, persistence & Discord OAuth profile mapping, cozy theme tokens, and prototype alignment.
 
 ### Session 7 — 2026-09-06
 - **Agent Role:** Participant UI & Fullstack Engineer Agent
 - **Git Branch:** `afnan`
-- **Changes Completed (Slice 3: Participant Cockpit & Daily Study Logging):**
-  - Implemented participant cockpit at `/dashboard` with participant identity, challenge context, and weekly progress meter.
-  - Built `DailyStudyLog` repository with UTC date-only normalization, composite participant/date unique upsert, and integer seconds storage.
-  - Added server-side validation enforcing 24h daily boundary ($\le 86,400\text{s}$) and rejection of malformed/negative inputs.
-  - Implemented weekly goals repository with transactional replacement, completion toggling, and pre-kickoff declaration lock.
-  - Integrated pure domain deficit engine (`calculateRemainingDeficit`, `calculateRequiredDailyPace`) for encouraging catch-up notes.
-  - Enforced strict server-side authorization resolving participant from Auth.js session user.
-  - Added Law L9 loading skeleton, empty states, and error resilience down to 360px mobile viewports.
-- **Next Up:** Proceed to Slice 4: Head-to-Head Live Scoreboard & Standings.
+- **Changes Completed (Slice 3):** Cockpit at `/dashboard`, `DailyStudyLog` UTC date normalization and 24h limit, weekly goals transactional replacement, catch-up deficit gauge, and Law L9 loading/empty/error states.
+
+### Session 8 — 2026-09-06
+- **Agent Role:** Participant UI & Scoring Agent
+- **Git Branch:** `afnan`
+- **Changes Completed (Slice 4):** Deterministic ranking engine (`standings.ts`), scoreboard view-model repository, head-to-head match banner (`MatchScoreboardBanner`), team filter tabs, standings table with podium styling, and punishment nook with forfeit PFP download.
+
+### Session 9 — 2026-09-06
+- **Agent Role:** Admin Operations & Broadcaster Agent
+- **Git Branch:** `afnan`
+- **Changes Completed (Slice 5):** Added append-only `AuditLog` model and repository; challenge state machine (`lifecycle.ts`); Discord markdown summary generator; multi-format challenge creation with Law L1 parity; kickoff declaration locking; finalize dual-failure punishment evaluation; inline hours override grid; goal unlock and pardon controls; host dashboard and challenge hub pages.
+
+### Session 10 — 2026-09-06 (Current Session)
+- **Agent Role:** Senior QA Engineer, Integration Engineer & Release Gatekeeper
+- **Git Branch:** `afnan`
+- **Changes Completed (Slice 6: E2E Quality Verification & Release Gate):**
+  - **Security Hardening (Cross-Challenge Forgery Remediation):** Added challenge ownership boundary validation across all admin operations (`adminOverrideDailyStudyLog`, `adminEditGoal`, `adminToggleGoalCompletion`, `adminAddGoal`, `adminPardonParticipant`, `adminRevokePardon`, and `renameDuoTeam`). Ensures hosts can never mutate entities belonging to other challenges.
+  - **Journey Integration Suite (`features/quality/journeys/`):** Created full automated integration test suite for Journeys J1 through J6:
+    - `journey-j1.test.ts`: Discord OAuth profile provisioning, spectator public access, and RBAC authentication gating.
+    - `journey-j2.test.ts`: Challenge creation parity (Law L1: Solo=1, Duo=2, Team=uncapped), team capacity limits, duplicate enrollment prevention, Duo team renaming.
+    - `journey-j3.test.ts`: Pre-kickoff declarations (1–105h target, 1–10 goals), kickoff prerequisite checks, permanent post-kickoff declaration lock.
+    - `journey-j4.test.ts`: Daily study logging ($\le 86,400\text{s}$), lifecycle status gating, goal completion toggles, catch-up deficit recalculation (Law L3), team score & lead delta re-aggregation.
+    - `journey-j5.test.ts`: Admin inline hours override (`isOverride=true`, audit log), mid-event goal management, cross-challenge forgery rejection, unauthorized caller rejection.
+    - `journey-j6.test.ts`: Challenge finalization (`ACTIVE` $\rightarrow$ `COMPLETED`), dual-failure auto-punishment evaluation across all 4 permutations (Law L6), host pardon/revocation workflows (Law L5), 1-click Discord summary generator.
+  - **Quality Gates:** 254 total tests passing across 39 test files (100% green exit); `npm run typecheck` exits 0; `npm run build` exits 0.

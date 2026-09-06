@@ -8,6 +8,7 @@ declare module "next-auth" {
       role: UserRole;
       discordId: string | null;
       displayName: string | null;
+      username?: string | null;
     } & DefaultSession["user"];
   }
 
@@ -15,6 +16,7 @@ declare module "next-auth" {
     role: UserRole;
     discordId: string | null;
     displayName: string | null;
+    username?: string | null;
   }
 }
 
