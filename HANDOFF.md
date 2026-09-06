@@ -176,14 +176,19 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 - **Agent Role:** Fullstack Engineer & Operational Enablers Agent
 - **Git Branch:** `krish`
 - **Changes Completed (Operational Usability & Enrollment Slices):**
-  - **Step 1 (Discord Remote Avatars):** Configured `next.config.mjs` with `images.remotePatterns` for `cdn.discordapp.com` and `images.unsplash.com`.
-  - **Step 2 (Participant Self-Enrollment Flow):**
-    - Implemented `enrollParticipantInChallenge()` in `features/challenges/data/participant.repository.ts` enforcing challenge status and team `maxMembers` capacity.
-    - Implemented `enrollInChallengeAction()` in `features/challenges/api/enroll-participant.action.ts` validating weekly target hours ($\ge 1\text{h}$, $\le 105\text{h}$) and revalidating routes.
-    - Built `JoinChallengeModal` (`features/challenges/presentation/join-challenge-modal.tsx`) and integrated into `challenge-view.tsx` with responsive drawer/dialog controls.
-  - **Step 3 (Admin Manual Roster Assignment Flow):**
-    - Implemented `adminEnrollParticipant()` in `features/challenges/data/challenge-admin.repository.ts` with immutable `ROSTER_EDIT` audit trail logging.
-    - Added `listAllUsersForAdmin()` in `features/auth/data/user.repository.ts` and wired into `getAdminChallengeData()`.
-    - Integrated `+ Enroll Member` button and modal into `AdminRosterGrid` (`features/challenges/presentation/admin-roster-grid.tsx`).
-    - Added `defaultTab="roster"` prop on `/admin/challenges/[id]/roster/page.tsx`.
-  - **Quality Gates:** 26 test suites (158 unit & integration tests, 100% green), zero TypeScript errors (`npm run typecheck`), and successful Next.js production build (`npm run build`).
+  - Configured `next.config.mjs` with `images.remotePatterns` for `cdn.discordapp.com`.
+  - Implemented participant self-enrollment modal and server action (`JoinChallengeModal`, `enrollInChallengeAction`).
+  - Implemented admin roster assignment modal (`adminEnrollParticipant`, `AdminRosterGrid`).
+
+### Session 13 — 2026-09-07
+- **Agent Role:** Data & Identity Agent
+- **Git Branch:** `krish`
+- **Changes Completed (Discord Auth Connection & Navigation Integration):**
+  - Verified `.env` / `.env.local` configuration for Supabase PostgreSQL (`DATABASE_URL`, `DIRECT_URL`), `AUTH_SECRET`, and Discord OAuth (`AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET`).
+  - Executed `prisma db push` and seeded initial tournament data (`prisma/seed.ts`).
+  - Implemented `features/auth/api/auth.actions.ts` (`loginWithDiscordAction`, `logoutAction`).
+  - Created `features/auth/presentation/auth-nav.tsx` (`UserNav`, `SignInWithDiscordButton`, `SignOutButton`, `DiscordIcon`).
+  - Updated `app/page.tsx` with top authentication bar, dynamic Discord login button, and direct navigation into Cockpit / Admin hubs.
+  - Updated `app/challenge/[id]/layout.tsx`, `app/admin/layout.tsx`, and `app/(dashboard)/layout.tsx` to render `UserNav` with avatar, name, and sign-out controls.
+  - Quality Gates: 26 test suites (158 tests) passing 100% green, `tsc --noEmit` exits 0.
+
