@@ -35,6 +35,10 @@ const config: Config = {
             DEFAULT: "#c7634c",
             surface: "#2a1916",
           },
+          cinnamon: {
+            DEFAULT: "#c87948",
+            surface: "#271c14",
+          },
           lavender: {
             DEFAULT: "#9986b8",
             surface: "#211c2b",
