@@ -1,0 +1,2472 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <title>HoldMeToIt — Late-Night Study Café</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,400..600&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cafe: {
+              bg: '#14110f',          /* Rich dark roast espresso bean */
+              wood: '#1b1713',        /* Warm dark walnut study desk */
+              card: '#231d18',        /* Warm cocoa board */
+              elevated: '#2c241e',    /* Hearth mantle */
+              border: '#382e25',      /* Soft sepia divider */
+              borderLight: '#4c3e32', /* Subtle focus border */
+              parchment: '#f8f3ea',   /* Luminous aged cream reading text */
+              linen: '#ded4c7',       /* Soft secondary linen text */
+              oatmeal: '#a39687',     /* Muted warm note text */
+              ash: '#72675b',         /* Quiet timestamp text */
+              honey: {
+                DEFAULT: '#e08a32',   /* Candlelight honey lamp */
+                light: '#f5ba73',     /* Soft golden amber glow */
+                dark: '#b86c1c',
+              },
+              sage: {
+                DEFAULT: '#529e72',   /* Fresh dried sage leaves & matcha */
+                surface: '#17271c',   /* Calm forest tea surface tint */
+              },
+              cinnamon: {
+                DEFAULT: '#c87948',   /* Calming Spiced Cinnamon (non-punitive alert) */
+                surface: '#271c14',   /* Soft toasted cinnamon bark tint */
+              },
+              terracotta: {
+                DEFAULT: '#c87948',   /* Alias to Calming Spiced Cinnamon */
+                surface: '#271c14',
+              },
+              lavender: {
+                DEFAULT: '#9f8dc0',   /* Blooming dried lavender */
+                surface: '#221b2c',   /* Deep dusk surface tint */
+              },
+            }
+          },
+          fontFamily: {
+            serif: ['var(--font-display)', 'Georgia', 'serif'],
+            sans: ['var(--font-body)', 'sans-serif'],
+            mono: ['var(--font-mono)', 'monospace'],
+            script: ['var(--font-script)', 'cursive'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --font-display: 'Fraunces', Georgia, serif;
+      --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-script: 'Caveat', cursive;
+    }
+
+    [data-font="fraunces"] {
+      --font-display: 'Fraunces', Georgia, serif;
+      --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    [data-font="newsreader"] {
+      --font-display: 'Newsreader', Georgia, serif;
+      --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    [data-font="garamond"] {
+      --font-display: 'Cormorant Garamond', Georgia, serif;
+      --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    [data-font="modern"] {
+      --font-display: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: #14110f;
+      color: #f8f3ea;
+      font-family: var(--font-body);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.01em;
+      background-image: 
+        radial-gradient(ellipse 75% 35% at 50% 0%, rgba(224, 138, 50, 0.13), transparent 75%),
+        radial-gradient(ellipse 45% 25% at 85% 15%, rgba(82, 158, 114, 0.08), transparent 60%),
+        radial-gradient(rgba(224, 138, 50, 0.04) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 28px 28px;
+      background-attachment: fixed;
+    }
+
+    .font-serif {
+      font-family: var(--font-display);
+      font-feature-settings: "kern" 1, "liga" 1;
+      letter-spacing: -0.015em;
+    }
+
+    .font-sans {
+      font-family: var(--font-body);
+    }
+
+    .font-script {
+      font-family: var(--font-script);
+      letter-spacing: 0.02em;
+    }
+
+    .font-mono, .font-mono-tabular {
+      font-family: var(--font-mono);
+      font-feature-settings: "tnum" 1, "zero" 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .texture-paper {
+      box-shadow: inset 0 1px 0 rgba(245, 186, 115, 0.06), 0 8px 30px -4px rgba(0, 0, 0, 0.55);
+    }
+    
+    .wood-card {
+      background: linear-gradient(180deg, rgba(36, 30, 24, 0.94) 0%, rgba(26, 22, 18, 0.98) 100%);
+      border: 1px solid rgba(224, 138, 50, 0.14);
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+    }
+
+    .wood-card-glow {
+      box-shadow: 0 0 25px -5px rgba(224, 138, 50, 0.14), 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #14110f;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #382e25;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4c3e32;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-cafe-bg text-cafe-parchment antialiased selection:bg-cafe-honey/20 selection:text-cafe-parchment">
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 bg-cafe-elevated border border-cafe-borderLight text-cafe-parchment px-4 py-3 rounded-xl shadow-2xl">
+    <span id="toast-icon" class="text-base">☕</span>
+    <span id="toast-message" class="text-xs font-medium tracking-wide">Action executed</span>
+  </div>
+
+  <!-- NAVIGATION & VIEW SWITCHER (Participant / Spectator / Host) -->
+  <header class="border-b border-cafe-border/80 bg-cafe-wood/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Quiet Lounge Tag -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl overflow-hidden border border-cafe-border flex items-center justify-center shadow-inner bg-cafe-elevated">
+          <img src="./assets/stamp_cafe.jpg" alt="HoldMeToIt Stamp" class="w-full h-full object-cover" />
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-serif text-lg font-semibold tracking-tight text-cafe-parchment">HoldMeToIt</h1>
+            <span class="text-[10px] text-cafe-honey-light font-sans tracking-wide px-2 py-0.5 rounded-full bg-cafe-elevated border border-cafe-honey/30 flex items-center gap-1.5 shadow-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-cafe-honey animate-pulse"></span>
+              Study Café
+            </span>
+          </div>
+          <p class="text-[11px] text-cafe-oatmeal font-sans">Quiet hours study lounge & accountability</p>
+        </div>
+      </div>
+
+      <!-- Segmented View Switcher (Participant / Spectator / Host) -->
+      <div class="flex items-center gap-1.5 bg-cafe-card p-1 rounded-xl border border-cafe-border text-xs">
+        <button id="btn-view-participant" onclick="setRole('participant')" class="px-3 py-1.5 rounded-lg bg-cafe-elevated text-cafe-honey font-medium shadow-sm transition-all flex items-center gap-1.5">
+          <span>👤</span>
+          <span>Participant</span>
+        </button>
+        <button id="btn-view-spectator" onclick="setRole('spectator')" class="px-3 py-1.5 rounded-lg text-cafe-oatmeal hover:text-cafe-parchment transition-all flex items-center gap-1.5">
+          <span>👁️</span>
+          <span>Spectator</span>
+        </button>
+        <button id="btn-view-host" onclick="setRole('host')" class="px-3 py-1.5 rounded-lg text-cafe-oatmeal hover:text-cafe-parchment transition-all flex items-center gap-1.5">
+          <span>🛡️</span>
+          <span>Host Desk</span>
+        </button>
+      </div>
+
+      <!-- Typography Style Selector (Live Font Theme Switching) -->
+      <div class="flex items-center gap-1.5 bg-cafe-card/90 p-1 rounded-xl border border-cafe-border text-xs">
+        <span class="text-[11px] text-cafe-oatmeal pl-2 pr-1 flex items-center gap-1 font-serif">
+          <span>🖋️</span>
+          <span class="hidden md:inline font-sans text-cafe-ash">Font:</span>
+        </span>
+        <select id="font-style-select" onchange="changeFontStyle(this.value)" class="bg-cafe-elevated text-cafe-parchment text-xs rounded-lg px-2.5 py-1 border border-cafe-border/80 hover:border-cafe-honey focus:border-cafe-honey focus:outline-none cursor-pointer font-medium">
+          <option value="fraunces">☕ Artisanal Café (Fraunces + DM Sans)</option>
+          <option value="newsreader">📜 Literary Library (Newsreader + DM Sans)</option>
+          <option value="garamond">🏛️ Classical Academia (Cormorant Garamond)</option>
+          <option value="modern">🌿 Minimalist Warmth (DM Sans Clean)</option>
+        </select>
+      </div>
+
+      <!-- Profile Indicator -->
+      <div id="header-profile" class="flex items-center gap-2.5 bg-cafe-card/70 border border-cafe-border px-3 py-1.5 rounded-full">
+        <div id="header-avatar" class="w-6 h-6 rounded-full bg-cafe-honey/20 border border-cafe-honey/40 flex items-center justify-center text-[10px] text-cafe-honeyLight font-serif font-bold">
+          A
+        </div>
+        <div class="text-left hidden sm:block">
+          <span id="header-username" class="text-xs font-medium text-cafe-parchment">AuraStudier</span>
+          <span id="header-subtitle" class="text-[10px] text-cafe-oatmeal ml-1.5 font-mono">Honey Bees • Table 4</span>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 1. HOST OPERATIONS BANNER (VISIBLE ONLY WHEN HOST ROLE IS SELECTED)      -->
+  <!-- ========================================================================= -->
+  <div id="host-master-desk" class="hidden border-b border-cafe-honey/30 bg-cafe-elevated/95 px-4 sm:px-6 py-3 shadow-md">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+      
+      <div class="flex items-center gap-3">
+        <span class="font-serif font-semibold text-cafe-honey flex items-center gap-1.5">
+          <span>🛡️</span> Proctor's Desk
+        </span>
+        <span id="challenge-status-badge" class="px-2.5 py-0.5 rounded-md font-mono text-[10px] bg-cafe-sage-surface border border-cafe-sage/40 text-cafe-sage font-medium">
+          ACTIVE (Day 4 of 7)
+        </span>
+      </div>
+
+      <!-- Host Action Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Event Kickoff Toggle (FEAT-CHAL-02) -->
+        <button id="btn-kickoff" onclick="toggleKickoff()" class="px-3 py-1.5 rounded-lg bg-cafe-card hover:bg-cafe-wood border border-cafe-border text-cafe-linen hover:text-cafe-parchment transition-all flex items-center gap-1.5">
+          <span>⚡</span>
+          <span id="btn-kickoff-text">Revert to Pre-Kickoff</span>
+        </button>
+
+        <!-- New Challenge Creator (FEAT-CHAL-01) -->
+        <button onclick="openModal('modal-creator')" class="px-3 py-1.5 rounded-lg bg-cafe-card hover:bg-cafe-wood border border-cafe-border text-cafe-linen hover:text-cafe-parchment transition-all flex items-center gap-1.5">
+          <span>➕</span>
+          <span>New Challenge</span>
+        </button>
+
+        <!-- 1-Click Discord Markdown Summary (FEAT-DISC-01) -->
+        <button onclick="copyDiscordMarkdown()" class="px-3 py-1.5 rounded-lg bg-cafe-card hover:bg-cafe-wood border border-cafe-border text-cafe-linen hover:text-cafe-parchment transition-all flex items-center gap-1.5">
+          <span>📋</span>
+          <span>Copy Discord Summary</span>
+        </button>
+
+        <!-- Event Lock & Finalize Results (FEAT-CHAL-05) -->
+        <button onclick="lockResults()" class="px-3 py-1.5 rounded-lg bg-cafe-card hover:bg-cafe-wood border border-cafe-honey/40 hover:border-cafe-honey text-cafe-honey-light hover:text-cafe-parchment text-xs transition-all flex items-center gap-1.5 shadow-sm">
+          <span>🔒</span>
+          <span>Lock Final Results</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 2. PARTICIPANT & SPECTATOR VIEW CONTAINER                                 -->
+  <!-- ========================================================================= -->
+  <div id="participant-view-container" class="space-y-6">
+
+    <!-- ATMOSPHERIC HERO BANNER -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+      <div class="relative rounded-3xl overflow-hidden border border-cafe-border wood-card texture-paper">
+        
+        <!-- Illustrated Background Asset with Soft Vignette -->
+        <div class="absolute inset-0 z-0">
+          <img src="./assets/hero_cafe.jpg" alt="Cozy Study Café with rain outside" class="w-full h-full object-cover object-center opacity-48 filter blur-[0.2px]" />
+          <div class="absolute inset-0 bg-gradient-to-t from-cafe-wood via-cafe-wood/75 to-cafe-wood/35"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-cafe-wood/90 via-transparent to-cafe-wood/60"></div>
+        </div>
+
+        <!-- Content Layer -->
+        <div class="relative z-10 p-6 sm:p-8 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-cafe-oatmeal">
+            <span class="flex items-center gap-2 font-medium text-cafe-linen">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-cafe-honey animate-pulse shadow-[0_0_8px_#e08a32]"></span>
+              Midterm Reading Week Sprint • Day 4 of 7
+            </span>
+            <span class="font-mono text-cafe-oatmeal bg-cafe-card/80 px-2.5 py-1 rounded-lg border border-cafe-border/60">
+              Event concludes in 02d 14h 22m
+            </span>
+          </div>
+
+          <div class="max-w-xl space-y-2">
+            <h2 class="font-serif text-2xl sm:text-3xl font-medium text-cafe-parchment leading-tight">
+              Rain on the glass, warm mug on the desk.
+            </h2>
+            <p class="text-xs sm:text-sm text-cafe-linen leading-relaxed font-sans">
+              Welcome to the quiet room. Track your study hours without rush or guilt. 
+              Deficits roll forward gently with our catch-up model—just stay consistent today.
+            </p>
+            <div class="pt-0.5">
+              <span class="font-script text-base text-cafe-honey-light/95 tracking-wide">~ "quiet study, warm tea, serene progress" ~</span>
+            </div>
+          </div>
+
+          <!-- HOUSE CUP BATTLE BANNER (FEAT-LEAD-01) -->
+          <div class="pt-2">
+            <div class="rounded-2xl bg-cafe-bg/85 backdrop-blur-md border border-cafe-border p-4 sm:p-5 shadow-lg">
+              
+              <div class="grid grid-cols-1 md:grid-cols-7 gap-4 items-center">
+                
+                <!-- House 1: Honey Bees -->
+                <div class="md:col-span-3 flex items-center justify-between p-3 rounded-2xl bg-cafe-card/60 border border-cafe-honey/40 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <img src="./assets/mascot_bees.jpg" alt="Honey Bees Mascot" class="w-12 h-12 rounded-xl object-cover border border-cafe-honey/40 shadow" />
+                    <div>
+                      <div class="flex items-center gap-1.5">
+                        <h3 class="font-serif text-sm font-semibold text-cafe-parchment">Honey Bees</h3>
+                        <span class="text-[10px] text-cafe-honey font-medium px-1.5 py-0.2 rounded bg-cafe-honey/10 border border-cafe-honey/30">
+                          In Lead
+                        </span>
+                      </div>
+                      <span class="text-[11px] text-cafe-oatmeal font-sans">3 Companions</span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span id="bees-total" class="font-mono-tabular text-xl sm:text-2xl font-semibold text-cafe-honey-light">
+                      55:00:00
+                    </span>
+                    <span class="block text-[10px] text-cafe-ash font-mono">Cumulative Hours</span>
+                  </div>
+                </div>
+
+                <!-- Match Margin -->
+                <div class="md:col-span-1 flex flex-col items-center justify-center text-center">
+                  <span class="text-xs font-serif text-cafe-oatmeal italic">vs</span>
+                  <span id="match-margin-badge" class="text-[11px] font-mono font-medium text-cafe-honey mt-1">
+                    +03h 54m
+                  </span>
+                  <span class="text-[9px] text-cafe-ash font-sans">Lead Margin</span>
+                </div>
+
+                <!-- House 2: Lavender Butterflies -->
+                <div class="md:col-span-3 flex items-center justify-between p-3 rounded-2xl bg-cafe-card/60 border border-cafe-border shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <img src="./assets/mascot_butterflies.jpg" alt="Lavender Butterflies Mascot" class="w-12 h-12 rounded-xl object-cover border border-cafe-lavender/40 shadow" />
+                    <div>
+                      <h3 class="font-serif text-sm font-semibold text-cafe-parchment">Lavender Butterflies</h3>
+                      <span class="text-[11px] text-cafe-oatmeal font-sans">3 Companions</span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <span id="butterflies-total" class="font-mono-tabular text-xl sm:text-2xl font-semibold text-cafe-linen">
+                      51:05:35
+                    </span>
+                    <span class="block text-[10px] text-cafe-ash font-mono">Cumulative Hours</span>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Gentle ratio progress bar -->
+              <div class="mt-3 w-full bg-cafe-card rounded-full h-1.5 overflow-hidden flex">
+                <div id="ratio-bar-bees" class="bg-cafe-honey h-full rounded-l-full transition-all duration-500" style="width: 51.8%"></div>
+                <div id="ratio-bar-but" class="bg-cafe-lavender h-full rounded-r-full transition-all duration-500" style="width: 48.2%"></div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MAIN PARTICIPANT WORKSPACE: COCKPIT & LOGBOOK -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+        <!-- LEFT COLUMN: STUDY COCKPIT (FEAT-LOG-01, FEAT-DECL-01, FEAT-LEAD-03) (lg:col-span-5) -->
+        <section class="lg:col-span-5 space-y-6">
+
+          <!-- PARTICIPANT COCKPIT CONTAINER -->
+          <div class="wood-card rounded-3xl p-6 sm:p-7 space-y-6 texture-paper">
+            
+            <!-- Cockpit Header with Phase Mode Tabs -->
+            <div class="flex items-center justify-between pb-3 border-b border-cafe-border">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">🕯️</span>
+                <div>
+                  <h3 id="cockpit-title" class="font-serif text-base font-semibold text-cafe-parchment">Study Desk Log</h3>
+                  <p id="cockpit-subtitle" class="text-[11px] text-cafe-oatmeal">Enter time verified via YPT or timer</p>
+                </div>
+              </div>
+
+              <!-- Pre-Kickoff vs Active Toggle -->
+              <div id="participant-mode-switch" class="flex items-center gap-1 bg-cafe-card p-1 rounded-lg border border-cafe-border text-[11px]">
+                <button onclick="setParticipantSubmode('active')" id="btn-sub-active" class="px-2 py-0.5 rounded bg-cafe-elevated text-cafe-honey font-medium">
+                  Active Log
+                </button>
+                <button onclick="setParticipantSubmode('prekickoff')" id="btn-sub-prekickoff" class="px-2 py-0.5 rounded text-cafe-oatmeal hover:text-cafe-parchment">
+                  Pre-Kickoff
+                </button>
+              </div>
+            </div>
+
+            <!-- SUBMODE A: ACTIVE DAILY LOGGING VIEW (FEAT-LOG-01) -->
+            <div id="submode-active-view" class="space-y-6">
+              <!-- Day Carousel -->
+              <div>
+                <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase tracking-wider mb-2">
+                  Weekly Days
+                </label>
+                <div class="grid grid-cols-7 gap-1.5 text-center text-xs">
+                  <button onclick="pickDay(0)" class="day-btn py-2 px-1 rounded-xl bg-cafe-card border border-cafe-border text-cafe-oatmeal hover:text-cafe-parchment transition-all">
+                    <span class="block font-medium">Mon</span>
+                    <span class="block text-[10px] text-cafe-sage font-mono mt-0.5">4h 30m</span>
+                  </button>
+                  <button onclick="pickDay(1)" class="day-btn py-2 px-1 rounded-xl bg-cafe-card border border-cafe-border text-cafe-oatmeal hover:text-cafe-parchment transition-all">
+                    <span class="block font-medium">Tue</span>
+                    <span class="block text-[10px] text-cafe-sage font-mono mt-0.5">5h 15m</span>
+                  </button>
+                  <button onclick="pickDay(2)" class="day-btn py-2 px-1 rounded-xl bg-cafe-card border border-cafe-border text-cafe-oatmeal hover:text-cafe-parchment transition-all">
+                    <span class="block font-medium">Wed</span>
+                    <span class="block text-[10px] text-cafe-sage font-mono mt-0.5">4h 00m</span>
+                  </button>
+                  <button onclick="pickDay(3)" class="day-btn py-2 px-1 rounded-xl bg-cafe-elevated border border-cafe-honey/60 text-cafe-honey font-semibold transition-all shadow-sm">
+                    <span class="block">Thu</span>
+                    <span class="block text-[10px] text-cafe-honey-light font-mono mt-0.5">Today</span>
+                  </button>
+                  <button onclick="pickDay(4)" class="day-btn py-2 px-1 rounded-xl bg-cafe-card/40 border border-cafe-border/50 text-cafe-ash transition-all">
+                    <span class="block">Fri</span>
+                    <span class="block text-[10px] font-mono mt-0.5">--</span>
+                  </button>
+                  <button onclick="pickDay(5)" class="day-btn py-2 px-1 rounded-xl bg-cafe-card/40 border border-cafe-border/50 text-cafe-ash transition-all">
+                    <span class="block">Sat</span>
+                    <span class="block text-[10px] font-mono mt-0.5">--</span>
+                  </button>
+                  <button onclick="pickDay(6)" class="day-btn py-2 px-1 rounded-xl bg-cafe-card/40 border border-cafe-border/50 text-cafe-ash transition-all">
+                    <span class="block">Sun</span>
+                    <span class="block text-[10px] font-mono mt-0.5">--</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tactile Clock Dials (FEAT-LOG-01, FEAT-LOG-02) -->
+              <div>
+                <div class="flex items-center justify-between text-[11px] text-cafe-oatmeal mb-2">
+                  <span>Time Studied (HH:MM:SS)</span>
+                  <span class="font-mono text-cafe-ash">Max 24:00:00 / day</span>
+                </div>
+
+                <div class="flex items-center justify-center gap-3 bg-cafe-bg border border-cafe-border rounded-2xl p-4 shadow-inner">
+                  <div class="text-center flex-1">
+                    <span class="block text-[9px] uppercase tracking-wider text-cafe-ash mb-1">Hours</span>
+                    <input id="hours" type="number" min="0" max="23" value="04" 
+                           class="w-full bg-cafe-card text-center font-mono-tabular text-2xl font-semibold text-cafe-parchment border border-cafe-border rounded-xl py-2 outline-none focus:border-cafe-honey/80 transition-colors" />
+                  </div>
+                  <span class="text-xl font-mono text-cafe-ash pt-3">:</span>
+                  <div class="text-center flex-1">
+                    <span class="block text-[9px] uppercase tracking-wider text-cafe-ash mb-1">Minutes</span>
+                    <input id="mins" type="number" min="0" max="59" value="30" 
+                           class="w-full bg-cafe-card text-center font-mono-tabular text-2xl font-semibold text-cafe-parchment border border-cafe-border rounded-xl py-2 outline-none focus:border-cafe-honey/80 transition-colors" />
+                  </div>
+                  <span class="text-xl font-mono text-cafe-ash pt-3">:</span>
+                  <div class="text-center flex-1">
+                    <span class="block text-[9px] uppercase tracking-wider text-cafe-ash mb-1">Seconds</span>
+                    <input id="secs" type="number" min="0" max="59" value="00" 
+                           class="w-full bg-cafe-card text-center font-mono-tabular text-2xl font-semibold text-cafe-parchment border border-cafe-border rounded-xl py-2 outline-none focus:border-cafe-honey/80 transition-colors" />
+                  </div>
+                </div>
+
+                <!-- Quick add chips -->
+                <div class="flex items-center gap-2 mt-3">
+                  <button onclick="addMins(15)" class="px-2.5 py-1 text-xs rounded-lg bg-cafe-card border border-cafe-border text-cafe-linen hover:border-cafe-borderLight hover:text-cafe-parchment transition-all">+15m</button>
+                  <button onclick="addMins(30)" class="px-2.5 py-1 text-xs rounded-lg bg-cafe-card border border-cafe-border text-cafe-linen hover:border-cafe-borderLight hover:text-cafe-parchment transition-all">+30m</button>
+                  <button onclick="addHours(1)" class="px-2.5 py-1 text-xs rounded-lg bg-cafe-card border border-cafe-border text-cafe-linen hover:border-cafe-borderLight hover:text-cafe-parchment transition-all">+1h</button>
+                  <button onclick="addHours(2)" class="px-2.5 py-1 text-xs rounded-lg bg-cafe-card border border-cafe-border text-cafe-linen hover:border-cafe-borderLight hover:text-cafe-parchment transition-all">+2h</button>
+                  <button onclick="copyPrevDay()" class="ml-auto px-2.5 py-1 text-xs rounded-lg bg-cafe-card border border-cafe-border text-cafe-oatmeal hover:text-cafe-parchment transition-all">Copy Wed</button>
+                </div>
+              </div>
+
+              <!-- Record Study Button -->
+              <button onclick="logSession()" class="w-full py-3 px-4 bg-cafe-honey hover:bg-cafe-honey-light text-cafe-bg font-sans font-semibold text-sm rounded-xl transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2">
+                <span>☕</span>
+                <span>Record Today's Study Time</span>
+              </button>
+            </div>
+
+            <!-- SUBMODE B: PRE-KICKOFF DECLARATION INPUTS (FEAT-DECL-01, FEAT-DECL-02, FEAT-DECL-03) -->
+            <div id="submode-prekickoff-view" class="hidden space-y-5">
+              <div class="p-3.5 rounded-2xl bg-cafe-card/70 border border-cafe-honey/40 space-y-1">
+                <span class="text-xs font-serif font-semibold text-cafe-honey">Pre-Kickoff Enrollment Form</span>
+                <p class="text-[11px] text-cafe-oatmeal">
+                  Declare your weekly target hours and commitments. These become permanently read-only once the host triggers event kickoff.
+                </p>
+              </div>
+
+              <!-- Duo Partner Self-Naming Block (FEAT-CHAL-06) -->
+              <div class="p-3.5 rounded-2xl bg-cafe-card/70 border border-cafe-border space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="block text-[11px] font-medium text-cafe-parchment uppercase tracking-wider flex items-center gap-1.5 font-serif">
+                    <span>👥</span>
+                    <span>Duo Team Name (Duos Event)</span>
+                  </label>
+                  <span class="text-[10px] text-cafe-honey bg-cafe-honey/10 px-2 py-0.5 rounded border border-cafe-honey/30 font-sans">
+                    Self-Named by Partners
+                  </span>
+                </div>
+                <input id="declared-duo-name" type="text" value="Midnight Chai & Calculus" placeholder="Choose your duo team name..." class="w-full bg-cafe-bg border border-cafe-border text-xs py-2 px-3 rounded-xl text-cafe-parchment focus:border-cafe-honey focus:outline-none" />
+                <p class="text-[10px] text-cafe-oatmeal font-sans leading-relaxed">
+                  In Duos battles, you and your accountability partner name your own team. Once the host triggers event kickoff, this name locks permanently.
+                </p>
+              </div>
+
+              <!-- Declared Target Hours Input (FEAT-DECL-01) -->
+              <div>
+                <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase tracking-wider mb-1.5">
+                  Weekly Target Hours (1h–105h)
+                </label>
+                <div class="flex items-center gap-2">
+                  <input id="declared-target-hours" type="number" min="1" max="105" value="35" class="bg-cafe-bg border border-cafe-border text-center font-mono text-xl py-2 px-3 rounded-xl text-cafe-parchment w-28" />
+                  <span class="text-xs text-cafe-oatmeal font-mono">hours (35:00:00)</span>
+                </div>
+              </div>
+
+              <!-- Mandatory Goals Declaration (FEAT-DECL-02) -->
+              <div>
+                <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase tracking-wider mb-1.5">
+                  Weekly Goals Declaration (1 to 10 Tasks)
+                </label>
+                <div class="space-y-2" id="prekickoff-goals-list">
+                  <div class="flex items-center gap-2">
+                    <input type="text" value="Finish Organic Chemistry Reaction Mechanisms (Ch 4–6)" class="flex-1 bg-cafe-bg border border-cafe-border text-xs py-2 px-3 rounded-xl text-cafe-parchment" />
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input type="text" value="Complete 2024 Past Paper 1 and annotate mistakes" class="flex-1 bg-cafe-bg border border-cafe-border text-xs py-2 px-3 rounded-xl text-cafe-parchment" />
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input type="text" value="45m daily spaced repetition Anki deck" class="flex-1 bg-cafe-bg border border-cafe-border text-xs py-2 px-3 rounded-xl text-cafe-parchment" />
+                  </div>
+                </div>
+                <button onclick="addPrekickoffGoalRow()" class="mt-2 text-xs text-cafe-honey hover:underline flex items-center gap-1">
+                  <span>➕</span> Add Another Goal (Max 10)
+                </button>
+              </div>
+
+              <button onclick="saveDeclarations()" class="w-full py-2.5 px-4 bg-cafe-card hover:bg-cafe-elevated border border-cafe-honey/50 text-cafe-parchment text-xs font-semibold rounded-xl transition-all">
+                Save Pre-Kickoff Declarations
+              </button>
+            </div>
+
+            <!-- SPECTATOR RESTRICTION NOTICE (Visible only in Spectator role) -->
+            <div id="spectator-welcome-card" class="hidden p-5 rounded-2xl bg-cafe-card border border-cafe-border text-center space-y-2.5">
+              <span class="text-2xl">🍵</span>
+              <h4 class="font-serif text-sm font-semibold text-cafe-parchment">Lounge Guest View</h4>
+              <p class="text-xs text-cafe-oatmeal font-sans leading-relaxed">
+                You are observing the study lounge in public read-only mode. All house standings and forfeit walls are visible. Sign in via Discord to log study time and join a house.
+              </p>
+              <button onclick="setRole('participant'); showToast('Signed in via Discord OAuth 2.0', '🔑')" class="mt-1 px-4 py-2 bg-[#5865F2] hover:bg-[#4752C4] text-white text-xs font-medium rounded-xl shadow transition-all">
+                Sign In with Discord
+              </button>
+            </div>
+
+            <!-- DYNAMIC CATCH-UP DEFICIT ENGINE (FEAT-LEAD-03) -->
+            <div id="catchup-reflection-card" class="p-4 rounded-2xl bg-cafe-card/70 border border-cafe-border space-y-3">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-serif text-cafe-parchment">Weekly Target Progress</span>
+                <span class="font-mono text-cafe-honey font-medium">22h 45m / 35h 00m</span>
+              </div>
+
+              <div class="w-full h-1.5 bg-cafe-bg rounded-full overflow-hidden">
+                <div class="h-full bg-cafe-sage rounded-full" style="width: 65%"></div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-cafe-sage-surface/60 border border-cafe-sage/30 flex items-start gap-2.5">
+                <span class="text-base text-cafe-sage leading-none">🌿</span>
+                <div class="text-xs text-cafe-linen space-y-0.5 font-sans">
+                  <span class="font-medium text-cafe-parchment">On serene pace.</span>
+                  <p class="text-cafe-oatmeal leading-relaxed">
+                    You are 2h 15m ahead of pace. To hit your 35h target, you only need ~4h 05m/day over the remaining 3 days.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- RIGHT COLUMN: INTENTIONS CHECKLIST & STANDINGS TABLE (FEAT-DECL-02, FEAT-DECL-04, FEAT-LEAD-02) -->
+        <section class="lg:col-span-7 space-y-6">
+
+          <!-- INTENTIONS CHECKLIST (FEAT-DECL-02 & FEAT-DECL-04) -->
+          <div class="wood-card rounded-3xl p-6 sm:p-7 space-y-4 texture-paper">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-cafe-border">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">📖</span>
+                <div>
+                  <h3 class="font-serif text-base font-semibold text-cafe-parchment">Study Intentions & Goals</h3>
+                  <p class="text-[11px] text-cafe-oatmeal">All declared tasks must be completed before the week concludes</p>
+                </div>
+              </div>
+              <span class="text-xs text-cafe-oatmeal font-mono bg-cafe-card px-2.5 py-1 rounded-md border border-cafe-border">
+                <span id="goals-done" class="text-cafe-sage font-bold">3</span> / 5 Finished
+              </span>
+            </div>
+
+            <!-- Task Items -->
+            <div class="space-y-2" id="goal-container">
+              
+              <div class="task-item flex items-start justify-between gap-3 p-3 rounded-xl bg-cafe-card/60 border border-cafe-border transition-all">
+                <div onclick="toggleTask(this)" class="flex items-start gap-3 flex-1 cursor-pointer">
+                  <div class="mt-0.5 w-4 h-4 rounded bg-cafe-sage-surface border border-cafe-sage flex items-center justify-center text-[10px] text-cafe-sage font-bold">✓</div>
+                  <div>
+                    <p class="text-xs text-cafe-oatmeal line-through font-sans">Finish Organic Chemistry: Reaction Mechanisms (Chapters 4–6)</p>
+                    <span class="text-[10px] text-cafe-ash font-mono">Completed Tuesday</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="task-item flex items-start justify-between gap-3 p-3 rounded-xl bg-cafe-card/60 border border-cafe-border transition-all">
+                <div onclick="toggleTask(this)" class="flex items-start gap-3 flex-1 cursor-pointer">
+                  <div class="mt-0.5 w-4 h-4 rounded bg-cafe-sage-surface border border-cafe-sage flex items-center justify-center text-[10px] text-cafe-sage font-bold">✓</div>
+                  <div>
+                    <p class="text-xs text-cafe-oatmeal line-through font-sans">Complete 2024 Past Paper 1 and annotate erroneous questions</p>
+                    <span class="text-[10px] text-cafe-ash font-mono">Completed Wednesday</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="task-item flex items-start justify-between gap-3 p-3 rounded-xl bg-cafe-card/60 border border-cafe-border transition-all">
+                <div onclick="toggleTask(this)" class="flex items-start gap-3 flex-1 cursor-pointer">
+                  <div class="mt-0.5 w-4 h-4 rounded bg-cafe-sage-surface border border-cafe-sage flex items-center justify-center text-[10px] text-cafe-sage font-bold">✓</div>
+                  <div>
+                    <p class="text-xs text-cafe-oatmeal line-through font-sans">45 minutes daily spaced repetition review (Anki pharmacology deck)</p>
+                    <span class="text-[10px] text-cafe-ash font-mono">Completed Thursday</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="task-item flex items-start justify-between gap-3 p-3 rounded-xl bg-cafe-card/90 border border-cafe-border hover:border-cafe-honey/40 transition-all">
+                <div onclick="toggleTask(this)" class="flex items-start gap-3 flex-1 cursor-pointer">
+                  <div class="mt-0.5 w-4 h-4 rounded bg-cafe-bg border border-cafe-borderLight flex items-center justify-center text-[10px] text-transparent font-bold">✓</div>
+                  <div>
+                    <p class="text-xs text-cafe-parchment font-sans">Solve Thermodynamics problem set 3 (Equilibrium constants)</p>
+                    <span class="text-[10px] text-cafe-oatmeal font-mono">Remaining • Est. 3h</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="task-item flex items-start justify-between gap-3 p-3 rounded-xl bg-cafe-card/90 border border-cafe-border hover:border-cafe-honey/40 transition-all">
+                <div onclick="toggleTask(this)" class="flex items-start gap-3 flex-1 cursor-pointer">
+                  <div class="mt-0.5 w-4 h-4 rounded bg-cafe-bg border border-cafe-borderLight flex items-center justify-center text-[10px] text-transparent font-bold">✓</div>
+                  <div>
+                    <p class="text-xs text-cafe-parchment font-sans">Draft literature review introduction section for honours thesis</p>
+                    <span class="text-[10px] text-cafe-oatmeal font-mono">Remaining • Est. 4h</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <p class="text-[11px] text-cafe-ash pt-1 font-sans">
+              Locked at kickoff to ensure mutual accountability. Click any item to preview completion.
+            </p>
+          </div>
+
+          <!-- STUDY LOUNGE STANDINGS (FEAT-LEAD-02) -->
+          <div class="wood-card rounded-3xl p-6 sm:p-7 space-y-4 texture-paper">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-cafe-border">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">📋</span>
+                <div>
+                  <h3 class="font-serif text-base font-semibold text-cafe-parchment">Study Lounge Standings</h3>
+                  <p class="text-[11px] text-cafe-oatmeal">All participants ordered by verified study time</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1 text-xs">
+                <button onclick="filterTable('all')" id="btn-all" class="px-2.5 py-1 rounded-lg bg-cafe-card border border-cafe-border text-cafe-parchment font-medium">All</button>
+                <button onclick="filterTable('bees')" id="btn-bees" class="px-2.5 py-1 rounded-lg text-cafe-oatmeal hover:text-cafe-parchment">🐝 Bees</button>
+                <button onclick="filterTable('butterflies')" id="btn-but" class="px-2.5 py-1 rounded-lg text-cafe-oatmeal hover:text-cafe-parchment">🦋 Butterflies</button>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="text-[10px] text-cafe-ash uppercase tracking-wider border-b border-cafe-border/50 pb-2 font-mono">
+                    <th class="py-2 px-2 font-normal">#</th>
+                    <th class="py-2 px-2 font-normal">Participant</th>
+                    <th class="py-2 px-2 font-normal">House</th>
+                    <th class="py-2 px-2 font-normal">Logged</th>
+                    <th class="py-2 px-2 font-normal">Target</th>
+                    <th class="py-2 px-2 font-normal">Goals</th>
+                    <th class="py-2 px-2 font-normal text-right">Pace</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-cafe-border/30 font-mono-tabular" id="standings-body">
+                  <!-- Dynamically rendered via JS -->
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+      <!-- ACCOUNTABILITY NOOK & FORFEITS (FEAT-PUN-01, FEAT-PUN-02, FEAT-PUN-03) -->
+      <section class="mt-8 wood-card rounded-3xl p-6 sm:p-8 texture-paper space-y-5 border border-cafe-border">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-cafe-border">
+          <div class="flex items-center gap-3">
+            <span class="text-xl">🎪</span>
+            <div>
+              <h3 class="font-serif text-base font-semibold text-cafe-parchment">The Accountability Nook & Forfeits</h3>
+              <p class="text-[11px] text-cafe-oatmeal">Playful stakes: Dual-failure rule (missing target hours OR goals assigns the forfeit avatar)</p>
+            </div>
+          </div>
+
+          <a href="./assets/punishment_pfp.jpg" download="holdmetoit-punishment-avatar.jpg" onclick="notifyDownload()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cafe-card hover:bg-cafe-elevated border border-cafe-border hover:border-cafe-borderLight text-xs text-cafe-parchment font-medium transition-all">
+            <svg class="w-3.5 h-3.5 text-cafe-honey" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Download Event Avatar (.jpg)
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+          
+          <!-- Bespoke Asset Showcase (FEAT-PUN-03) -->
+          <div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-cafe-card/50 border border-cafe-border">
+            <img src="./assets/punishment_pfp.jpg" alt="Cozy Clown Bee punishment avatar" class="w-14 h-14 rounded-xl object-cover border border-cafe-border" />
+            <div class="text-xs">
+              <span class="font-serif text-cafe-parchment font-medium">Weekly Forfeit Avatar</span>
+              <p class="text-[11px] text-cafe-oatmeal mt-0.5">Assigned to members missing target hours or goals</p>
+            </div>
+          </div>
+
+          <!-- Flagged Member 1 -->
+          <div class="p-3.5 rounded-2xl bg-cafe-card/50 border border-cafe-border flex items-center justify-between text-xs">
+            <div>
+              <span class="font-sans font-medium text-cafe-parchment">SlothBrain</span>
+              <p class="text-[10px] text-cafe-oatmeal">4 Incomplete Goals • Deficit: -4h</p>
+            </div>
+            <span class="text-[10px] text-cafe-cinnamon bg-cafe-cinnamon-surface px-2 py-0.5 rounded border border-cafe-cinnamon/30 font-medium">
+              Catch-Up
+            </span>
+          </div>
+
+          <!-- Flagged Member 2 -->
+          <div class="p-3.5 rounded-2xl bg-cafe-card/50 border border-cafe-border flex items-center justify-between text-xs">
+            <div>
+              <span class="font-sans font-medium text-cafe-parchment">CramKing</span>
+              <p class="text-[10px] text-cafe-oatmeal">2 Incomplete Goals • Deficit: -6h</p>
+            </div>
+            <span class="text-[10px] text-cafe-cinnamon bg-cafe-cinnamon-surface px-2 py-0.5 rounded border border-cafe-cinnamon/30 font-medium">
+              Catch-Up
+            </span>
+          </div>
+
+        </div>
+
+      </section>
+    </main>
+
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 3. DEDICATED HOST MASTER CONSOLE (UNCLUTTERED, INTUITIVE PROCTOR DESK)    -->
+  <!-- ========================================================================= -->
+  <div id="host-view-container" class="hidden max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Host Navigation Tabs & Sub-bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-cafe-border">
+      
+      <!-- Primary Tab Switcher -->
+      <div class="flex items-center gap-1.5 bg-cafe-card p-1 rounded-2xl border border-cafe-border text-xs">
+        <button id="btn-host-tab-roster" onclick="setHostTab('roster')" class="px-4 py-2 rounded-xl bg-cafe-elevated text-cafe-honey font-medium shadow-sm transition-all flex items-center gap-2">
+          <span>👥</span>
+          <span>Roster & User Dossier</span>
+        </button>
+        <button id="btn-host-tab-standings" onclick="setHostTab('standings')" class="px-4 py-2 rounded-xl text-cafe-oatmeal hover:text-cafe-parchment transition-all flex items-center gap-2">
+          <span>🏆</span>
+          <span>House Standings & Plaque</span>
+        </button>
+        <button id="btn-host-tab-audit" onclick="setHostTab('audit')" class="px-4 py-2 rounded-xl text-cafe-oatmeal hover:text-cafe-parchment transition-all flex items-center gap-2">
+          <span>📜</span>
+          <span>Audit Trail</span>
+          <span id="audit-count-badge" class="px-1.5 py-0.2 rounded-full bg-cafe-honey/20 text-cafe-honey text-[10px] font-mono">1</span>
+        </button>
+      </div>
+
+      <!-- Quick Proctor Status Tag -->
+      <div class="flex items-center gap-2 text-xs text-cafe-oatmeal">
+        <span class="inline-block w-2 h-2 rounded-full bg-cafe-sage"></span>
+        <span>Proctor Session: <strong class="text-cafe-parchment font-mono">Proctor#1337</strong></span>
+        <span class="text-cafe-ash font-mono">• Law L5 Active</span>
+      </div>
+
+    </div>
+
+    <!-- ----------------------------------------------------------------------- -->
+    <!-- HOST TAB 1: ROSTER & INDIVIDUAL USER DOSSIER (REVIEW & EDIT)           -->
+    <!-- ----------------------------------------------------------------------- -->
+    <div id="host-tab-roster-view" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- Left Sub-Column: Participant Directory (lg:col-span-4) -->
+      <div class="lg:col-span-4 space-y-4">
+        <div class="wood-card rounded-3xl p-5 space-y-4 texture-paper border border-cafe-border">
+          
+          <div class="flex items-center justify-between pb-2 border-b border-cafe-border/70">
+            <div>
+              <h3 class="font-serif text-sm font-semibold text-cafe-parchment">Challenge Roster</h3>
+              <p class="text-[11px] text-cafe-oatmeal">Select a companion to review data</p>
+            </div>
+            <span class="text-[10px] font-mono bg-cafe-card px-2 py-0.5 rounded border border-cafe-border text-cafe-oatmeal">
+              6 Members
+            </span>
+          </div>
+
+          <!-- Roster Search / Filter -->
+          <div class="space-y-2">
+            <input id="roster-search" type="text" placeholder="Search companion name..." oninput="filterRoster(this.value)" 
+                   class="w-full bg-cafe-bg border border-cafe-border rounded-xl px-3 py-1.5 text-xs text-cafe-parchment outline-none focus:border-cafe-honey" />
+            
+            <div class="flex items-center gap-1 text-[11px]">
+              <button onclick="filterRosterHouse('all')" id="rf-all" class="px-2.5 py-0.5 rounded-lg bg-cafe-elevated text-cafe-honey font-medium border border-cafe-border">All</button>
+              <button onclick="filterRosterHouse('bees')" id="rf-bees" class="px-2.5 py-0.5 rounded-lg text-cafe-oatmeal hover:text-cafe-parchment">🐝 Bees</button>
+              <button onclick="filterRosterHouse('butterflies')" id="rf-butterflies" class="px-2.5 py-0.5 rounded-lg text-cafe-oatmeal hover:text-cafe-parchment">🦋 Butterflies</button>
+            </div>
+          </div>
+
+          <!-- Roster Member List -->
+          <div class="space-y-2 max-h-[550px] overflow-y-auto pr-1" id="roster-list-container">
+            <!-- Dynamically populated via JS -->
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right Sub-Column: Detailed User Dossier & Correction Deck (lg:col-span-8) -->
+      <div class="lg:col-span-8 space-y-5">
+        
+        <div class="wood-card rounded-3xl p-6 sm:p-7 space-y-6 texture-paper border border-cafe-border">
+          
+          <!-- Dossier Header -->
+          <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-cafe-border">
+            <div class="flex items-center gap-3.5">
+              <div id="dossier-avatar" class="w-12 h-12 rounded-2xl bg-cafe-elevated border border-cafe-border flex items-center justify-center text-xl font-serif font-bold text-cafe-honey">
+                S
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 id="dossier-name" class="font-serif text-lg font-semibold text-cafe-parchment">SlothBrain</h3>
+                  <span id="dossier-house-tag" class="text-[10px] font-sans px-2 py-0.5 rounded-md bg-cafe-card border border-cafe-border text-cafe-lavender">
+                    🦋 Lavender Butterflies
+                  </span>
+                  <span id="dossier-status-pill" class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-cinnamon-surface border border-cafe-cinnamon/40 text-cafe-cinnamon font-medium">
+                    CATCH-UP PACE (-4h)
+                  </span>
+                </div>
+                <p id="dossier-id" class="text-[10px] font-mono text-cafe-ash mt-0.5">Discord ID: 398102938471920194 • Enrolled: 2026-09-02</p>
+              </div>
+            </div>
+
+            <!-- Quick Moderator Actions -->
+            <div class="flex items-center gap-2">
+              <button onclick="triggerDossierPardon()" class="px-3 py-1.5 rounded-xl bg-cafe-card hover:bg-cafe-elevated border border-cafe-sage/40 text-cafe-sage text-xs font-medium transition-all flex items-center gap-1.5">
+                <span>🕊️</span>
+                <span>Pardon (Set EXCUSED)</span>
+              </button>
+              <button onclick="triggerDossierAuditExport()" class="px-3 py-1.5 rounded-xl bg-cafe-card hover:bg-cafe-elevated border border-cafe-border text-cafe-linen text-xs font-medium transition-all flex items-center gap-1.5">
+                <span>📑</span>
+                <span>Export Member Ledger</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 1: Weekly Commitments Summary & Target Hours Edit -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            
+            <!-- Logged Total -->
+            <div class="p-3.5 rounded-2xl bg-cafe-card/50 border border-cafe-border">
+              <span class="block text-[10px] text-cafe-ash uppercase tracking-wider font-mono">Logged Study Time</span>
+              <span id="dossier-logged-total" class="font-mono-tabular text-xl font-semibold text-cafe-parchment mt-0.5 block">
+                11:15:00
+              </span>
+              <span class="text-[10px] text-cafe-oatmeal">Current verified duration</span>
+            </div>
+
+            <!-- Declared Target Hours (With Host Edit Action) -->
+            <div class="p-3.5 rounded-2xl bg-cafe-card/50 border border-cafe-border">
+              <div class="flex items-center justify-between">
+                <span class="block text-[10px] text-cafe-ash uppercase tracking-wider font-mono">Target Commitment</span>
+                <button onclick="editDossierTarget()" class="text-[10px] text-cafe-honey hover:underline flex items-center gap-0.5">
+                  <span>✏️</span> Edit
+                </button>
+              </div>
+              <span id="dossier-target-total" class="font-mono-tabular text-xl font-semibold text-cafe-honey-light mt-0.5 block">
+                35:00:00
+              </span>
+              <span class="text-[10px] text-cafe-oatmeal">Pre-kickoff target commitment</span>
+            </div>
+
+            <!-- Goals Finished -->
+            <div class="p-3.5 rounded-2xl bg-cafe-card/50 border border-cafe-border">
+              <span class="block text-[10px] text-cafe-ash uppercase tracking-wider font-mono">Mandatory Goals</span>
+              <span id="dossier-goals-summary" class="font-mono-tabular text-xl font-semibold text-cafe-cinnamon mt-0.5 block">
+                1 / 5 Completed
+              </span>
+              <span class="text-[10px] text-cafe-oatmeal">4 Remaining commitments</span>
+            </div>
+
+          </div>
+
+          <!-- Section 2: 7-Day Study Log Breakdown & Inline Proctor Hours Override (FEAT-LOG-04, Law L5) -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="font-serif text-sm font-semibold text-cafe-parchment">7-Day Study Log Breakdown & Corrections</h4>
+                <p class="text-[11px] text-cafe-oatmeal">Directly update daily hours for crashed timers or discrepancies (Law L5)</p>
+              </div>
+              <span class="text-[10px] font-mono text-cafe-ash">is_override = true attached on edit</span>
+            </div>
+
+            <div class="overflow-x-auto rounded-2xl border border-cafe-border bg-cafe-bg/60">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="text-[10px] text-cafe-ash uppercase tracking-wider border-b border-cafe-border/50 bg-cafe-card/50 font-mono">
+                    <th class="py-2.5 px-3">Day</th>
+                    <th class="py-2.5 px-3">Logged (HH:MM:SS)</th>
+                    <th class="py-2.5 px-3">Status / Proctor Flag</th>
+                    <th class="py-2.5 px-3 text-right">Correct Hours</th>
+                  </tr>
+                </thead>
+                <tbody id="dossier-days-table" class="divide-y divide-cafe-border/30 font-mono-tabular">
+                  <!-- Dynamically populated via JS for the active user -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Section 3: Declared Study Goals & Mid-Event Host Revision (FEAT-DECL-04) -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="font-serif text-sm font-semibold text-cafe-parchment">Declared Study Goals & Mid-Event Revisions</h4>
+                <p class="text-[11px] text-cafe-oatmeal">Unlock & edit goals for syllabus shifts, course drops, or emergencies</p>
+              </div>
+              <span class="text-[10px] font-mono text-cafe-ash">Audit trail logs all edits</span>
+            </div>
+
+            <div id="dossier-goals-container" class="space-y-2">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ----------------------------------------------------------------------- -->
+    <!-- HOST TAB 2: HOUSE STANDINGS & PLAQUE (HOST PERSPECTIVE)                -->
+    <!-- ----------------------------------------------------------------------- -->
+    <div id="host-tab-standings-view" class="hidden space-y-6">
+      
+      <div class="wood-card rounded-3xl p-6 sm:p-8 space-y-6 texture-paper border border-cafe-border">
+        
+        <div class="flex items-center justify-between pb-4 border-b border-cafe-border">
+          <div>
+            <h3 class="font-serif text-lg font-semibold text-cafe-parchment">House Standings Plaque</h3>
+            <p class="text-xs text-cafe-oatmeal">Aggregated team statistics under Single Entity Unity (Law L1)</p>
+          </div>
+          <span class="text-xs font-mono text-cafe-honey bg-cafe-card px-3 py-1 rounded-xl border border-cafe-border">
+            Current Lead: Honey Bees (+03h 54m 25s)
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- House 1 Full Card -->
+          <div class="p-5 rounded-2xl bg-cafe-card/60 border border-cafe-honey/40 space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <img src="./assets/mascot_bees.jpg" alt="Honey Bees Mascot" class="w-12 h-12 rounded-xl object-cover border border-cafe-honey/40 shadow-sm" />
+                <div>
+                  <h4 class="font-serif text-base font-semibold text-cafe-parchment">Honey Bees</h4>
+                  <span class="text-[11px] text-cafe-honey font-medium">1st Place • 3 Active Members</span>
+                </div>
+              </div>
+              <div class="text-right font-mono">
+                <span id="plaque-bees-hours" class="text-2xl font-bold text-cafe-honey-light">55:00:00</span>
+                <span class="block text-[10px] text-cafe-ash">Total Seconds: 198,000s</span>
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-2 border-t border-cafe-border/50 text-xs">
+              <div class="flex items-center justify-between py-1 border-b border-cafe-border/20">
+                <span class="text-cafe-linen">AuraStudier</span>
+                <span class="font-mono text-cafe-parchment">22:45:00 (3/5 goals)</span>
+              </div>
+              <div class="flex items-center justify-between py-1 border-b border-cafe-border/20">
+                <span class="text-cafe-linen">NocturnalEcho</span>
+                <span class="font-mono text-cafe-parchment">19:55:00 (2/3 goals)</span>
+              </div>
+              <div class="flex items-center justify-between py-1">
+                <span class="text-cafe-linen">CramKing</span>
+                <span class="font-mono text-cafe-cinnamon font-medium">12:20:00 (2/4 goals - Catch-Up)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- House 2 Full Card -->
+          <div class="p-5 rounded-2xl bg-cafe-card/60 border border-cafe-border space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <img src="./assets/mascot_butterflies.jpg" alt="Lavender Butterflies Mascot" class="w-12 h-12 rounded-xl object-cover border border-cafe-lavender/40 shadow-sm" />
+                <div>
+                  <h4 class="font-serif text-base font-semibold text-cafe-parchment">Lavender Butterflies</h4>
+                  <span class="text-[11px] text-cafe-lavender font-medium">2nd Place • 3 Active Members</span>
+                </div>
+              </div>
+              <div class="text-right font-mono">
+                <span id="plaque-but-hours" class="text-2xl font-bold text-cafe-linen">51:05:35</span>
+                <span class="block text-[10px] text-cafe-ash">Total Seconds: 183,935s</span>
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-2 border-t border-cafe-border/50 text-xs">
+              <div class="flex items-center justify-between py-1 border-b border-cafe-border/20">
+                <span class="text-cafe-linen">KiraLibrary</span>
+                <span class="font-mono text-cafe-parchment">21:10:20 (4/4 goals)</span>
+              </div>
+              <div class="flex items-center justify-between py-1 border-b border-cafe-border/20">
+                <span class="text-cafe-linen">MidnightChai</span>
+                <span class="font-mono text-cafe-parchment">18:40:15 (2/4 goals)</span>
+              </div>
+              <div class="flex items-center justify-between py-1">
+                <span class="text-cafe-linen">SlothBrain</span>
+                <span class="font-mono text-cafe-cinnamon font-medium">11:15:00 (1/5 goals - Catch-Up)</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ----------------------------------------------------------------------- -->
+    <!-- HOST TAB 3: SYSTEM AUDIT TRAIL (SIMPLIFIED & IMMUTABLE)                 -->
+    <!-- ----------------------------------------------------------------------- -->
+    <div id="host-tab-audit-view" class="hidden space-y-4">
+      
+      <div class="wood-card rounded-3xl p-6 sm:p-7 space-y-4 texture-paper border border-cafe-border">
+        
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-cafe-border">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-lg">📜</span>
+              <h3 class="font-serif text-base font-semibold text-cafe-parchment">System Audit Trail</h3>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-sage-surface text-cafe-sage border border-cafe-sage/40">
+                🔒 Immutable Log
+              </span>
+            </div>
+            <p class="text-xs text-cafe-oatmeal mt-0.5">
+              Append-only log of moderator edits, hours overrides, and status transitions (FEAT-AUDIT-01).
+            </p>
+          </div>
+
+          <div>
+            <button onclick="exportAuditLogJson()" class="px-3.5 py-1.5 rounded-xl bg-cafe-card hover:bg-cafe-elevated border border-cafe-border hover:border-cafe-borderLight text-cafe-linen hover:text-cafe-parchment font-sans text-xs transition-all shadow-sm flex items-center gap-1.5">
+              <span>📥</span>
+              <span>Download Log (.json)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Clean 4-Column Ledger Table -->
+        <div class="overflow-x-auto rounded-2xl border border-cafe-border bg-cafe-bg/60">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="text-[10px] text-cafe-ash uppercase tracking-wider border-b border-cafe-border/50 bg-cafe-card/50 font-mono">
+                <th class="py-2.5 px-3 font-normal">Timestamp</th>
+                <th class="py-2.5 px-3 font-normal">Actor</th>
+                <th class="py-2.5 px-3 font-normal">Action & Details</th>
+                <th class="py-2.5 px-3 font-normal">Reason</th>
+              </tr>
+            </thead>
+            <tbody id="audit-log-table-body" class="divide-y divide-cafe-border/30 font-mono-tabular">
+              <!-- Dynamically populated via JS -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 4. MODALS (CHALLENGE CREATOR, INLINE OVERRIDES, PARDON, GOAL EDIT)        -->
+  <!-- ========================================================================= -->
+
+  <!-- MODAL 1: CHALLENGE CREATOR (FEAT-CHAL-01) -->
+  <div id="modal-creator" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="wood-card rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl space-y-5 border border-cafe-border texture-paper">
+      <div class="flex items-center justify-between pb-3 border-b border-cafe-border">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🛠️</span>
+          <div>
+            <h3 class="font-serif text-base font-semibold text-cafe-parchment">Create New Study Challenge</h3>
+            <p class="text-[11px] text-cafe-oatmeal">Set up a weekly battle for your community</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-creator')" class="text-cafe-ash hover:text-cafe-parchment text-lg p-1">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">Challenge Title</label>
+          <input id="new-chal-title" type="text" value="Sprint #5: Finals Week Study Marathon" class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2.5 text-cafe-parchment outline-none" />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase">Battle Format (Law L1)</label>
+            <span id="creator-format-hint" class="text-[10px] text-cafe-honey font-sans">Dynamic Event Themes</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <button id="fmt-btn-team" onclick="selectCreatorFormat('team')" type="button" class="p-2.5 rounded-xl bg-cafe-elevated border border-cafe-honey text-cafe-honey font-medium text-center transition-all">
+              Team vs Team
+            </button>
+            <button id="fmt-btn-duos" onclick="selectCreatorFormat('duos')" type="button" class="p-2.5 rounded-xl bg-cafe-card border border-cafe-border text-cafe-oatmeal hover:text-cafe-parchment text-center transition-all">
+              Duos (Pairs)
+            </button>
+            <button id="fmt-btn-solos" onclick="selectCreatorFormat('solos')" type="button" class="p-2.5 rounded-xl bg-cafe-card border border-cafe-border text-cafe-oatmeal hover:text-cafe-parchment text-center transition-all">
+              Solos (FFA)
+            </button>
+          </div>
+          <p id="creator-format-desc" class="text-[10px] text-cafe-oatmeal mt-1.5 font-sans">
+            Teams change every event. Configure custom names & themes for this weekly battle.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">Start Date & Time</label>
+            <input type="datetime-local" value="2026-09-08T00:00" class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2 text-cafe-parchment text-xs outline-none" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">End Date & Time</label>
+            <input type="datetime-local" value="2026-09-14T23:59" class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2 text-cafe-parchment text-xs outline-none" />
+          </div>
+        </div>
+
+        <!-- Team vs Team Dynamic Theme Inputs -->
+        <div id="creator-team-inputs" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">Team 1 Theme & Name</label>
+            <input id="creator-t1-name" type="text" value="Honey Bees" placeholder="e.g. Night Owls" class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2 text-cafe-parchment text-xs" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">Team 2 Theme & Name</label>
+            <input id="creator-t2-name" type="text" value="Lavender Butterflies" placeholder="e.g. Early Larks" class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2 text-cafe-parchment text-xs" />
+          </div>
+        </div>
+
+        <!-- Duos Self-Naming Informational Callout (FEAT-CHAL-06) -->
+        <div id="creator-duo-note" class="hidden p-3 rounded-xl bg-cafe-honey/10 border border-cafe-honey/30 text-[11px] text-cafe-linen space-y-1">
+          <span class="font-serif text-cafe-honey font-semibold flex items-center gap-1">
+            <span>👥</span> Duos Partner Self-Naming Enabled
+          </span>
+          <p class="text-cafe-oatmeal leading-relaxed">
+            In Duos battles, paired participants name their own teams directly in their Cockpit during pre-kickoff. Names permanently lock on kickoff.
+          </p>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-cafe-border flex justify-end gap-2">
+        <button onclick="closeModal('modal-creator')" class="px-4 py-2 bg-cafe-card border border-cafe-border text-cafe-oatmeal text-xs rounded-xl">Cancel</button>
+        <button onclick="saveNewChallenge()" class="px-4 py-2 bg-cafe-honey hover:bg-cafe-honey-light text-cafe-bg font-semibold text-xs rounded-xl shadow">Create Challenge</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: HOST TARGET HOURS ADJUSTMENT (INLINE) -->
+  <div id="modal-target-edit" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="wood-card rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-cafe-border texture-paper">
+      <div class="flex items-center justify-between pb-3 border-b border-cafe-border">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">✏️</span>
+          <div>
+            <h3 class="font-serif text-base font-semibold text-cafe-parchment">Adjust Target Commitment</h3>
+            <p class="text-[11px] text-cafe-oatmeal">Correct target hours for <span id="m-target-user" class="text-cafe-honey font-semibold">User</span></p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-target-edit')" class="text-cafe-ash hover:text-cafe-parchment text-lg p-1">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">New Target Hours (1h–105h)</label>
+          <input id="m-target-hours" type="number" min="1" max="105" value="30" class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2.5 text-cafe-parchment font-mono text-sm outline-none" />
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">Reason for Adjustment</label>
+          <input id="m-target-reason" type="text" placeholder="Reason for adjustment (e.g. course load change)..." class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2.5 text-cafe-parchment text-xs outline-none" />
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-cafe-border flex justify-end gap-2">
+        <button onclick="closeModal('modal-target-edit')" class="px-4 py-2 bg-cafe-card border border-cafe-border text-cafe-oatmeal text-xs rounded-xl">Cancel</button>
+        <button onclick="saveDossierTargetEdit()" class="px-4 py-2 bg-cafe-honey text-cafe-bg font-semibold text-xs rounded-xl shadow">Save to Audit Log</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: HOST GOAL UNLOCK & MID-EVENT EDIT (FEAT-DECL-04) -->
+  <div id="modal-goaledit" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="wood-card rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-cafe-border texture-paper">
+      <div class="flex items-center justify-between pb-3 border-b border-cafe-border">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔓</span>
+          <div>
+            <h3 class="font-serif text-base font-semibold text-cafe-parchment">Host Goal Unlock & Revision</h3>
+            <p class="text-[11px] text-cafe-oatmeal">Permitted for syllabus shifts, course drops, or illness</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-goaledit')" class="text-cafe-ash hover:text-cafe-parchment text-lg p-1">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">Goal Description</label>
+          <textarea id="edit-goal-input" rows="3" class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2.5 text-cafe-parchment text-xs outline-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">Reason for Revision</label>
+          <input id="edit-goal-reason" type="text" placeholder="Reason for revision (e.g. syllabus update)..." class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2 text-cafe-parchment text-xs outline-none" />
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-cafe-border flex justify-end gap-2">
+        <button onclick="closeModal('modal-goaledit')" class="px-4 py-2 bg-cafe-card border border-cafe-border text-cafe-oatmeal text-xs rounded-xl">Cancel</button>
+        <button onclick="saveGoalEdit()" class="px-4 py-2 bg-cafe-honey text-cafe-bg font-semibold text-xs rounded-xl">Save to Audit Log</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: HOST PARDON / EXCUSE OVERRIDE (FEAT-PUN-04) -->
+  <div id="modal-pardon" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="wood-card rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-cafe-border texture-paper">
+      <div class="flex items-center justify-between pb-3 border-b border-cafe-border">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🕊️</span>
+          <div>
+            <h3 class="font-serif text-base font-semibold text-cafe-parchment">Pardon Participant</h3>
+            <p class="text-[11px] text-cafe-oatmeal">Exempt companion from the weekly forfeit avatar</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-pardon')" class="text-cafe-ash hover:text-cafe-parchment text-lg p-1">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <p class="text-cafe-parchment">
+          Pardoning <span id="pardon-target-name" class="font-bold text-cafe-honey">User</span> will mark their accountability status as <code class="text-cafe-sage font-mono bg-cafe-sage-surface px-1.5 py-0.5 rounded">EXCUSED</code>.
+        </p>
+        <div>
+          <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">Reason for Pardon</label>
+          <input id="pardon-reason-input" type="text" placeholder="Reason for pardon (e.g. documented illness)..." class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2 text-cafe-parchment text-xs outline-none" />
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-cafe-border flex justify-end gap-2">
+        <button onclick="closeModal('modal-pardon')" class="px-4 py-2 bg-cafe-card border border-cafe-border text-cafe-oatmeal text-xs rounded-xl">Cancel</button>
+        <button onclick="confirmPardon()" class="px-4 py-2 bg-cafe-sage text-white font-semibold text-xs rounded-xl">Confirm & Log Pardon</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: SINGLE DAY HOURS OVERRIDE REASON PROMPT -->
+  <div id="modal-override-day" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="wood-card rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-cafe-border texture-paper">
+      <div class="flex items-center justify-between pb-3 border-b border-cafe-border">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⏱️</span>
+          <div>
+            <h3 class="font-serif text-base font-semibold text-cafe-parchment">Save Hours Override</h3>
+            <p class="text-[11px] text-cafe-oatmeal">Host adjustment for <span id="m-override-dayname" class="text-cafe-honey font-mono">Thursday</span></p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-override-day')" class="text-cafe-ash hover:text-cafe-parchment text-lg p-1">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="p-2.5 rounded-xl bg-cafe-bg border border-cafe-border flex items-center justify-between font-mono">
+          <span class="text-cafe-ash text-[11px]">Proposed Duration:</span>
+          <span id="m-override-newtime" class="text-cafe-honey font-bold text-sm">03:45:00</span>
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-cafe-oatmeal uppercase mb-1">Reason for Override</label>
+          <input id="m-override-reason" type="text" placeholder="Reason for override (e.g. YPT app crash)..." class="w-full bg-cafe-bg border border-cafe-border rounded-xl p-2.5 text-cafe-parchment text-xs outline-none" />
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-cafe-border flex justify-end gap-2">
+        <button onclick="closeModal('modal-override-day')" class="px-4 py-2 bg-cafe-card border border-cafe-border text-cafe-oatmeal text-xs rounded-xl">Cancel</button>
+        <button onclick="confirmDayOverride()" class="px-4 py-2 bg-cafe-honey text-cafe-bg font-semibold text-xs rounded-xl">Save & Append Audit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quiet Footer -->
+  <footer class="border-t border-cafe-border/50 py-8 text-center text-xs text-cafe-ash space-y-2 flex flex-col items-center justify-center">
+    <div class="w-8 h-8 rounded-full overflow-hidden border border-cafe-border/60 opacity-60 hover:opacity-100 transition-opacity shadow-sm">
+      <img src="./assets/stamp_cafe.jpg" alt="Official Study Seal" class="w-full h-full object-cover" />
+    </div>
+    <p class="font-serif text-cafe-oatmeal">HoldMeToIt — Designed for quiet, guilt-free study consistency.</p>
+    <p class="font-mono text-[10px]">Monospace second accuracy • Pure domain catch-up arithmetic • Tamper-proof audit trail</p>
+  </footer>
+
+  <!-- ========================================================================= -->
+  <!-- 5. JAVASCRIPT STATE ENGINE & DATA STORE                                   -->
+  <!-- ========================================================================= -->
+  <script>
+    // System Roles: 'participant' | 'spectator' | 'host'
+    let currentRole = 'participant';
+    let challengeState = 'ACTIVE'; // 'UPCOMING' | 'ACTIVE' | 'COMPLETED'
+    let activeHostTab = 'roster';  // 'roster' | 'standings' | 'audit'
+
+    // Core In-Memory Data Models (Relational Prototype Store)
+    const USERS_DATA = [
+      {
+        id: 'user_1',
+        discordId: '102938475610293847',
+        username: 'AuraStudier',
+        displayName: 'AuraStudier',
+        avatarText: 'A',
+        team: 'bees',
+        teamName: 'Honey Bees',
+        teamIcon: '🐝',
+        targetSeconds: 126000, // 35:00:00
+        status: 'NORMAL',      // 'NORMAL' | 'DEFICIT' | 'EXCUSED' | 'PUNISHED'
+        dailyLogs: [
+          { day: 'Monday', date: '2026-09-01', seconds: 16200, isOverride: false }, // 04:30:00
+          { day: 'Tuesday', date: '2026-09-02', seconds: 18900, isOverride: false }, // 05:15:00
+          { day: 'Wednesday', date: '2026-09-03', seconds: 14400, isOverride: false }, // 04:00:00
+          { day: 'Thursday', date: '2026-09-04', seconds: 32400, isOverride: false }, // 09:00:00
+          { day: 'Friday', date: '2026-09-05', seconds: 0, isOverride: false },
+          { day: 'Saturday', date: '2026-09-06', seconds: 0, isOverride: false },
+          { day: 'Sunday', date: '2026-09-07', seconds: 0, isOverride: false },
+        ],
+        goals: [
+          { id: 'g1', text: 'Finish Organic Chemistry: Reaction Mechanisms (Chapters 4–6)', completed: true, dateCompleted: 'Tuesday' },
+          { id: 'g2', text: 'Complete 2024 Past Paper 1 and annotate erroneous questions', completed: true, dateCompleted: 'Wednesday' },
+          { id: 'g3', text: '45 minutes daily spaced repetition review (Anki pharmacology deck)', completed: true, dateCompleted: 'Thursday' },
+          { id: 'g4', text: 'Solve Thermodynamics problem set 3 (Equilibrium constants)', completed: false, dateCompleted: null },
+          { id: 'g5', text: 'Draft literature review introduction section for honours thesis', completed: false, dateCompleted: null },
+        ]
+      },
+      {
+        id: 'user_2',
+        discordId: '203948571029384756',
+        username: 'KiraLibrary',
+        displayName: 'KiraLibrary',
+        avatarText: 'K',
+        team: 'butterflies',
+        teamName: 'Lavender Butterflies',
+        teamIcon: '🦋',
+        targetSeconds: 108000, // 30:00:00
+        status: 'NORMAL',
+        dailyLogs: [
+          { day: 'Monday', date: '2026-09-01', seconds: 18000, isOverride: false }, // 05:00:00
+          { day: 'Tuesday', date: '2026-09-02', seconds: 21600, isOverride: false }, // 06:00:00
+          { day: 'Wednesday', date: '2026-09-03', seconds: 18000, isOverride: false }, // 05:00:00
+          { day: 'Thursday', date: '2026-09-04', seconds: 18620, isOverride: false }, // 05:10:20
+          { day: 'Friday', date: '2026-09-05', seconds: 0, isOverride: false },
+          { day: 'Saturday', date: '2026-09-06', seconds: 0, isOverride: false },
+          { day: 'Sunday', date: '2026-09-07', seconds: 0, isOverride: false },
+        ],
+        goals: [
+          { id: 'g6', text: 'Annotate 3 chapters of Cognitive Neuroscience', completed: true, dateCompleted: 'Monday' },
+          { id: 'g7', text: 'Complete weekly calculus problem set', completed: true, dateCompleted: 'Tuesday' },
+          { id: 'g8', text: 'Write summary essay on linguistic relativity', completed: true, dateCompleted: 'Wednesday' },
+          { id: 'g9', text: 'Review 150 vocabulary flashcards', completed: true, dateCompleted: 'Thursday' },
+        ]
+      },
+      {
+        id: 'user_3',
+        discordId: '304958672019283746',
+        username: 'NocturnalEcho',
+        displayName: 'NocturnalEcho',
+        avatarText: 'N',
+        team: 'bees',
+        teamName: 'Honey Bees',
+        teamIcon: '🐝',
+        targetSeconds: 100800, // 28:00:00
+        status: 'NORMAL',
+        dailyLogs: [
+          { day: 'Monday', date: '2026-09-01', seconds: 18000, isOverride: false }, // 05:00:00
+          { day: 'Tuesday', date: '2026-09-02', seconds: 18000, isOverride: false }, // 05:00:00
+          { day: 'Wednesday', date: '2026-09-03', seconds: 18000, isOverride: false }, // 05:00:00
+          { day: 'Thursday', date: '2026-09-04', seconds: 17700, isOverride: false }, // 04:55:00
+          { day: 'Friday', date: '2026-09-05', seconds: 0, isOverride: false },
+          { day: 'Saturday', date: '2026-09-06', seconds: 0, isOverride: false },
+          { day: 'Sunday', date: '2026-09-07', seconds: 0, isOverride: false },
+        ],
+        goals: [
+          { id: 'g10', text: 'Complete Discrete Mathematics Assignment 4', completed: true, dateCompleted: 'Tuesday' },
+          { id: 'g11', text: 'Read Algorithm Analysis Chapters 5 & 6', completed: true, dateCompleted: 'Wednesday' },
+          { id: 'g12', text: 'Build binary search tree visualization component', completed: false, dateCompleted: null },
+        ]
+      },
+      {
+        id: 'user_4',
+        discordId: '405968773029182736',
+        username: 'MidnightChai',
+        displayName: 'MidnightChai',
+        avatarText: 'M',
+        team: 'butterflies',
+        teamName: 'Lavender Butterflies',
+        teamIcon: '🦋',
+        targetSeconds: 108000, // 30:00:00
+        status: 'NORMAL',
+        dailyLogs: [
+          { day: 'Monday', date: '2026-09-01', seconds: 14400, isOverride: false }, // 04:00:00
+          { day: 'Tuesday', date: '2026-09-02', seconds: 18000, isOverride: false }, // 05:00:00
+          { day: 'Wednesday', date: '2026-09-03', seconds: 18000, isOverride: false }, // 05:00:00
+          { day: 'Thursday', date: '2026-09-04', seconds: 16815, isOverride: false }, // 04:40:15
+          { day: 'Friday', date: '2026-09-05', seconds: 0, isOverride: false },
+          { day: 'Saturday', date: '2026-09-06', seconds: 0, isOverride: false },
+          { day: 'Sunday', date: '2026-09-07', seconds: 0, isOverride: false },
+        ],
+        goals: [
+          { id: 'g13', text: 'Finish 2 chapters of Microeconomics textbook', completed: true, dateCompleted: 'Tuesday' },
+          { id: 'g14', text: 'Complete econometric regression problem set in R', completed: true, dateCompleted: 'Thursday' },
+          { id: 'g15', text: 'Review lecture notes on fiscal policy', completed: false, dateCompleted: null },
+          { id: 'g16', text: 'Read 2 research articles on game theory', completed: false, dateCompleted: null },
+        ]
+      },
+      {
+        id: 'user_5',
+        discordId: '398102938471920194',
+        username: 'SlothBrain',
+        displayName: 'SlothBrain',
+        avatarText: 'S',
+        team: 'butterflies',
+        teamName: 'Lavender Butterflies',
+        teamIcon: '🦋',
+        targetSeconds: 126000, // 35:00:00
+        status: 'DEFICIT',
+        dailyLogs: [
+          { day: 'Monday', date: '2026-09-01', seconds: 10800, isOverride: false }, // 03:00:00
+          { day: 'Tuesday', date: '2026-09-02', seconds: 14400, isOverride: false }, // 04:00:00
+          { day: 'Wednesday', date: '2026-09-03', seconds: 10800, isOverride: false }, // 03:00:00
+          { day: 'Thursday', date: '2026-09-04', seconds: 4500, isOverride: false },  // 01:15:00
+          { day: 'Friday', date: '2026-09-05', seconds: 0, isOverride: false },
+          { day: 'Saturday', date: '2026-09-06', seconds: 0, isOverride: false },
+          { day: 'Sunday', date: '2026-09-07', seconds: 0, isOverride: false },
+        ],
+        goals: [
+          { id: 'g17', text: 'Complete Genetics lab report draft', completed: true, dateCompleted: 'Tuesday' },
+          { id: 'g18', text: 'Read 4 chapters of Molecular Cell Biology', completed: false, dateCompleted: null },
+          { id: 'g19', text: 'Memorize citric acid cycle enzymology', completed: false, dateCompleted: null },
+          { id: 'g20', text: 'Write 3 seminar discussion questions', completed: false, dateCompleted: null },
+          { id: 'g21', text: 'Solve past exam questions 2022-2023', completed: false, dateCompleted: null },
+        ]
+      },
+      {
+        id: 'user_6',
+        discordId: '506978884039281745',
+        username: 'CramKing',
+        displayName: 'CramKing',
+        avatarText: 'C',
+        team: 'bees',
+        teamName: 'Honey Bees',
+        teamIcon: '🐝',
+        targetSeconds: 126000, // 35:00:00
+        status: 'DEFICIT',
+        dailyLogs: [
+          { day: 'Monday', date: '2026-09-01', seconds: 18000, isOverride: false }, // 05:00:00
+          { day: 'Tuesday', date: '2026-09-02', seconds: 10800, isOverride: false }, // 03:00:00
+          { day: 'Wednesday', date: '2026-09-03', seconds: 0, isOverride: true, overrideReason: 'YPT phone app bug reported' }, // 00:00:00
+          { day: 'Thursday', date: '2026-09-04', seconds: 15600, isOverride: false }, // 04:20:00
+          { day: 'Friday', date: '2026-09-05', seconds: 0, isOverride: false },
+          { day: 'Saturday', date: '2026-09-06', seconds: 0, isOverride: false },
+          { day: 'Sunday', date: '2026-09-07', seconds: 0, isOverride: false },
+        ],
+        goals: [
+          { id: 'g22', text: 'Linear Algebra chapter 3 practice proofs', completed: true, dateCompleted: 'Monday' },
+          { id: 'g23', text: 'Write summary of eigenvalue properties', completed: true, dateCompleted: 'Tuesday' },
+          { id: 'g24', text: 'Complete weekly homework assignment #5', completed: false, dateCompleted: null },
+          { id: 'g25', text: 'Practice 2 previous midterm exams', completed: false, dateCompleted: null },
+        ]
+      }
+    ];
+
+    // IMMUTABLE SYSTEM AUDIT LOG DATA STORE (FEAT-AUDIT-01, Law L5)
+    // Append-only invariant: records are write-once, zero update/delete permissions
+    const AUDIT_LOGS = [
+      {
+        id: 'audit_1001',
+        timestamp: '2026-09-01 08:00 UTC',
+        actor: 'SYSTEM',
+        actionType: 'Event Kickoff',
+        targetEntity: 'Challenge #5',
+        diff: 'UPCOMING → ACTIVE',
+        reason: 'Scheduled event start'
+      }
+    ];
+
+    let selectedUserId = 'user_5'; // SlothBrain initially selected in dossier
+    let activeDayOverrideIndex = 3; // Thursday
+
+    // Time Math Helpers (Pure Domain Isolation, Law L7 & Law L8)
+    function secondsToHMS(sec) {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function hmsToSeconds(hmsStr) {
+      const parts = hmsStr.split(':').map(p => parseInt(p, 10) || 0);
+      if (parts.length === 3) {
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      }
+      if (parts.length === 2) {
+        return parts[0] * 3600 + parts[1] * 60;
+      }
+      return parseInt(hmsStr, 10) * 3600 || 0;
+    }
+
+    function getUserTotalSeconds(user) {
+      return user.dailyLogs.reduce((acc, log) => acc + log.seconds, 0);
+    }
+
+    function getTeamTotalSeconds(teamKey) {
+      return USERS_DATA
+        .filter(u => u.team === teamKey)
+        .reduce((sum, u) => sum + getUserTotalSeconds(u), 0);
+    }
+
+    // Append-Only Audit Trail Appender (FEAT-AUDIT-01)
+    function appendAuditLog(actionType, targetEntity, diff, reason) {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const timestamp = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())} UTC`;
+      
+      const cleanType = actionType
+        .toLowerCase()
+        .split('_')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+
+      const newEntry = {
+        id: 'audit_' + (1000 + AUDIT_LOGS.length + 1),
+        timestamp,
+        actor: 'Proctor#1337',
+        actionType: cleanType,
+        targetEntity,
+        diff,
+        reason: reason || 'Moderator action'
+      };
+
+      // Invariant: Unshift to front of immutable timeline
+      AUDIT_LOGS.unshift(newEntry);
+      renderAuditTable();
+      updateHouseTotalsUI();
+    }
+
+    // Toast Notification Controller
+    function showToast(msg, icon = '☕') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-message').innerText = msg;
+      document.getElementById('toast-icon').innerText = icon;
+      toast.classList.remove('translate-y-10', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-10', 'opacity-0');
+      }, 2500);
+    }
+
+    // Modal Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    // Role Switcher Controller
+    function setRole(role) {
+      currentRole = role;
+      
+      const bPart = document.getElementById('btn-view-participant');
+      const bSpec = document.getElementById('btn-view-spectator');
+      const bHost = document.getElementById('btn-view-host');
+      const hostShelf = document.getElementById('host-master-desk');
+      const hostContainer = document.getElementById('host-view-container');
+      const partContainer = document.getElementById('participant-view-container');
+      const specWelcome = document.getElementById('spectator-welcome-card');
+      const subActive = document.getElementById('submode-active-view');
+      const subPre = document.getElementById('submode-prekickoff-view');
+      const catchupCard = document.getElementById('catchup-reflection-card');
+
+      // Reset switchers
+      [bPart, bSpec, bHost].forEach(b => {
+        b.className = 'px-3 py-1.5 rounded-lg text-cafe-oatmeal hover:text-cafe-parchment transition-all flex items-center gap-1.5';
+      });
+
+      if (role === 'participant') {
+        bPart.className = 'px-3 py-1.5 rounded-lg bg-cafe-elevated text-cafe-honey font-medium shadow-sm transition-all flex items-center gap-1.5';
+        hostShelf.classList.add('hidden');
+        hostContainer.classList.add('hidden');
+        partContainer.classList.remove('hidden');
+        specWelcome.classList.add('hidden');
+        subActive.classList.remove('hidden');
+        subPre.classList.add('hidden');
+        catchupCard.classList.remove('hidden');
+
+        document.getElementById('header-username').innerText = 'AuraStudier';
+        document.getElementById('header-subtitle').innerText = 'Honey Bees • Table 4';
+        document.getElementById('header-avatar').innerText = 'A';
+        showToast('Viewing as Active Participant', '👤');
+
+      } else if (role === 'spectator') {
+        bSpec.className = 'px-3 py-1.5 rounded-lg bg-cafe-elevated text-cafe-honey font-medium shadow-sm transition-all flex items-center gap-1.5';
+        hostShelf.classList.add('hidden');
+        hostContainer.classList.add('hidden');
+        partContainer.classList.remove('hidden');
+        specWelcome.classList.remove('hidden');
+        subActive.classList.add('hidden');
+        subPre.classList.add('hidden');
+        catchupCard.classList.add('hidden');
+
+        document.getElementById('header-username').innerText = 'Lounge Guest';
+        document.getElementById('header-subtitle').innerText = 'Spectator (Read-Only)';
+        document.getElementById('header-avatar').innerText = '👁️';
+        showToast('Viewing as Lounge Guest (Spectator)', '👁️');
+
+      } else if (role === 'host') {
+        bHost.className = 'px-3 py-1.5 rounded-lg bg-cafe-elevated text-cafe-honey font-medium shadow-sm transition-all flex items-center gap-1.5';
+        hostShelf.classList.remove('hidden');
+        partContainer.classList.add('hidden'); // Hide student clutter completely
+        hostContainer.classList.remove('hidden'); // Show dedicated proctor console
+
+        document.getElementById('header-username').innerText = 'Proctor (Host)';
+        document.getElementById('header-subtitle').innerText = 'Admin Authority Active';
+        document.getElementById('header-avatar').innerText = '🛡️';
+        showToast('Viewing as Host Administrator', '🛡️');
+
+        // Render host console components
+        renderRosterList();
+        renderUserDossier(selectedUserId);
+        renderAuditTable();
+      }
+    }
+
+    // Host Sub-Tab Switcher
+    function setHostTab(tab) {
+      activeHostTab = tab;
+      const bRos = document.getElementById('btn-host-tab-roster');
+      const bStd = document.getElementById('btn-host-tab-standings');
+      const bAud = document.getElementById('btn-host-tab-audit');
+      const vRos = document.getElementById('host-tab-roster-view');
+      const vStd = document.getElementById('host-tab-standings-view');
+      const vAud = document.getElementById('host-tab-audit-view');
+
+      [bRos, bStd, bAud].forEach(b => {
+        b.className = 'px-4 py-2 rounded-xl text-cafe-oatmeal hover:text-cafe-parchment transition-all flex items-center gap-2';
+      });
+      [vRos, vStd, vAud].forEach(v => v.classList.add('hidden'));
+
+      if (tab === 'roster') {
+        bRos.className = 'px-4 py-2 rounded-xl bg-cafe-elevated text-cafe-honey font-medium shadow-sm transition-all flex items-center gap-2';
+        vRos.classList.remove('hidden');
+        renderRosterList();
+        renderUserDossier(selectedUserId);
+      } else if (tab === 'standings') {
+        bStd.className = 'px-4 py-2 rounded-xl bg-cafe-elevated text-cafe-honey font-medium shadow-sm transition-all flex items-center gap-2';
+        vStd.classList.remove('hidden');
+        updateHouseTotalsUI();
+      } else if (tab === 'audit') {
+        bAud.className = 'px-4 py-2 rounded-xl bg-cafe-elevated text-cafe-honey font-medium shadow-sm transition-all flex items-center gap-2';
+        vAud.classList.remove('hidden');
+        renderAuditTable();
+      }
+    }
+
+    // Render Participant Standings Table
+    function renderStandingsTable(filter = 'all') {
+      const tbody = document.getElementById('standings-body');
+      tbody.innerHTML = '';
+
+      let list = [...USERS_DATA];
+      if (filter === 'bees') list = list.filter(u => u.team === 'bees');
+      if (filter === 'butterflies') list = list.filter(u => u.team === 'butterflies');
+
+      // Sort descending by logged seconds
+      list.sort((a, b) => getUserTotalSeconds(b) - getUserTotalSeconds(a));
+
+      list.forEach((user, idx) => {
+        const loggedSec = getUserTotalSeconds(user);
+        const targetSec = user.targetSeconds;
+        const goalsCompleted = user.goals.filter(g => g.completed).length;
+        const totalGoals = user.goals.length;
+
+        const isUser = user.username === 'AuraStudier';
+        const rankColor = idx === 0 ? 'text-cafe-honey' : (idx === 1 ? 'text-cafe-linen' : 'text-cafe-oatmeal');
+        const pace = loggedSec >= (targetSec * 0.5) ? 'Serene' : 'Deficit';
+        const paceColor = pace === 'Serene' ? 'text-cafe-sage' : 'text-cafe-cinnamon';
+
+        const tr = document.createElement('tr');
+        tr.className = 'table-row hover:bg-cafe-card/40 transition-colors cursor-pointer';
+        tr.dataset.team = user.team;
+        tr.onclick = () => {
+          if (currentRole === 'host') {
+            selectedUserId = user.id;
+            setHostTab('roster');
+            renderUserDossier(user.id);
+          }
+        };
+
+        tr.innerHTML = `
+          <td class="py-2.5 px-2 font-serif ${rankColor}">${idx + 1}</td>
+          <td class="py-2.5 px-2 font-sans font-medium text-cafe-parchment">
+            ${user.displayName} ${isUser ? '<span class="text-cafe-honey text-[10px]">(You)</span>' : ''}
+          </td>
+          <td class="py-2.5 px-2 font-sans text-cafe-oatmeal">${user.teamIcon} ${user.team === 'bees' ? 'Bees' : 'Butterflies'}</td>
+          <td class="py-2.5 px-2 font-medium ${idx === 0 ? 'text-cafe-honey-light' : 'text-cafe-linen'}">${secondsToHMS(loggedSec)}</td>
+          <td class="py-2.5 px-2 text-cafe-oatmeal">${secondsToHMS(targetSec)}</td>
+          <td class="py-2.5 px-2 ${goalsCompleted === totalGoals ? 'text-cafe-sage' : 'text-cafe-oatmeal'} font-medium">${goalsCompleted}/${totalGoals}</td>
+          <td class="py-2.5 px-2 text-right font-sans ${paceColor} text-[11px]">${pace}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Filter Standings Table
+    function filterTable(team) {
+      ['btn-all', 'btn-bees', 'btn-but'].forEach(id => {
+        document.getElementById(id).className = 'px-2.5 py-1 rounded-lg text-cafe-oatmeal hover:text-cafe-parchment';
+      });
+
+      if (team === 'all') {
+        document.getElementById('btn-all').className = 'px-2.5 py-1 rounded-lg bg-cafe-card border border-cafe-border text-cafe-parchment font-medium';
+      } else if (team === 'bees') {
+        document.getElementById('btn-bees').className = 'px-2.5 py-1 rounded-lg bg-cafe-card border border-cafe-border text-cafe-parchment font-medium';
+      } else {
+        document.getElementById('btn-but').className = 'px-2.5 py-1 rounded-lg bg-cafe-card border border-cafe-border text-cafe-parchment font-medium';
+      }
+      renderStandingsTable(team);
+    }
+
+    // Render Host Roster List
+    let rosterFilterTeam = 'all';
+    let rosterSearchQuery = '';
+
+    function filterRoster(query) {
+      rosterSearchQuery = query.toLowerCase();
+      renderRosterList();
+    }
+
+    function filterRosterHouse(house) {
+      rosterFilterTeam = house;
+      ['rf-all', 'rf-bees', 'rf-butterflies'].forEach(id => {
+        document.getElementById(id).className = 'px-2.5 py-0.5 rounded-lg text-cafe-oatmeal hover:text-cafe-parchment';
+      });
+      document.getElementById(house === 'all' ? 'rf-all' : (house === 'bees' ? 'rf-bees' : 'rf-butterflies')).className = 'px-2.5 py-0.5 rounded-lg bg-cafe-elevated text-cafe-honey font-medium border border-cafe-border';
+      renderRosterList();
+    }
+
+    function renderRosterList() {
+      const container = document.getElementById('roster-list-container');
+      container.innerHTML = '';
+
+      let list = USERS_DATA.filter(u => {
+        const matchesHouse = rosterFilterTeam === 'all' || u.team === rosterFilterTeam;
+        const matchesSearch = u.displayName.toLowerCase().includes(rosterSearchQuery);
+        return matchesHouse && matchesSearch;
+      });
+
+      list.forEach(user => {
+        const isSelected = user.id === selectedUserId;
+        const totalLogged = getUserTotalSeconds(user);
+        const goalsDone = user.goals.filter(g => g.completed).length;
+
+        let statusBadge = `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-sage-surface text-cafe-sage border border-cafe-sage/30 font-medium">Normal</span>`;
+        if (user.status === 'DEFICIT') {
+          statusBadge = `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-cinnamon-surface text-cafe-cinnamon border border-cafe-cinnamon/30 font-medium">Catch-Up</span>`;
+        } else if (user.status === 'EXCUSED') {
+          statusBadge = `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-elevated text-cafe-honey border border-cafe-honey/30 font-medium">Excused</span>`;
+        }
+
+        const div = document.createElement('div');
+        div.className = `p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${isSelected ? 'bg-cafe-elevated border-cafe-honey/60 shadow-md' : 'bg-cafe-card/50 border-cafe-border hover:border-cafe-borderLight'}`;
+        div.onclick = () => {
+          selectedUserId = user.id;
+          renderRosterList();
+          renderUserDossier(user.id);
+        };
+
+        div.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl ${isSelected ? 'bg-cafe-honey text-cafe-bg' : 'bg-cafe-bg text-cafe-linen'} border border-cafe-border flex items-center justify-center font-serif text-xs font-semibold">
+              ${user.avatarText}
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-sans text-xs font-medium text-cafe-parchment">${user.displayName}</span>
+                <span class="text-[10px] text-cafe-oatmeal">${user.teamIcon}</span>
+              </div>
+              <span class="block text-[10px] text-cafe-ash font-mono">${secondsToHMS(totalLogged)} • ${goalsDone}/${user.goals.length} Goals</span>
+            </div>
+          </div>
+          <div class="text-right">
+            ${statusBadge}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Render User Dossier (Review & Edit Data)
+    function renderUserDossier(userId) {
+      const user = USERS_DATA.find(u => u.id === userId);
+      if (!user) return;
+
+      document.getElementById('dossier-avatar').innerText = user.avatarText;
+      document.getElementById('dossier-name').innerText = user.displayName;
+      document.getElementById('dossier-house-tag').innerText = `${user.teamIcon} ${user.teamName}`;
+      document.getElementById('dossier-id').innerText = `Discord ID: ${user.discordId} • Enrolled: 2026-09-02`;
+
+      // Status Pill
+      const pill = document.getElementById('dossier-status-pill');
+      if (user.status === 'NORMAL') {
+        pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-sage-surface border border-cafe-sage/40 text-cafe-sage font-medium';
+        pill.innerText = 'ON TRACK (NORMAL)';
+      } else if (user.status === 'DEFICIT') {
+        pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-cinnamon-surface border border-cafe-cinnamon/40 text-cafe-cinnamon font-medium';
+        pill.innerText = 'CATCH-UP PACE (-4h)';
+      } else if (user.status === 'EXCUSED') {
+        pill.className = 'text-[10px] font-mono px-2 py-0.5 rounded-md bg-cafe-elevated border border-cafe-honey/40 text-cafe-honey font-medium';
+        pill.innerText = 'EXCUSED (PARDONED)';
+      }
+
+      // Summary Stats
+      const totalLoggedSec = getUserTotalSeconds(user);
+      document.getElementById('dossier-logged-total').innerText = secondsToHMS(totalLoggedSec);
+      document.getElementById('dossier-target-total').innerText = secondsToHMS(user.targetSeconds);
+      
+      const goalsDone = user.goals.filter(g => g.completed).length;
+      document.getElementById('dossier-goals-summary').innerText = `${goalsDone} / ${user.goals.length} Completed`;
+
+      // 7-Day Table
+      const daysTable = document.getElementById('dossier-days-table');
+      daysTable.innerHTML = '';
+
+      user.dailyLogs.forEach((log, index) => {
+        const isToday = log.day === 'Thursday';
+        const overrideTag = log.isOverride 
+          ? `<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cafe-honey/20 text-cafe-honey border border-cafe-honey/30">Override (Host)</span>`
+          : (log.seconds > 0 ? `<span class="text-[9px] font-mono text-cafe-sage">Verified</span>` : `<span class="text-[9px] font-mono text-cafe-ash">--</span>`);
+
+        const tr = document.createElement('tr');
+        tr.className = `border-b border-cafe-border/20 ${isToday ? 'bg-cafe-elevated/40' : ''}`;
+        tr.innerHTML = `
+          <td class="py-2 px-3">
+            <span class="font-sans font-medium text-cafe-parchment">${log.day}</span>
+            <span class="block text-[9px] font-mono text-cafe-ash">${log.date} ${isToday ? '• Today' : ''}</span>
+          </td>
+          <td class="py-2 px-3 font-mono text-cafe-linen font-semibold">
+            ${secondsToHMS(log.seconds)}
+          </td>
+          <td class="py-2 px-3">
+            ${overrideTag}
+          </td>
+          <td class="py-2 px-3 text-right">
+            <div class="inline-flex items-center gap-1.5">
+              <input id="input-day-${index}" type="text" value="${secondsToHMS(log.seconds)}" 
+                     class="w-20 bg-cafe-card border border-cafe-border rounded-lg text-center font-mono text-xs py-1 text-cafe-parchment focus:border-cafe-honey" />
+              <button onclick="promptDayOverride(${index})" class="px-2 py-1 bg-cafe-card hover:bg-cafe-elevated border border-cafe-border hover:border-cafe-honey text-cafe-honey text-xs rounded-lg transition-all">
+                Save
+              </button>
+            </div>
+          </td>
+        `;
+        daysTable.appendChild(tr);
+      });
+
+      // Goals Container
+      const goalsContainer = document.getElementById('dossier-goals-container');
+      goalsContainer.innerHTML = '';
+
+      user.goals.forEach(g => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between gap-3 p-3 rounded-xl bg-cafe-card/60 border border-cafe-border';
+        div.innerHTML = `
+          <div class="flex items-start gap-2.5 flex-1">
+            <input type="checkbox" ${g.completed ? 'checked' : ''} onchange="toggleUserGoalCheck('${user.id}', '${g.id}', this.checked)" 
+                   class="mt-1 accent-cafe-honey rounded cursor-pointer" />
+            <div>
+              <p class="text-xs font-sans ${g.completed ? 'line-through text-cafe-oatmeal' : 'text-cafe-parchment'}">${g.text}</p>
+              <span class="text-[10px] font-mono text-cafe-ash">${g.completed ? `Completed ${g.dateCompleted || 'during week'}` : 'Incomplete commitment'}</span>
+            </div>
+          </div>
+          <button onclick="openGoalEditModalDossier('${user.id}', '${g.id}', '${g.text.replace(/'/g, "\\'")}')" class="text-xs text-cafe-oatmeal hover:text-cafe-honey px-2.5 py-1 rounded-lg bg-cafe-elevated border border-cafe-border flex items-center gap-1">
+            <span>✏️</span> Edit
+          </button>
+        `;
+        goalsContainer.appendChild(div);
+      });
+    }
+
+    // Toggle Goal from Host Dossier
+    function toggleUserGoalCheck(userId, goalId, isChecked) {
+      const user = USERS_DATA.find(u => u.id === userId);
+      if (!user) return;
+      const g = user.goals.find(goal => goal.id === goalId);
+      if (!g) return;
+
+      g.completed = isChecked;
+      g.dateCompleted = isChecked ? 'Host Checked' : null;
+
+      appendAuditLog(
+        'GOAL_STATUS_TOGGLE',
+        `${user.displayName} (${user.discordId})`,
+        `Goal "${g.text.substring(0, 30)}..." → ${isChecked ? 'COMPLETED' : 'INCOMPLETE'}`,
+        'Host verified task deliverables with participant'
+      );
+      renderUserDossier(userId);
+      showToast(`Goal marked ${isChecked ? 'complete' : 'incomplete'}`, '📖');
+    }
+
+    // Goal Edit Modal Handler for Dossier
+    let activeGoalEditUserId = '';
+    let activeGoalEditGoalId = '';
+
+    function openGoalEditModalDossier(userId, goalId, text) {
+      activeGoalEditUserId = userId;
+      activeGoalEditGoalId = goalId;
+      document.getElementById('edit-goal-input').value = text;
+      openModal('modal-goaledit');
+    }
+
+    function saveGoalEdit() {
+      const newText = document.getElementById('edit-goal-input').value;
+      const reason = document.getElementById('edit-goal-reason').value;
+
+      if (!newText) {
+        alert('Goal text cannot be empty');
+        return;
+      }
+
+      const user = USERS_DATA.find(u => u.id === activeGoalEditUserId);
+      if (user) {
+        const goal = user.goals.find(g => g.id === activeGoalEditGoalId);
+        if (goal) {
+          const oldText = goal.text;
+          goal.text = newText;
+          closeModal('modal-goaledit');
+
+          appendAuditLog(
+            'GOAL_EDIT',
+            `${user.displayName} (${user.discordId})`,
+            `"${oldText}" → "${newText}"`,
+            reason
+          );
+
+          renderUserDossier(user.id);
+          showToast('Goal revision saved and logged to audit trail!', '✏️');
+        }
+      }
+    }
+
+    // Target Hours Edit Handler
+    function editDossierTarget() {
+      const user = USERS_DATA.find(u => u.id === selectedUserId);
+      if (!user) return;
+      document.getElementById('m-target-user').innerText = user.displayName;
+      document.getElementById('m-target-hours').value = Math.floor(user.targetSeconds / 3600);
+      openModal('modal-target-edit');
+    }
+
+    function saveDossierTargetEdit() {
+      const hours = parseInt(document.getElementById('m-target-hours').value, 10);
+      const reason = document.getElementById('m-target-reason').value;
+
+      if (isNaN(hours) || hours < 1 || hours > 105) {
+        alert('Target hours must be between 1 and 105 hours');
+        return;
+      }
+      if (!reason) {
+        alert('Mandatory audit justification required (Law L5)');
+        return;
+      }
+
+      const user = USERS_DATA.find(u => u.id === selectedUserId);
+      if (user) {
+        const oldTarget = secondsToHMS(user.targetSeconds);
+        user.targetSeconds = hours * 3600;
+        const newTarget = secondsToHMS(user.targetSeconds);
+
+        closeModal('modal-target-edit');
+        appendAuditLog(
+          'TARGET_HOURS_OVERRIDE',
+          `${user.displayName} (${user.discordId})`,
+          `Target: ${oldTarget} → ${newTarget} (${hours}h)`,
+          reason
+        );
+
+        renderUserDossier(user.id);
+        renderStandingsTable();
+        showToast(`Target hours updated to ${hours}:00:00`, '🎯');
+      }
+    }
+
+    // Day Override Prompt & Confirm
+    function promptDayOverride(dayIndex) {
+      activeDayOverrideIndex = dayIndex;
+      const user = USERS_DATA.find(u => u.id === selectedUserId);
+      if (!user) return;
+      
+      const dayLog = user.dailyLogs[dayIndex];
+      const proposedHMS = document.getElementById(`input-day-${dayIndex}`).value;
+
+      document.getElementById('m-override-dayname').innerText = `${dayLog.day} (${user.displayName})`;
+      document.getElementById('m-override-newtime').innerText = proposedHMS;
+      openModal('modal-override-day');
+    }
+
+    function confirmDayOverride() {
+      const user = USERS_DATA.find(u => u.id === selectedUserId);
+      if (!user) return;
+
+      const dayLog = user.dailyLogs[activeDayOverrideIndex];
+      const proposedHMS = document.getElementById(`input-day-${activeDayOverrideIndex}`).value;
+      const reason = document.getElementById('m-override-reason').value;
+
+      if (!reason) {
+        alert('Mandatory audit justification required');
+        return;
+      }
+
+      const oldSeconds = dayLog.seconds;
+      const newSeconds = hmsToSeconds(proposedHMS);
+
+      dayLog.seconds = newSeconds;
+      dayLog.isOverride = true;
+
+      closeModal('modal-override-day');
+
+      appendAuditLog(
+        'HOURS_OVERRIDE',
+        `${user.displayName} (${user.discordId})`,
+        `${dayLog.day}: ${secondsToHMS(oldSeconds)} → ${secondsToHMS(newSeconds)}`,
+        reason
+      );
+
+      // Re-evaluate user deficit status
+      const totalLogged = getUserTotalSeconds(user);
+      if (totalLogged >= (user.targetSeconds * 0.5)) {
+        if (user.status === 'DEFICIT') user.status = 'NORMAL';
+      }
+
+      renderUserDossier(user.id);
+      renderStandingsTable();
+      updateHouseTotalsUI();
+      showToast(`Overrode ${dayLog.day} to ${secondsToHMS(newSeconds)} (is_override=true)`, '⏱️');
+    }
+
+    // Pardon Handler
+    function triggerDossierPardon() {
+      const user = USERS_DATA.find(u => u.id === selectedUserId);
+      if (!user) return;
+      document.getElementById('pardon-target-name').innerText = user.displayName;
+      openModal('modal-pardon');
+    }
+
+    function confirmPardon() {
+      const user = USERS_DATA.find(u => u.id === selectedUserId);
+      if (!user) return;
+
+      const reason = document.getElementById('pardon-reason-input').value;
+      if (!reason) {
+        alert('Mandatory reason for pardon required');
+        return;
+      }
+
+      user.status = 'EXCUSED';
+      closeModal('modal-pardon');
+
+      appendAuditLog(
+        'PARDON_GRANTED',
+        `${user.displayName} (${user.discordId})`,
+        'Accountability Status → EXCUSED',
+        reason
+      );
+
+      renderUserDossier(user.id);
+      renderRosterList();
+      showToast(`${user.displayName} pardoned. Status set to EXCUSED.`, '🕊️');
+    }
+
+    function triggerDossierAuditExport() {
+      const user = USERS_DATA.find(u => u.id === selectedUserId);
+      if (!user) return;
+      const userAudits = AUDIT_LOGS.filter(a => a.targetEntity.includes(user.displayName) || a.targetEntity.includes(user.discordId));
+      
+      const blob = new Blob([JSON.stringify(userAudits, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audit-dossier-${user.displayName.toLowerCase()}.json`;
+      a.click();
+      showToast(`Exported ${user.displayName}'s audit trail!`, '📑');
+    }
+
+    // Render Simplified Audit Table (FEAT-AUDIT-01)
+    function renderAuditTable() {
+      const tbody = document.getElementById('audit-log-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      // Update badge count in host tab switcher
+      const countBadge = document.getElementById('audit-count-badge');
+      if (countBadge) countBadge.innerText = AUDIT_LOGS.length;
+
+      if (AUDIT_LOGS.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-cafe-ash text-xs font-sans">No audit events recorded yet.</td></tr>`;
+        return;
+      }
+
+      AUDIT_LOGS.forEach(log => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-cafe-card/40 transition-colors text-xs border-b border-cafe-border/20';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-mono text-cafe-ash text-[11px] whitespace-nowrap">${log.timestamp}</td>
+          <td class="py-2.5 px-3 font-medium text-cafe-parchment font-mono text-[11px]">${log.actor}</td>
+          <td class="py-2.5 px-3">
+            <span class="font-medium text-cafe-honey">${log.actionType}</span>
+            <span class="text-cafe-ash mx-1">•</span>
+            <span class="text-cafe-parchment font-sans">${log.targetEntity}:</span>
+            <span class="text-cafe-linen font-mono text-[11px] ml-1">${log.diff}</span>
+          </td>
+          <td class="py-2.5 px-3 font-sans text-cafe-oatmeal text-[11px] italic max-w-xs truncate">${log.reason}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Export Audit Log to JSON (Downloadable File)
+    function exportAuditLogJson() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(AUDIT_LOGS, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "holdmetoit-system-audit-ledger.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Downloaded immutable audit log JSON file!', '📥');
+    }
+
+    // Update House Cumulative Standings UI
+    function updateHouseTotalsUI() {
+      const beesTotalSec = getTeamTotalSeconds('bees');
+      const butTotalSec = getTeamTotalSeconds('butterflies');
+      const diffSec = Math.abs(beesTotalSec - butTotalSec);
+      const beesInLead = beesTotalSec >= butTotalSec;
+
+      const beesHMS = secondsToHMS(beesTotalSec);
+      const butHMS = secondsToHMS(butTotalSec);
+      const diffHMS = secondsToHMS(diffSec);
+
+      document.getElementById('bees-total').innerText = beesHMS;
+      document.getElementById('butterflies-total').innerText = butHMS;
+
+      if (document.getElementById('plaque-bees-hours')) {
+        document.getElementById('plaque-bees-hours').innerText = beesHMS;
+        document.getElementById('plaque-but-hours').innerText = butHMS;
+      }
+
+      document.getElementById('match-margin-badge').innerText = `+${diffHMS.substring(0, 5).replace(':', 'h ')}m`;
+
+      const totalSec = Math.max(1, beesTotalSec + butTotalSec);
+      const beesPct = ((beesTotalSec / totalSec) * 100).toFixed(1);
+      const butPct = (100 - beesPct).toFixed(1);
+
+      document.getElementById('ratio-bar-bees').style.width = `${beesPct}%`;
+      document.getElementById('ratio-bar-but').style.width = `${butPct}%`;
+    }
+
+    // Kickoff Event Toggle
+    function toggleKickoff() {
+      const badge = document.getElementById('challenge-status-badge');
+      const btnText = document.getElementById('btn-kickoff-text');
+      if (challengeState === 'ACTIVE') {
+        challengeState = 'UPCOMING';
+        badge.className = 'px-2.5 py-0.5 rounded-md font-mono text-[10px] bg-cafe-card border border-cafe-border text-cafe-oatmeal font-medium';
+        badge.innerText = 'UPCOMING (Declarations Open)';
+        btnText.innerText = 'Kickoff Event Now (ACTIVE)';
+
+        appendAuditLog('CHALLENGE_STATUS_CHANGE', 'Challenge #5', 'ACTIVE → UPCOMING', 'Host reverted challenge phase for late enrollments');
+        showToast('Challenge set to UPCOMING (Declarations open)', '⏳');
+      } else {
+        challengeState = 'ACTIVE';
+        badge.className = 'px-2.5 py-0.5 rounded-md font-mono text-[10px] bg-cafe-sage-surface border border-cafe-sage/40 text-cafe-sage font-medium';
+        badge.innerText = 'ACTIVE (Day 4 of 7)';
+        btnText.innerText = 'Revert to Pre-Kickoff';
+
+        appendAuditLog('CHALLENGE_KICKOFF', 'Challenge #5', 'UPCOMING → ACTIVE', 'Host triggered live kickoff. All goals locked permanently.');
+        showToast('Event kicked off! All goals permanently locked (Law L6)', '⚡');
+      }
+    }
+
+    // Finalize Results
+    function lockResults() {
+      if (confirm('Lock and finalize this challenge? Dual-failure auto punishments will be evaluated and logging frozen.')) {
+        challengeState = 'COMPLETED';
+        const badge = document.getElementById('challenge-status-badge');
+        badge.className = 'px-2.5 py-0.5 rounded-md font-mono text-[10px] bg-cafe-elevated border border-cafe-honey/40 text-cafe-honey-light font-medium';
+        badge.innerText = 'COMPLETED (Locked)';
+
+        appendAuditLog('LOCK_RESULTS', 'Challenge #5', 'ACTIVE → COMPLETED', 'Host locked challenge and finalized dual-failure forfeits');
+        showToast('Challenge completed & final results locked!', '🔒');
+      }
+    }
+
+    // Participant Clock / Log Controls
+    function setParticipantSubmode(mode) {
+      const bAct = document.getElementById('btn-sub-active');
+      const bPre = document.getElementById('btn-sub-prekickoff');
+      const vAct = document.getElementById('submode-active-view');
+      const vPre = document.getElementById('submode-prekickoff-view');
+      const title = document.getElementById('cockpit-title');
+      const subtitle = document.getElementById('cockpit-subtitle');
+
+      if (mode === 'active') {
+        bAct.className = 'px-2 py-0.5 rounded bg-cafe-elevated text-cafe-honey font-medium';
+        bPre.className = 'px-2 py-0.5 rounded text-cafe-oatmeal hover:text-cafe-parchment';
+        vAct.classList.remove('hidden');
+        vPre.classList.add('hidden');
+        title.innerText = 'Study Desk Log';
+        subtitle.innerText = 'Enter time verified via YPT or timer';
+      } else {
+        bPre.className = 'px-2 py-0.5 rounded bg-cafe-elevated text-cafe-honey font-medium';
+        bAct.className = 'px-2 py-0.5 rounded text-cafe-oatmeal hover:text-cafe-parchment';
+        vAct.classList.add('hidden');
+        vPre.classList.remove('hidden');
+        title.innerText = 'Pre-Kickoff Declarations';
+        subtitle.innerText = 'Target hours & mandatory goals checklist';
+      }
+    }
+
+    function addMins(n) {
+      const mInput = document.getElementById('mins');
+      const hInput = document.getElementById('hours');
+      let m = parseInt(mInput.value, 10) || 0;
+      let h = parseInt(hInput.value, 10) || 0;
+      m += n;
+      if (m >= 60) {
+        h += Math.floor(m / 60);
+        m = m % 60;
+      }
+      mInput.value = String(m).padStart(2, '0');
+      hInput.value = String(h).padStart(2, '0');
+      showToast(`Added +${n} minutes`, '⏱️');
+    }
+
+    function addHours(n) {
+      const hInput = document.getElementById('hours');
+      let h = parseInt(hInput.value, 10) || 0;
+      h = Math.min(23, h + n);
+      hInput.value = String(h).padStart(2, '0');
+      showToast(`Added +${n} hour${n > 1 ? 's' : ''}`, '⏱️');
+    }
+
+    function copyPrevDay() {
+      document.getElementById('hours').value = '04';
+      document.getElementById('mins').value = '00';
+      document.getElementById('secs').value = '00';
+      showToast('Copied Wednesday duration: 04:00:00', '📋');
+    }
+
+    function logSession() {
+      const h = document.getElementById('hours').value.padStart(2, '0');
+      const m = document.getElementById('mins').value.padStart(2, '0');
+      const s = document.getElementById('secs').value.padStart(2, '0');
+      showToast(`Logged ${h}:${m}:${s} to desk log`, '☕');
+    }
+
+    function pickDay(idx) {
+      const btns = document.querySelectorAll('.day-btn');
+      btns.forEach((b, i) => {
+        if (i === idx) {
+          b.className = 'day-btn py-2 px-1 rounded-xl bg-cafe-elevated border border-cafe-honey/60 text-cafe-honey font-semibold transition-all shadow-sm';
+        } else {
+          b.className = 'day-btn py-2 px-1 rounded-xl bg-cafe-card border border-cafe-border text-cafe-oatmeal hover:text-cafe-parchment transition-all';
+        }
+      });
+      showToast('Selected day updated', '📅');
+    }
+
+    function toggleTask(el) {
+      if (currentRole === 'spectator') {
+        showToast('Guest spectator: goals are read-only', '👁️');
+        return;
+      }
+      const icon = el.querySelector('.w-4');
+      const text = el.querySelector('p');
+      const isDone = text.classList.contains('line-through');
+
+      if (isDone) {
+        text.classList.remove('line-through', 'text-cafe-oatmeal');
+        text.classList.add('text-cafe-parchment');
+        icon.className = 'mt-0.5 w-4 h-4 rounded bg-cafe-bg border border-cafe-borderLight flex items-center justify-center text-[10px] text-transparent font-bold';
+      } else {
+        text.classList.add('line-through', 'text-cafe-oatmeal');
+        text.classList.remove('text-cafe-parchment');
+        icon.className = 'mt-0.5 w-4 h-4 rounded bg-cafe-sage-surface border border-cafe-sage flex items-center justify-center text-[10px] text-cafe-sage font-bold';
+      }
+
+      const totalDone = document.querySelectorAll('#goal-container .line-through').length;
+      document.getElementById('goals-done').innerText = totalDone;
+      showToast(`${totalDone} of 5 intentions complete`, '🌿');
+    }
+
+    function selectCreatorFormat(fmt) {
+      const btnTeam = document.getElementById('fmt-btn-team');
+      const btnDuos = document.getElementById('fmt-btn-duos');
+      const btnSolos = document.getElementById('fmt-btn-solos');
+      const teamInputs = document.getElementById('creator-team-inputs');
+      const duoNote = document.getElementById('creator-duo-note');
+      const desc = document.getElementById('creator-format-desc');
+      const hint = document.getElementById('creator-format-hint');
+
+      [btnTeam, btnDuos, btnSolos].forEach(b => {
+        if (b) b.className = 'p-2.5 rounded-xl bg-cafe-card border border-cafe-border text-cafe-oatmeal hover:text-cafe-parchment text-center transition-all';
+      });
+
+      if (fmt === 'team') {
+        if (btnTeam) btnTeam.className = 'p-2.5 rounded-xl bg-cafe-elevated border border-cafe-honey text-cafe-honey font-medium text-center transition-all';
+        if (teamInputs) teamInputs.classList.remove('hidden');
+        if (duoNote) duoNote.classList.add('hidden');
+        if (desc) desc.innerText = 'Teams change every event. Configure custom names & themes for this weekly battle.';
+        if (hint) hint.innerText = 'Dynamic Event Themes';
+      } else if (fmt === 'duos') {
+        if (btnDuos) btnDuos.className = 'p-2.5 rounded-xl bg-cafe-elevated border border-cafe-honey text-cafe-honey font-medium text-center transition-all';
+        if (teamInputs) teamInputs.classList.add('hidden');
+        if (duoNote) duoNote.classList.remove('hidden');
+        if (desc) desc.innerText = 'Duos pairs (N=2). Partners name their own team in the cockpit before kickoff!';
+        if (hint) hint.innerText = 'Partner Self-Naming';
+      } else if (fmt === 'solos') {
+        if (btnSolos) btnSolos.className = 'p-2.5 rounded-xl bg-cafe-elevated border border-cafe-honey text-cafe-honey font-medium text-center transition-all';
+        if (teamInputs) teamInputs.classList.add('hidden');
+        if (duoNote) duoNote.classList.add('hidden');
+        if (desc) desc.innerText = 'Free-For-All individual leaderboard. No teams or duos.';
+        if (hint) hint.innerText = 'Individual Ladder';
+      }
+    }
+
+    function saveDeclarations() {
+      const hours = document.getElementById('declared-target-hours').value;
+      const duoInput = document.getElementById('declared-duo-name');
+      const duoName = duoInput ? duoInput.value.trim() : '';
+      if (duoName) {
+        showToast(`Saved Duo team "${duoName}" & target ${hours}:00:00!`, '👥');
+      } else {
+        showToast(`Saved target ${hours}:00:00 and goals!`, '🌿');
+      }
+    }
+
+    function addPrekickoffGoalRow() {
+      const list = document.getElementById('prekickoff-goals-list');
+      if (list.children.length >= 10) {
+        showToast('Maximum 10 weekly goals permitted', '⚠️');
+        return;
+      }
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-2';
+      div.innerHTML = `<input type="text" placeholder="Goal #${list.children.length + 1}" class="flex-1 bg-cafe-bg border border-cafe-border text-xs py-2 px-3 rounded-xl text-cafe-parchment" />`;
+      list.appendChild(div);
+      showToast(`Added Goal #${list.children.length}`, '📝');
+    }
+
+    function saveNewChallenge() {
+      const title = document.getElementById('new-chal-title').value;
+      const t1 = document.getElementById('creator-t1-name')?.value || 'Team 1';
+      const t2 = document.getElementById('creator-t2-name')?.value || 'Team 2';
+      closeModal('modal-creator');
+      appendAuditLog('CREATE_CHALLENGE', title, `Status → UPCOMING | Themes: ${t1} vs ${t2}`, 'Host initialized new study challenge');
+      showToast(`Challenge "${title}" created!`, '🎉');
+    }
+
+    function copyDiscordMarkdown() {
+      const msg = `🍵 **HoldMeToIt — Study Lounge Update**
+Event: Midterm Reading Week Sprint • Day 4
+
+🐝 **Honey Bees:** \`55h 00m 00s\` *(In lead by +03h 54m)*
+🦋 **Lavender Butterflies:** \`51h 05m 35s\`
+
+🌿 **Quiet Standings:**
+1. AuraStudier — 22h 45m (3/5 goals)
+2. KiraLibrary — 21h 10m (4/4 goals)
+3. NocturnalEcho — 19h 55m (2/3 goals)
+
+☕ Keep up the serene grinding.`;
+      navigator.clipboard.writeText(msg).then(() => {
+        showToast('Copied calm Discord summary to clipboard!', '📋');
+      });
+    }
+
+    function notifyDownload() {
+      showToast('Downloading cozy forfeit avatar...', '🖼️');
+    }
+
+    function changeFontStyle(fontKey) {
+      document.documentElement.setAttribute('data-font', fontKey);
+      localStorage.setItem('holdmetoit-font', fontKey);
+      const fontSelect = document.getElementById('font-style-select');
+      if (fontSelect) fontSelect.value = fontKey;
+      const names = {
+        fraunces: 'Artisanal Café (Fraunces + DM Sans)',
+        newsreader: 'Literary Library (Newsreader + DM Sans)',
+        garamond: 'Classical Academia (Cormorant Garamond)',
+        modern: 'Minimalist Warmth (DM Sans Clean)'
+      };
+      showToast('📖 Font updated: ' + (names[fontKey] || fontKey), '🖋️');
+    }
+
+    function initFontStyle() {
+      const saved = localStorage.getItem('holdmetoit-font') || 'fraunces';
+      document.documentElement.setAttribute('data-font', saved);
+      const fontSelect = document.getElementById('font-style-select');
+      if (fontSelect) fontSelect.value = saved;
+    }
+
+    // Initial Bootstrap
+    document.addEventListener('DOMContentLoaded', () => {
+      initFontStyle();
+      renderStandingsTable();
+      renderRosterList();
+      renderUserDossier(selectedUserId);
+      renderAuditTable();
+      updateHouseTotalsUI();
+    });
+  </script>
+</body>
+</html>
