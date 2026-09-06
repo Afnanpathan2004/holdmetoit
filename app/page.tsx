@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { SEED_CHALLENGE_ID } from "@/prisma/seed";
+
+const SEED_CHALLENGE_ID = "seed-honey-bees-vs-lavender-butterflies";
 
 export default function HomePage() {
   return (
