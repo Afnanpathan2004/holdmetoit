@@ -2,7 +2,7 @@
 
 > **Project:** HoldMeToIt (Gamified Study Accountability & Challenge Management Platform)  
 > **Repository:** `e:\Projects\HoldMeToIt-Git`  
-> **Current Branch:** `krish`  
+> **Current Branch:** `afnan`  
 > **Document Status:** Active Operational Relay (Living Document)  
 > **Last Updated:** 2026-09-06  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**  
@@ -26,8 +26,8 @@ The repository currently contains the authoritative 5-document specification sui
 
 ### 1.2 Current Development State
 - **Specification Phase:** 100% Complete. All 5 core documents are aligned with zero conflicting requirements.
-- **Codebase Implementation:** Ready for Phase 0 scaffolding and Slice 1 (Pure Domain Engine) construction.
-- **Git State:** Branch `krish`, working tree clean, initial commit `b098388` recorded.
+- **Codebase Implementation:** Slices 0, 1, 2, and 3 are complete. Ready for Slice 4 (Head-to-Head Live Scoreboard & Standings).
+- **Git State:** Branch `afnan`, working tree verified.
 
 ---
 
@@ -37,22 +37,22 @@ Phase 0 focuses exclusively on **The Spreadsheet Exorcism** — running a full w
 
 | Feature ID | Feature Name | Module | Target Persona | Status | DoD Completed? |
 | :--- | :--- | :--- | :---: | :---: | :---: |
-| `FEAT-AUTH-01` | Discord OAuth 2.0 (`identify` scope) | Auth & Identity | Participant, Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
+| `FEAT-AUTH-01` | Discord OAuth 2.0 (`identify` scope) | Auth & Identity | Participant, Admin | `DONE` | ✅ Completed in Slice 2 |
 | `FEAT-AUTH-02` | Public Read-Only Spectator Mode | Auth & Identity | Spectator | `NOT_STARTED` | ❌ Pending Scaffolding |
 | `FEAT-CHAL-01` | Multi-Format Challenge Creator (Team/Duo/Solo) | Challenge Ops | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
 | `FEAT-CHAL-02` | Host Manual Event Kickoff Trigger | Challenge Ops | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
 | `FEAT-CHAL-05` | Event Lock & Freeze Final Results | Challenge Ops | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
 | `FEAT-CHAL-06` | Duo Partner Self-Naming & Dynamic Team Identities | Challenge Ops | Participant, Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-DECL-01` | Declared Target Hours (`HH:MM:SS`) | Declarations | Participant | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-DECL-02` | Mandatory Weekly Goals Checklist (1–10 tasks) | Declarations | Participant | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-DECL-03` | Pre-Kickoff Declaration Lock on `ACTIVE` | Declarations | System | `NOT_STARTED` | ❌ Pending Scaffolding |
+| `FEAT-DECL-01` | Declared Target Hours (`HH:MM:SS`) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 |
+| `FEAT-DECL-02` | Mandatory Weekly Goals Checklist (1–10 tasks) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 |
+| `FEAT-DECL-03` | Pre-Kickoff Declaration Lock on `ACTIVE` | Declarations | System | `DONE` | ✅ Completed in Slice 3 |
 | `FEAT-DECL-04` | Host Goal Unlock & Mid-Event Edit Modal | Declarations | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-LOG-01` | Daily Clock-Time Self-Logging (`HH:MM:SS`) | Study Logging | Participant | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-LOG-02` | 24-Hour Single-Day Limit Validation ($\le 86,400\text{s}$) | Study Logging | System | `NOT_STARTED` | ❌ Pending Scaffolding |
+| `FEAT-LOG-01` | Daily Clock-Time Self-Logging (`HH:MM:SS`) | Study Logging | Participant | `DONE` | ✅ Completed in Slice 3 |
+| `FEAT-LOG-02` | 24-Hour Single-Day Limit Validation ($\le 86,400\text{s}$) | Study Logging | System | `DONE` | ✅ Completed in Slice 3 |
 | `FEAT-LOG-04` | Admin Inline Hours Override Grid (`is_override=true`) | Study Logging | Admin | `NOT_STARTED` | ❌ Pending Scaffolding |
 | `FEAT-LEAD-01` | Head-to-Head Live Scoreboard (Crown + Delta) | Standings & Math | All Users | `NOT_STARTED` | ❌ Pending Scaffolding |
 | `FEAT-LEAD-02` | Unified Roster Standings Table | Standings & Math | All Users | `NOT_STARTED` | ❌ Pending Scaffolding |
-| `FEAT-LEAD-03` | Dynamic Daily Catch-Up Deficit Engine | Standings & Math | Participant | `NOT_STARTED` | ❌ Pending Scaffolding |
+| `FEAT-LEAD-03` | Dynamic Daily Catch-Up Deficit Engine | Standings & Math | Participant | `DONE` | ✅ Completed in Slice 1 & 3 |
 | `FEAT-PUN-01` | Dual-Failure Auto-Flagging Engine | Accountability | System | `NOT_STARTED` | ❌ Pending Scaffolding |
 | `FEAT-PUN-02` | Punishment Wall & Deficit Roster | Accountability | All Users | `NOT_STARTED` | ❌ Pending Scaffolding |
 | `FEAT-PUN-03` | Direct Punishment PFP Asset Download Button | Accountability | Flagged User | `NOT_STARTED` | ❌ Pending Scaffolding |
@@ -94,7 +94,7 @@ graph TD
     S5 --> S6["Slice 6: E2E Quality Matrix J1–J6 Gate Verification"]
 ```
 
-### Slice 0: Foundation, Project Scaffolding & Tooling
+### Slice 0: Foundation, Project Scaffolding & Tooling (Completed)
 - **Target:** Repository Root
 - **Deliverables:**
   - Next.js 14+ (App Router) project scaffolding with TypeScript (`strict: true`).
@@ -102,7 +102,7 @@ graph TD
   - Vitest test runner configured for instant ESM domain testing.
   - Base shadcn/ui and Radix UI primitives configured.
 
-### Slice 1: Pure Domain Business Engine (`features/*/domain/`)
+### Slice 1: Pure Domain Business Engine (`features/*/domain/`) (Completed)
 - **Agent Focus:** Scoring & Engine Agent
 - **Deliverables:**
   - `duration.ts`: `parseDurationToSeconds("HH:MM:SS")`, `formatSecondsToClock(seconds)`, `formatSecondsToHuman(seconds)`.
@@ -111,14 +111,14 @@ graph TD
   - `punishment.ts`: `evaluateParticipantPunishment(targetSec, loggedSec, goalsList)`.
   - Pure Vitest test suite (`features/**/domain/*.test.ts`) covering normal paths, edge cases (0s, >24h, negative, leap days) with 100% green exit.
 
-### Slice 2: Data Persistence & Auth (`prisma/`, `core/db/`, `core/auth/`)
+### Slice 2: Data Persistence & Auth (`prisma/`, `core/db/`, `core/auth/`) (Completed)
 - **Agent Focus:** Data & Identity Agent
 - **Deliverables:**
   - `prisma/schema.prisma`: Models for `User`, `Account`, `Session`, `Challenge`, `Team`, `ChallengeParticipant`, `DailyStudyLog`, `WeeklyGoal`, `PunishmentRecord`.
   - Auth.js (NextAuth v5) Discord OAuth configuration with profile sync (avatar, display name).
   - Database seed script with sample challenge (*Honey Bees vs Lavender Butterflies*) for local dev.
 
-### Slice 3: Participant Cockpit & Daily Logging (`features/study-logs/`, `app/(dashboard)/`)
+### Slice 3: Participant Cockpit & Daily Logging (`features/study-logs/`, `app/(dashboard)/`) (Completed)
 - **Agent Focus:** Participant UI Agent
 - **Deliverables:**
   - `HH:MM:SS` duration inputs with quick-add chips (`[+30m]`, `[+1h]`, `[+2h]`).
@@ -154,15 +154,12 @@ graph TD
 
 > [!IMPORTANT]  
 > **EXACT NEXT STEP FOR THE INCOMING AGENT:**  
-> Execute **Slice 0 & Slice 1**:
-> 1. **Scaffold Next.js 14 App Router project** in `e:\Projects\HoldMeToIt-Git` with TypeScript and Tailwind CSS.
-> 2. **Configure Tailwind:** Add the exact `cozy` theme tokens from `DESIGN.md` §6 to `tailwind.config.ts`.
-> 3. **Configure Vitest:** Install and verify `vitest` in `package.json` with an `npm run test` script.
-> 4. **Implement Slice 1 (Pure Domain Math):**
->    - Create `features/study-logs/domain/duration.ts` and `features/study-logs/domain/duration.test.ts`.
->    - Create `features/leaderboard/domain/deficit.ts` and `features/leaderboard/domain/deficit.test.ts`.
->    - Create `features/accountability/domain/punishment.ts` and `features/accountability/domain/punishment.test.ts`.
-> 5. Run `npm run test` to verify 100% green tests on all domain logic before proceeding to database/UI layers.
+> Execute **Slice 4: Head-to-Head Live Scoreboard & Standings**:
+> 1. Create `app/challenge/[id]/page.tsx` supporting public spectator read-only mode (`FEAT-AUTH-02`, Law L4).
+> 2. Implement Head-to-Head Top Banner (`FEAT-LEAD-01`) with leader crown (`👑`) and lead margin delta pill.
+> 3. Implement Unified Standings Table (`FEAT-LEAD-02`) with podium highlights and team filter tabs.
+> 4. Implement Punishment Wall with 1-click **"Download Punishment PFP"** asset button (`FEAT-PUN-02`, `FEAT-PUN-03`).
+> 5. Run `npm run typecheck`, `npm run test`, and `npm run build` to verify quality gates.
 
 ---
 
@@ -210,4 +207,20 @@ In accordance with **`AGENTS.md` Rule §9.3**:
      - Lively micro-details: glowing amber header status pulse (`Study Café • Open`), higher hero asset visibility (reduced dark vignette, 48% opacity), warm handwritten motto (`~ "quiet study, warm tea, serene progress" ~`).
   3. **Documentation Alignment:** Updated `DESIGN.md` §1.2, §2.1, §2.2, and §4.4 with the ratified color tokens and ambient lighting specifications.
   4. **Interactive Prototype Sync & Verification:** Synchronized `prototype.html` artifact to `prototype/index.html`. Verified 100% valid JavaScript parsing with Node.js parser test runner.
-- **Next Up:** Proceed to Phase 0 Next.js 14 App Router scaffolding (Slice 0) & Pure Domain Engine (Slice 1).
+
+### Session 8 — 2026-09-06
+- **Agent Role:** Participant UI & Fullstack Engineer Agent
+- **Git Branch:** `afnan`
+- **Changes Completed (Slices 0–3: Foundation, Domain Engine, Persistence & Auth, Participant Cockpit & Daily Study Logging):**
+  - Scaffolding of Next.js 14 App Router, Tailwind CSS, TypeScript strict mode, Vitest.
+  - Implemented pure domain business engine: duration parsing/formatting, deficit math, leaderboard ranking, dual-failure punishment logic.
+  - Implemented Prisma schema (`User`, `Account`, `Session`, `Challenge`, `Team`, `ChallengeParticipant`, `DailyStudyLog`, `WeeklyGoal`, `PunishmentRecord`) and Auth.js Discord OAuth.
+  - Implemented participant cockpit at `/dashboard` with participant identity, challenge context, and weekly progress meter.
+  - Built `DailyStudyLog` repository with UTC date-only normalization, composite participant/date unique upsert, and integer seconds storage.
+  - Added server-side validation enforcing 24h daily boundary ($\le 86,400\text{s}$) and rejection of malformed/negative inputs.
+  - Implemented weekly goals repository with transactional replacement, completion toggling, and pre-kickoff declaration lock.
+  - Integrated pure domain deficit engine (`calculateRemainingDeficit`, `calculateRequiredDailyPace`) for encouraging catch-up notes.
+  - Enforced strict server-side authorization resolving participant from Auth.js session user.
+  - Added Law L9 loading skeleton, empty states, and error resilience down to 360px mobile viewports.
+- **Next Up:** Proceed to Slice 4: Head-to-Head Live Scoreboard & Standings.
+
