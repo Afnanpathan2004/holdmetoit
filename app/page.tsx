@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
+import { SEED_CHALLENGE_ID } from "@/prisma/seed";
 
 export default function HomePage() {
   return (
@@ -12,56 +15,55 @@ export default function HomePage() {
         </h1>
         <p className="max-w-xl text-sm leading-relaxed text-cafe-linen">
           Quiet hours study lounge and accountability — warm, precise, and
-          guilt-free. Production scaffolding is live; feature slices arrive
-          next.
+          guilt-free. Head-to-head match scoreboard, unified standings table,
+          and forfeit wall are now live.
         </p>
       </header>
 
       <section
-        className="space-y-4 rounded-3xl border border-cafe-border bg-cafe-card p-6 shadow-cafe sm:p-8"
-        aria-label="Design foundation preview"
+        className="space-y-5 rounded-3xl border border-cafe-border bg-cafe-card p-6 shadow-cafe sm:p-8"
+        aria-label="Active Challenge and Cockpit"
       >
-        <h2 className="font-serif text-lg font-semibold text-cafe-parchment">
-          Cozy design foundation
-        </h2>
-        <p className="text-sm text-cafe-oatmeal">
-          Fraunces headings, DM Sans UI, JetBrains Mono clocks, and Caveat
-          marginalia — aligned with{" "}
-          <code className="rounded bg-cafe-elevated px-1.5 py-0.5 font-mono text-xs text-cafe-honey-light">
-            DESIGN.md
-          </code>
-          .
-        </p>
-
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-cafe-honey/40 bg-cafe-elevated px-3 py-1 text-xs text-cafe-honey">
-            Honey accent
-          </span>
-          <span className="rounded-full border border-cafe-sage/40 bg-cafe-sage-surface px-3 py-1 text-xs text-cafe-sage">
-            Sage on-track
-          </span>
-          <span className="rounded-full border border-cafe-terracotta/40 bg-cafe-terracotta-surface px-3 py-1 text-xs text-cafe-terracotta">
-            Terracotta catch-up
+        <div className="flex items-center justify-between">
+          <h2 className="font-serif text-lg font-semibold text-cafe-parchment">
+            Live Challenge Lounge
+          </h2>
+          <span className="rounded-full border border-cafe-honey/30 bg-cafe-elevated px-2.5 py-0.5 text-xs text-cafe-honey">
+            Active Sprint
           </span>
         </div>
 
-        <p className="font-script text-lg text-cafe-linen">
-          On serene pace — deficits roll forward gently.
+        <p className="text-sm text-cafe-oatmeal">
+          Spectate the head-to-head battle between{" "}
+          <strong className="text-cafe-parchment font-serif">Honey Bees</strong> and{" "}
+          <strong className="text-cafe-parchment font-serif">Lavender Butterflies</strong>,
+          view real-time participant standings, or step into your personal study desk cockpit.
         </p>
 
-        <p className="font-mono-tabular text-sm text-cafe-honey-light">
-          04:30:00 logged today
-        </p>
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Button asChild className="min-h-[44px]">
+            <Link href={`/challenge/${SEED_CHALLENGE_ID}`}>
+              View Live Scoreboard
+            </Link>
+          </Button>
 
-        <Button type="button" className="w-fit">
-          Scaffolding ready
-        </Button>
+          <Button asChild variant="outline" className="min-h-[44px]">
+            <Link href="/dashboard">
+              Open Participant Cockpit
+            </Link>
+          </Button>
+        </div>
+
+        <div className="pt-2 border-t border-cafe-border/50">
+          <p className="font-script text-base text-cafe-linen">
+            ~ &ldquo;quiet study, warm tea, serene progress&rdquo; ~
+          </p>
+        </div>
       </section>
 
       <footer className="text-xs text-cafe-ash">
         Interactive prototype remains at{" "}
-        <code className="font-mono text-cafe-oatmeal">prototype/index.html</code>
-        .
+        <code className="font-mono text-cafe-oatmeal">prototype/index.html</code>.
       </footer>
     </main>
   );
