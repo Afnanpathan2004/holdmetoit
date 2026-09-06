@@ -14,7 +14,7 @@ interface DashboardPageProps {
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
-  const session = await auth();
+  const session = await auth().catch(() => null);
 
   if (!session?.user?.id) {
     return (

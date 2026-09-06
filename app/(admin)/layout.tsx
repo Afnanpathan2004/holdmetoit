@@ -5,12 +5,14 @@ import { auth } from "@/core/auth";
 import { EmptyState } from "@/components/state/empty-state";
 import { Button } from "@/components/ui/button";
 
+import { SEED_CHALLENGE_ID } from "@/core/constants/seed";
+
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const session = await auth().catch(() => null);
 
   if (!session?.user?.id) {
     return (
@@ -57,20 +59,34 @@ export default async function AdminLayout({
             </div>
           </div>
 
-          <nav className="flex items-center gap-2 sm:gap-3" aria-label="Admin Navigation">
+          <nav className="flex flex-wrap items-center gap-2 sm:gap-2.5" aria-label="Admin Navigation">
+            <Link
+              href="/"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-cafe-border bg-cafe-card px-3 py-1.5 text-xs font-medium text-cafe-parchment hover:bg-cafe-elevated transition-colors"
+            >
+              <span>Home</span>
+            </Link>
+
             <Link
               href="/admin"
-              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-cafe-border bg-cafe-card px-3.5 py-1.5 text-xs font-medium text-cafe-parchment hover:bg-cafe-elevated transition-colors"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-cafe-border bg-cafe-card px-3 py-1.5 text-xs font-medium text-cafe-parchment hover:bg-cafe-elevated transition-colors"
             >
               <span>Challenges</span>
             </Link>
 
             <Link
               href="/admin/challenges/new"
-              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-cafe-honey px-3.5 py-1.5 text-xs font-medium text-cafe-bg shadow hover:bg-cafe-honey-light transition-colors"
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-cafe-honey px-3 py-1.5 text-xs font-medium text-cafe-bg shadow hover:bg-cafe-honey-light transition-colors"
             >
               <PlusCircle className="size-3.5" />
               <span>Create Challenge</span>
+            </Link>
+
+            <Link
+              href={`/challenge/${SEED_CHALLENGE_ID}`}
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-cafe-border bg-cafe-card px-3 py-1.5 text-xs font-medium text-cafe-oatmeal hover:text-cafe-parchment hover:bg-cafe-elevated transition-colors"
+            >
+              <span>Scoreboard</span>
             </Link>
 
             <Link

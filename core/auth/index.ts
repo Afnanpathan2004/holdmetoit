@@ -9,6 +9,11 @@ import {
 } from "@/features/auth/data/user.repository";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret:
+    process.env.AUTH_SECRET ??
+    (process.env.NODE_ENV === "development"
+      ? "holdmetoit-local-development-secret-key-32chars-min"
+      : undefined),
   adapter: PrismaAdapter(prisma),
   providers: [
     Discord({
