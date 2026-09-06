@@ -20,6 +20,7 @@ import { auth } from "@/core/auth";
 import { prisma } from "@/core/db";
 import { SEED_CHALLENGE_ID } from "@/core/constants/seed";
 import { Button } from "@/components/ui/button";
+import { UserNav } from "@/features/auth/presentation/user-nav";
 
 export default async function HomePage() {
   const [session, seededChallenge] = await Promise.all([
@@ -89,31 +90,8 @@ export default async function HomePage() {
             </Link>
           </nav>
 
-          {/* Auth Status & Discord Action */}
-          <div className="flex items-center gap-2">
-            {user?.id ? (
-              <div className="flex items-center gap-2 rounded-xl border border-cafe-border bg-cafe-card px-3 py-1.5 text-xs">
-                <div className="flex size-6 items-center justify-center rounded-full bg-cafe-elevated text-[11px] font-bold text-cafe-honey">
-                  {user.name?.[0] ?? user.username?.[0] ?? "U"}
-                </div>
-                <div className="hidden sm:block text-left leading-tight">
-                  <p className="font-medium text-cafe-parchment">
-                    {user.name ?? user.username ?? "Participant"}
-                  </p>
-                  <p className="text-[10px] text-cafe-oatmeal uppercase tracking-wider">
-                    {user.role ?? "Member"}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <Button asChild size="sm" className="min-h-[38px] text-xs">
-                <Link href="/api/auth/signin?callbackUrl=/">
-                  <LogIn className="size-3.5" />
-                  <span>Login with Discord</span>
-                </Link>
-              </Button>
-            )}
-          </div>
+          {/* Authenticated Navigation & User Menu */}
+          <UserNav user={user} loginCallbackUrl="/" />
         </div>
       </header>
 

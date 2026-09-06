@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { Coffee, ArrowLeft } from "lucide-react";
 
+import { auth } from "@/core/auth";
+import { UserNav } from "@/features/auth/presentation/user-nav";
 import { SEED_CHALLENGE_ID } from "@/core/constants/seed";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth().catch(() => null);
+
   return (
     <div className="min-h-screen bg-cafe-bg text-cafe-parchment">
       <header className="border-b border-cafe-border bg-cafe-card/80 backdrop-blur">
@@ -50,6 +54,8 @@ export default function DashboardLayout({
               <span>Host Console</span>
             </Link>
           </nav>
+
+          <UserNav user={session?.user} loginCallbackUrl="/dashboard" />
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">

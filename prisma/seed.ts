@@ -73,8 +73,92 @@ async function main() {
     },
   });
 
+  // Seed local development demo account (ADMIN)
+  const demoUser = await prisma.user.upsert({
+    where: { email: "demo@holdmetoit.local" },
+    create: {
+      id: "usr-demo-dev",
+      email: "demo@holdmetoit.local",
+      name: "Demo Admin",
+      displayName: "Demo Admin",
+      username: "demo_admin",
+      role: "ADMIN",
+    },
+    update: {
+      role: "ADMIN",
+      name: "Demo Admin",
+      displayName: "Demo Admin",
+    },
+  });
+
+  // Enroll demo user into Honey Bees team
+  const demoParticipant = await prisma.challengeParticipant.upsert({
+    where: {
+      challengeId_userId: {
+        challengeId: challenge.id,
+        userId: demoUser.id,
+      },
+    },
+    create: {
+      id: "part-demo-bees",
+      challengeId: challenge.id,
+      userId: demoUser.id,
+      teamId: SEED_TEAM_BEES_ID,
+      targetSeconds: 25 * 3600, // 25:00:00
+      status: "NORMAL",
+    },
+    update: {
+      teamId: SEED_TEAM_BEES_ID,
+      targetSeconds: 25 * 3600,
+    },
+  });
+
+  // Seed demo weekly goals
+  const demoGoals = [
+    "Complete Algorithms Problem Set 4",
+    "Finish Operating Systems Chapter 5",
+    "Review HoldMeToIt Domain Math Tests",
+  ];
+
+  for (let i = 0; i < demoGoals.length; i++) {
+    await prisma.weeklyGoal.upsert({
+      where: { id: `goal-demo-${i + 1}` },
+      create: {
+        id: `goal-demo-${i + 1}`,
+        participantId: demoParticipant.id,
+        description: demoGoals[i],
+        sortOrder: i,
+        completed: i === 0,
+      },
+      update: {
+        description: demoGoals[i],
+        sortOrder: i,
+      },
+    });
+  }
+
+  // Seed an initial daily study log (3h 45m = 13500s)
+  await prisma.dailyStudyLog.upsert({
+    where: {
+      participantId_logDate: {
+        participantId: demoParticipant.id,
+        logDate: new Date("2026-09-02T00:00:00.000Z"),
+      },
+    },
+    create: {
+      id: "log-demo-day-1",
+      participantId: demoParticipant.id,
+      logDate: new Date("2026-09-02T00:00:00.000Z"),
+      durationSeconds: 13500,
+      isOverride: false,
+    },
+    update: {
+      durationSeconds: 13500,
+    },
+  });
+
   console.log(
-    `Seed complete: challenge "${challenge.title}" (${challenge.id}) with Honey Bees vs Lavender Butterflies.`,
+    `Seed complete: challenge "${challenge.title}" (${challenge.id}) with Honey Bees vs Lavender Butterflies and Demo User (${demoUser.email}).`,
   );
 }
 

@@ -97,15 +97,15 @@ describe("HomePage (Landing Page & Development Hub)", () => {
     expect(html).toContain("Requires Admin Role");
   });
 
-  it("renders Discord Login button when unauthenticated", async () => {
+  it("renders Log in button when unauthenticated", async () => {
     vi.mocked(authModule.auth).mockResolvedValue(null as never);
     vi.mocked(prisma.challenge.findUnique).mockResolvedValue(null);
 
     const jsx = await HomePage();
     const html = renderToStaticMarkup(jsx);
 
-    expect(html).toContain("Login with Discord");
-    expect(html).toContain('href="/api/auth/signin?callbackUrl=/"');
+    expect(html).toContain("Log in");
+    expect(html).toContain('href="/login?callbackUrl=%2F"');
   });
 
   it("renders user information and role when authenticated", async () => {
@@ -113,6 +113,7 @@ describe("HomePage (Landing Page & Development Hub)", () => {
       user: {
         id: "user-host-1",
         name: "Afnan Pathan",
+        displayName: "Afnan Pathan",
         username: "afnan",
         role: "ADMIN",
       },
@@ -124,7 +125,8 @@ describe("HomePage (Landing Page & Development Hub)", () => {
     const html = renderToStaticMarkup(jsx);
 
     expect(html).toContain("Afnan Pathan");
-    expect(html).toContain("ADMIN");
+    expect(html).toContain("Admin");
+    expect(html).toContain("Log out");
   });
 
   it("renders seeded challenge guide without inventing fake IDs", async () => {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { EmptyState } from "@/components/state/empty-state";
 import { ErrorState } from "@/components/state/error-state";
@@ -17,19 +18,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const session = await auth().catch(() => null);
 
   if (!session?.user?.id) {
-    return (
-      <EmptyState
-        title="Sign in to open your cockpit"
-        description="Connect with Discord to log study hours, track catch-up pace, and manage your weekly intentions."
-        action={
-          <Button asChild className="min-h-[44px]">
-            <Link href="/api/auth/signin?callbackUrl=/dashboard">
-              Login with Discord
-            </Link>
-          </Button>
-        }
-      />
-    );
+    const callback = searchParams?.challenge
+      ? `/dashboard?challenge=${encodeURIComponent(searchParams.challenge)}`
+      : "/dashboard";
+    redirect(`/login?callbackUrl=${encodeURIComponent(callback)}`);
   }
 
   try {

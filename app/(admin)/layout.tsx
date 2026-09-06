@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Shield, Coffee, PlusCircle, ArrowLeft } from "lucide-react";
 
 import { auth } from "@/core/auth";
-import { EmptyState } from "@/components/state/empty-state";
 import { Button } from "@/components/ui/button";
-
+import { UserNav } from "@/features/auth/presentation/user-nav";
 import { SEED_CHALLENGE_ID } from "@/core/constants/seed";
 
 export default async function AdminLayout({
@@ -15,21 +15,7 @@ export default async function AdminLayout({
   const session = await auth().catch(() => null);
 
   if (!session?.user?.id) {
-    return (
-      <div className="mx-auto max-w-4xl px-4 py-16">
-        <EmptyState
-          title="Sign in required"
-          description="You must be signed in with Discord to access the community host and administration console."
-          action={
-            <Button asChild className="min-h-[44px]">
-              <Link href="/api/auth/signin?callbackUrl=/admin">
-                Login with Discord
-              </Link>
-            </Button>
-          }
-        />
-      </div>
-    );
+    redirect("/login?callbackUrl=/admin");
   }
 
   return (
@@ -97,6 +83,8 @@ export default async function AdminLayout({
               <span>Cockpit</span>
             </Link>
           </nav>
+
+          <UserNav user={session.user} loginCallbackUrl="/admin" />
         </div>
       </header>
 

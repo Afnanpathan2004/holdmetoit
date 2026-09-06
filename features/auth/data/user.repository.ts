@@ -68,3 +68,55 @@ export async function findAllUsers() {
   });
 }
 
+export interface GoogleProfileInput {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
+export async function syncUserFromGoogleProfile(
+  userId: string,
+  profile: GoogleProfileInput,
+): Promise<User> {
+  const username = profile.email ? profile.email.split("@")[0] : undefined;
+  const displayName = profile.name ?? username ?? "Google User";
+
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: profile.name ?? displayName,
+      displayName,
+      username: username ?? undefined,
+      image: profile.image ?? undefined,
+    },
+  });
+}
+
+export async function getOrCreateDemoUser(): Promise<User> {
+  const DEMO_EMAIL = "demo@holdmetoit.local";
+  const existing = await prisma.user.findUnique({
+    where: { email: DEMO_EMAIL },
+  });
+
+  if (existing) {
+    if (existing.role !== "ADMIN") {
+      return prisma.user.update({
+        where: { id: existing.id },
+        data: { role: "ADMIN" },
+      });
+    }
+    return existing;
+  }
+
+  return prisma.user.create({
+    data: {
+      id: "usr-demo-dev",
+      email: DEMO_EMAIL,
+      name: "Demo Admin",
+      displayName: "Demo Admin",
+      username: "demo_admin",
+      role: "ADMIN",
+    },
+  });
+}
+
