@@ -48,9 +48,15 @@ export default function HomePage() {
             </Link>
           </Button>
 
-          <Button asChild variant="outline" className="min-h-[44px]">
+          <Button asChild variant="secondary" className="min-h-[44px]">
             <Link href="/dashboard">
               Open Participant Cockpit
+            </Link>
+          </Button>
+
+          <Button asChild variant="outline" className="min-h-[44px] text-cafe-honey hover:text-cafe-honey-light">
+            <Link href="/admin">
+              Host Operations Hub 🛡️
             </Link>
           </Button>
         </div>
