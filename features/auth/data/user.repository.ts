@@ -6,6 +6,8 @@ import {
   type DiscordProfileInput,
 } from "@/features/auth/data/discord-profile.mapper";
 
+import { isDiscordAdmin } from "@/features/auth/data/discord-guild.service";
+
 export async function findUserById(userId: string): Promise<User | null> {
   return prisma.user.findUnique({ where: { id: userId } });
 }
@@ -14,10 +16,6 @@ export async function findUserByDiscordId(
   discordId: string,
 ): Promise<User | null> {
   return prisma.user.findUnique({ where: { discordId } });
-}
-
-export async function countUsers(): Promise<number> {
-  return prisma.user.count();
 }
 
 export async function syncUserFromDiscordProfile(
@@ -38,17 +36,16 @@ export async function syncUserFromDiscordProfile(
   });
 }
 
-export async function promoteFirstUserToAdminIfNeeded(
+export async function syncUserRoleFromDiscord(
   userId: string,
-): Promise<UserRole | null> {
-  const userCount = await countUsers();
-  if (userCount !== 1) {
-    return null;
-  }
+  discordId: string,
+): Promise<UserRole> {
+  const shouldBeAdmin = await isDiscordAdmin(discordId);
+  const role: UserRole = shouldBeAdmin ? "ADMIN" : "PARTICIPANT";
 
   const updated = await prisma.user.update({
     where: { id: userId },
-    data: { role: "ADMIN" },
+    data: { role },
   });
 
   return updated.role;

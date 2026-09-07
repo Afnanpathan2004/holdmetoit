@@ -4,8 +4,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import { prisma } from "@/core/db";
 import {
-  promoteFirstUserToAdminIfNeeded,
   syncUserFromDiscordProfile,
+  syncUserRoleFromDiscord,
 } from "@/features/auth/data/user.repository";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -45,7 +45,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         image: user.image,
       });
 
-      await promoteFirstUserToAdminIfNeeded(user.id);
+      await syncUserRoleFromDiscord(user.id, account.providerAccountId);
     },
   },
   callbacks: {

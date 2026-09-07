@@ -212,10 +212,7 @@ export function buildScoreboardViewModel(
 
   const companionCounts = new Map<string, number>();
   for (const p of challenge.participants) {
-    companionCounts.set(
-      p.teamId,
-      (companionCounts.get(p.teamId) ?? 0) + 1,
-    );
+    companionCounts.set(p.teamId, (companionCounts.get(p.teamId) ?? 0) + 1);
   }
 
   const teams: ScoreboardTeam[] = challenge.teams.map((team) => {
@@ -241,7 +238,8 @@ export function buildScoreboardViewModel(
 
   // 3. Head-to-Head Banner (FEAT-LEAD-01)
   const sortedTeams = [...teams].sort(
-    (a, b) => b.totalLoggedSeconds - a.totalLoggedSeconds || a.sortOrder - b.sortOrder,
+    (a, b) =>
+      b.totalLoggedSeconds - a.totalLoggedSeconds || a.sortOrder - b.sortOrder,
   );
 
   const teamA = sortedTeams[0] ?? null;
@@ -260,7 +258,8 @@ export function buildScoreboardViewModel(
     );
   }
 
-  const totalMatchSeconds = (teamA?.totalLoggedSeconds ?? 0) + (teamB?.totalLoggedSeconds ?? 0);
+  const totalMatchSeconds =
+    (teamA?.totalLoggedSeconds ?? 0) + (teamB?.totalLoggedSeconds ?? 0);
   const ratioPercentageA =
     totalMatchSeconds > 0 && teamA
       ? Math.round((teamA.totalLoggedSeconds / totalMatchSeconds) * 1000) / 10
@@ -297,7 +296,10 @@ export function buildScoreboardViewModel(
 
     const completionPercentage =
       p.targetSeconds > 0
-        ? Math.min(100, Math.round((totalLoggedSeconds / p.targetSeconds) * 100))
+        ? Math.min(
+            100,
+            Math.round((totalLoggedSeconds / p.targetSeconds) * 100),
+          )
         : 100;
 
     let paceStatus: ParticipantPaceStatus = "on-track";
@@ -320,7 +322,10 @@ export function buildScoreboardViewModel(
         paceLabel = "Completed";
       }
     } else {
-      if (deficitSeconds === 0 && (goalsTotalCount === 0 || goalsCompletedCount === goalsTotalCount)) {
+      if (
+        deficitSeconds === 0 &&
+        (goalsTotalCount === 0 || goalsCompletedCount === goalsTotalCount)
+      ) {
         paceStatus = "serene";
         paceLabel = "Serene";
       } else if (deficitSeconds > 0) {
@@ -337,7 +342,8 @@ export function buildScoreboardViewModel(
     return {
       participantId: p.id,
       userId: p.userId,
-      displayName: p.user.displayName ?? p.user.name ?? p.user.username ?? "Anonymous",
+      displayName:
+        p.user.displayName ?? p.user.name ?? p.user.username ?? "Anonymous",
       username: p.user.username,
       image: p.user.image,
       teamId: p.teamId,
@@ -368,10 +374,12 @@ export function buildScoreboardViewModel(
     return a.displayName.localeCompare(b.displayName);
   });
 
-  const standings: ScoreboardStandingEntry[] = participantRows.map((row, idx) => ({
-    ...row,
-    rank: idx + 1,
-  }));
+  const standings: ScoreboardStandingEntry[] = participantRows.map(
+    (row, idx) => ({
+      ...row,
+      rank: idx + 1,
+    }),
+  );
 
   // 5. Punishment Wall data (FEAT-PUN-02, FEAT-PUN-03, Law L6)
   const isEventCompleted = challenge.status === "COMPLETED";
@@ -396,15 +404,16 @@ export function buildScoreboardViewModel(
     const isPardoned =
       p.status === "EXCUSED" || Boolean(p.punishmentRecord?.isPardoned);
 
-    const shouldFlag =
-      isEventCompleted
-        ? (evaluation.isPunished || isExplicitlyPunished)
-        : (evaluation.isPunished && (evaluation.hoursDeficitSeconds > 0 || evaluation.incompleteGoals > 0));
+    const shouldFlag = isEventCompleted
+      ? evaluation.isPunished || isExplicitlyPunished
+      : evaluation.isPunished &&
+        (evaluation.hoursDeficitSeconds > 0 || evaluation.incompleteGoals > 0);
 
     if (shouldFlag) {
       const team = teamLookup.get(p.teamId);
       const hoursDeficitSeconds =
-        p.punishmentRecord?.hoursDeficitSeconds ?? evaluation.hoursDeficitSeconds;
+        p.punishmentRecord?.hoursDeficitSeconds ??
+        evaluation.hoursDeficitSeconds;
       const incompleteGoalsCount =
         p.punishmentRecord?.incompleteGoalsCount ?? evaluation.incompleteGoals;
 
@@ -436,7 +445,9 @@ export function buildScoreboardViewModel(
 
   // Sort flagged members by deficit descending
   flaggedMembers.sort(
-    (a, b) => b.hoursDeficitSeconds - a.hoursDeficitSeconds || b.incompleteGoalsCount - a.incompleteGoalsCount,
+    (a, b) =>
+      b.hoursDeficitSeconds - a.hoursDeficitSeconds ||
+      b.incompleteGoalsCount - a.incompleteGoalsCount,
   );
 
   const currentUserParticipant = currentUserId
@@ -484,6 +495,10 @@ export async function getChallengeScoreboard(
   challengeId: string,
   currentUserId?: string,
 ): Promise<ChallengeScoreboardViewModel | null> {
+  const challenges = await prisma.challenge.findMany();
+
+  console.log("All challenges:", challenges);
+
   const challenge = await prisma.challenge.findUnique({
     where: { id: challengeId },
     include: {
@@ -531,5 +546,8 @@ export async function getChallengeScoreboard(
     return null;
   }
 
-  return buildScoreboardViewModel(challenge as unknown as RawChallengePayload, currentUserId);
+  return buildScoreboardViewModel(
+    challenge as unknown as RawChallengePayload,
+    currentUserId,
+  );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Shield, Sparkles, Trophy, UserCheck } from "lucide-react";
 
 import { auth } from "@/core/auth";
@@ -10,6 +11,16 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
+  const isDevBypass =
+    process.env.NODE_ENV === "development" || !process.env.AUTH_DISCORD_ID;
+
+  if (!session?.user?.id && !isDevBypass) {
+    redirect("/");
+  }
+
+  if (session?.user && session.user.role !== "ADMIN" && !isDevBypass) {
+    redirect("/dashboard");
+  }
 
   return (
     <div className="min-h-screen bg-cafe-bg text-cafe-parchment font-sans flex flex-col">
