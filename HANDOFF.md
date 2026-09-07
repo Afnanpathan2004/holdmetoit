@@ -4,7 +4,7 @@
 > **Repository:** `e:\Projects\HoldMeToIt-Git`  
 > **Current Branch:** `krish`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-09-07  
+> **Last Updated:** 2026-09-08  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**  
 
 ---
@@ -190,5 +190,17 @@ In accordance with **`AGENTS.md` Rule §9.3**:
   - Created `features/auth/presentation/auth-nav.tsx` (`UserNav`, `SignInWithDiscordButton`, `SignOutButton`, `DiscordIcon`).
   - Updated `app/page.tsx` with top authentication bar, dynamic Discord login button, and direct navigation into Cockpit / Admin hubs.
   - Updated `app/challenge/[id]/layout.tsx`, `app/admin/layout.tsx`, and `app/(dashboard)/layout.tsx` to render `UserNav` with avatar, name, and sign-out controls.
-  - Quality Gates: 26 test suites (158 tests) passing 100% green, `tsc --noEmit` exits 0.
+
+### Session 14 — 2026-09-08
+- **Agent Role:** Data & Identity Agent / System Architect
+- **Git Branch:** `afnan-jr`
+- **Changes Completed (Discord Server Role RBAC & Dev Foreign Key Fix):**
+  - Designed and implemented three-tier RBAC architecture: Spectator (unauthenticated) -> Participant (authenticated) -> Host/Admin (Discord server role).
+  - Built `features/auth/data/discord-guild.service.ts` to inspect member roles via Discord REST API v10 and Bot Token, plus direct `DISCORD_ADMIN_IDS` whitelist support.
+  - Added unit test suite `features/auth/data/discord-guild.service.test.ts` (8/8 tests passing).
+  - Removed brittle `promoteFirstUserToAdminIfNeeded` and replaced with real-time `syncUserRoleFromDiscord` in NextAuth `events.signIn`.
+  - Fixed `dev-host-admin` foreign key constraint crash (`Challenge_hostId_fkey`) in `features/auth/api/require-admin.ts` by upserting dev host identity into PostgreSQL.
+  - Protected `app/admin/layout.tsx` with server-side authorization check (redirecting non-admins to `/dashboard` and guests to `/`).
+  - Quality Gates: 27 test files (166 tests) passing 100% green, `npm run typecheck` exits 0, `npm run build` exits 0.
+
 
