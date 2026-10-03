@@ -497,8 +497,6 @@ export async function getChallengeScoreboard(
 ): Promise<ChallengeScoreboardViewModel | null> {
   const challenges = await prisma.challenge.findMany();
 
-  console.log("All challenges:", challenges);
-
   const challenge = await prisma.challenge.findUnique({
     where: { id: challengeId },
     include: {
