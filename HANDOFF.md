@@ -266,17 +266,39 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - Task deletion with hover trash icon button.
     - "Add Daily Todo" and "Add Weekly Todo" modal with dynamic category selector or instant new category creation.
     - Dynamic completion badge (`{completed}/{total} Completed`).
-  - **Pruning & Legacy Cleanup:**
-    - Cleaned up legacy weekly goals references across repositories and tests.
   - **Quality Gates:**
     - `npm run typecheck` exits 0 (zero TypeScript errors).
     - `npm run test` exits 0 (41 test files, 450/450 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
+### Session 32 — 2026-10-04
+- **Agent Role:** Scoring & Engine Agent & Participant UI Agent
+- **Changes Completed (Dynamic Matchup Share & Target Progress):**
+  - **Pure Domain Engine (`features/leaderboard/domain/leaderboard.ts` / Law L7):**
+    - Added `calculateSharePercentages(teamASeconds, teamBSeconds)` returning `SharePercentages` (`{ ratioPercentageA, ratioPercentageB }`).
+    - Handled 0 vs 0 hours (returning 0% and 0%), single-sided hours (100% vs 0%), equal hours (50% vs 50%), and fractional shares summing strictly to 100%.
+    - Added comprehensive unit tests in `leaderboard.test.ts`.
+  - **Data / ViewModel Hydration (`features/leaderboard/data/leaderboard-data.ts`):**
+    - Extended `ScoreboardTeam` interface with `targetSeconds`, `targetClock`, `targetHours`, and `completionPercentage`.
+    - Aggregated `teamTargetMap` from enrolled participants' declared `targetSeconds`.
+    - Hydrated each team's target metrics and completion percentage.
+    - Updated `matchHeader` to use `calculateSharePercentages(teamA.totalLoggedSeconds, teamB.totalLoggedSeconds)`.
+    - Added unit tests in `leaderboard-data.test.ts`.
+  - **Presentation Layer (`features/leaderboard/presentation/challenge-leaderboard-tab.tsx`):**
+    - Fixed Falsy Zero Bug: replaced `matchHeader.ratioPercentage || 50` with nullish coalescing `?? 0`, ensuring a 0% share is never coerced to 50%.
+    - Dynamic Weekly Targets: replaced hardcoded `Weekly Target: 120h` with `Weekly Target: {team.targetHours}h`.
+    - Card Progress Bars: updated team card progress bars to use each team's actual `completionPercentage` towards its declared target rather than matchup share.
+    - Added component unit tests in `challenge-leaderboard-tab.test.tsx`.
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run test` exits 0 (43 test files, 465/465 tests green).
     - `npm run build` succeeds cleanly with all routes compiled.
 
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Local Visual Inspection:** Run `npm run dev` and test the categorizable todo list on `/` (daily & weekly tasks, adding categories, toggling completion, deleting tasks).
+1. **Local Visual Inspection:** Run `npm run dev` and navigate to `/challenge/:id` to verify the head-to-head battle card displays dynamic weekly targets, accurate completion percentage bars, and dynamic share percentages (e.g. 100% vs 0%).
 2. **Phase 1 Evolution:** Proceed with automated Yeolpumta (YPT) ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`) per `ROADMAP.md`.
+
 

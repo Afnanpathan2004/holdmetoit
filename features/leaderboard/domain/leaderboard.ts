@@ -94,6 +94,43 @@ export function calculateLeadMargin(
   };
 }
 
+export interface SharePercentages {
+  /** Percentage of the combined logged time belonging to Team A (0 to 100). */
+  ratioPercentageA: number;
+  /** Percentage of the combined logged time belonging to Team B (0 to 100). */
+  ratioPercentageB: number;
+}
+
+/**
+ * Calculates head-to-head percentage share between two teams (Law L7).
+ * When totalMatchSeconds is 0, both shares are 0%.
+ * When totalMatchSeconds > 0, shares sum to exactly 100%.
+ */
+export function calculateSharePercentages(
+  teamASeconds: number,
+  teamBSeconds: number,
+): SharePercentages {
+  assertNonNegativeInteger("teamASeconds", teamASeconds);
+  assertNonNegativeInteger("teamBSeconds", teamBSeconds);
+
+  const totalMatchSeconds = teamASeconds + teamBSeconds;
+  if (totalMatchSeconds === 0) {
+    return {
+      ratioPercentageA: 0,
+      ratioPercentageB: 0,
+    };
+  }
+
+  const ratioPercentageA =
+    Math.round((teamASeconds / totalMatchSeconds) * 1000) / 10;
+  const ratioPercentageB = Math.round((100 - ratioPercentageA) * 10) / 10;
+
+  return {
+    ratioPercentageA,
+    ratioPercentageB,
+  };
+}
+
 function assertNonNegativeInteger(label: string, value: number): void {
   if (!Number.isInteger(value)) {
     throw new DurationRangeError(`${label} must be an integer.`);

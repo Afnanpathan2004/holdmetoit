@@ -35,8 +35,8 @@ export function ChallengeLeaderboardTab({ challenge }: ChallengeLeaderboardTabPr
     (teamA?.totalLoggedSeconds ?? 0) + (teamB?.totalLoggedSeconds ?? 0);
   const totalHoursCombined = Math.round(totalSecondsCombined / 3600);
 
-  const ratioA = matchHeader.ratioPercentageA || 50;
-  const ratioB = matchHeader.ratioPercentageB || 50;
+  const ratioA = matchHeader.ratioPercentageA ?? 0;
+  const ratioB = matchHeader.ratioPercentageB ?? 0;
 
   // Average per person
   const avgHoursA = teamA && teamA.companionCount > 0
@@ -70,7 +70,7 @@ export function ChallengeLeaderboardTab({ challenge }: ChallengeLeaderboardTabPr
                   </p>
                 </div>
                 <span className="text-xs text-[#868686]">
-                  Weekly Target: 120h
+                  Weekly Target: {teamA.targetHours}h
                 </span>
               </div>
 
@@ -90,7 +90,7 @@ export function ChallengeLeaderboardTab({ challenge }: ChallengeLeaderboardTabPr
               <div className="h-2 w-full overflow-hidden rounded-full bg-[#1c1c1c]">
                 <div
                   className="h-full rounded-full bg-[#22c55e] transition-all duration-500"
-                  style={{ width: `${Math.min(100, ratioA)}%` }}
+                  style={{ width: `${teamA.completionPercentage}%` }}
                 />
               </div>
             </div>
@@ -115,7 +115,7 @@ export function ChallengeLeaderboardTab({ challenge }: ChallengeLeaderboardTabPr
                   </p>
                 </div>
                 <span className="text-xs text-[#868686]">
-                  Weekly Target: 120h
+                  Weekly Target: {teamB.targetHours}h
                 </span>
               </div>
 
@@ -135,7 +135,7 @@ export function ChallengeLeaderboardTab({ challenge }: ChallengeLeaderboardTabPr
               <div className="h-2 w-full overflow-hidden rounded-full bg-[#1c1c1c]">
                 <div
                   className="h-full rounded-full bg-[#3b82f6] transition-all duration-500"
-                  style={{ width: `${Math.min(100, ratioB)}%` }}
+                  style={{ width: `${teamB.completionPercentage}%` }}
                 />
               </div>
             </div>

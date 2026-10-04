@@ -162,14 +162,23 @@ describe("buildScoreboardViewModel", () => {
 
     expect(bees?.totalLoggedSeconds).toBe(35_100);
     expect(bees?.isLeader).toBe(true);
+    expect(bees?.targetSeconds).toBe(126_000);
+    expect(bees?.targetHours).toBe(35);
+    expect(bees?.completionPercentage).toBe(28); // 35100 / 126000 = 27.85% -> 28%
+
     expect(butterflies?.totalLoggedSeconds).toBe(7_200);
     expect(butterflies?.isLeader).toBe(false);
+    expect(butterflies?.targetSeconds).toBe(126_000);
+    expect(butterflies?.targetHours).toBe(35);
+    expect(butterflies?.completionPercentage).toBe(6); // 7200 / 126000 = 5.71% -> 6%
 
     // Match banner
     expect(result.matchHeader.hasMatchup).toBe(true);
     expect(result.matchHeader.leaderSide).toBe("a");
     expect(result.matchHeader.leadMarginSeconds).toBe(27_900); // 35100 - 7200 = 27900
     expect(result.matchHeader.leaderTeamId).toBe("team-bees");
+    expect(result.matchHeader.ratioPercentageA).toBe(83); // 35100 / (35100+7200) = 82.978% -> 83%
+    expect(result.matchHeader.ratioPercentageB).toBe(17);
   });
 
   it("sorts participant standings descending by logged seconds", () => {
@@ -237,7 +246,61 @@ describe("buildScoreboardViewModel", () => {
     expect(result.standings).toEqual([]);
     expect(result.punishmentWall.flaggedMembers).toEqual([]);
     expect(result.matchHeader.leadMarginSeconds).toBe(0);
+    expect(result.matchHeader.ratioPercentageA).toBe(0);
+    expect(result.matchHeader.ratioPercentageB).toBe(0);
     expect(result.teams[0].totalLoggedSeconds).toBe(0);
+    expect(result.teams[0].targetSeconds).toBe(0);
+    expect(result.teams[0].targetHours).toBe(0);
+    expect(result.teams[0].completionPercentage).toBe(0);
+  });
+
+  it("calculates 100% share for Team A and 0% for Team B when Team B has zero logged hours", () => {
+    const oneSidedChallenge: RawChallengePayload = {
+      ...mockChallenge,
+      participants: [
+        {
+          id: "part-1",
+          userId: "user-1",
+          teamId: "team-bees",
+          targetSeconds: 126_000,
+          status: "NORMAL",
+          user: {
+            id: "user-1",
+            displayName: "SoloWorker",
+            username: "solo",
+            name: null,
+            image: null,
+          },
+          dailyStudyLogs: [{ durationSeconds: 25_200 }], // 7h
+        },
+        {
+          id: "part-2",
+          userId: "user-2",
+          teamId: "team-butterflies",
+          targetSeconds: 126_000,
+          status: "NORMAL",
+          user: {
+            id: "user-2",
+            displayName: "ZeroWorker",
+            username: "zero",
+            name: null,
+            image: null,
+          },
+          dailyStudyLogs: [], // 0h
+        },
+      ],
+    };
+
+    const result = buildScoreboardViewModel(oneSidedChallenge, undefined, fixedNow);
+
+    expect(result.matchHeader.ratioPercentageA).toBe(100);
+    expect(result.matchHeader.ratioPercentageB).toBe(0);
+
+    const bees = result.teams.find((t) => t.id === "team-bees");
+    const butterflies = result.teams.find((t) => t.id === "team-butterflies");
+
+    expect(bees?.completionPercentage).toBe(20); // 25200 / 126000 = 20%
+    expect(butterflies?.completionPercentage).toBe(0);
   });
 
   describe("countdown and dynamic lifecycle status", () => {

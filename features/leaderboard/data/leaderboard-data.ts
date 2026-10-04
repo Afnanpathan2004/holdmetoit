@@ -10,6 +10,7 @@ import {
 import {
   aggregateTeamScores,
   calculateLeadMargin,
+  calculateSharePercentages,
   type TeamRef,
 } from "@/features/leaderboard/domain/leaderboard";
 import {
@@ -28,6 +29,10 @@ export interface ScoreboardTeam {
   companionCount: number;
   totalLoggedSeconds: number;
   totalLoggedClock: string;
+  targetSeconds: number;
+  targetClock: string;
+  targetHours: number;
+  completionPercentage: number;
   isLeader: boolean;
 }
 
@@ -216,9 +221,14 @@ export function buildScoreboardViewModel(
   const highestTeamScore = teamAggregates[0]?.totalSeconds ?? 0;
 
   const companionCounts = new Map<string, number>();
+  const teamTargetMap = new Map<string, number>();
   for (const p of challenge.participants) {
     if (p.teamId) {
       companionCounts.set(p.teamId, (companionCounts.get(p.teamId) ?? 0) + 1);
+      teamTargetMap.set(
+        p.teamId,
+        (teamTargetMap.get(p.teamId) ?? 0) + (p.targetSeconds ?? 0),
+      );
     }
   }
 
@@ -228,6 +238,12 @@ export function buildScoreboardViewModel(
       teamAggregates.length > 0 &&
       totalLoggedSeconds === highestTeamScore &&
       totalLoggedSeconds > 0;
+    const targetSeconds = teamTargetMap.get(team.id) ?? 0;
+    const targetHours = Math.round(targetSeconds / 3600);
+    const completionPercentage =
+      targetSeconds > 0
+        ? Math.min(100, Math.round((totalLoggedSeconds / targetSeconds) * 100))
+        : 0;
 
     return {
       id: team.id,
@@ -239,6 +255,10 @@ export function buildScoreboardViewModel(
       companionCount: companionCounts.get(team.id) ?? 0,
       totalLoggedSeconds,
       totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
+      targetSeconds,
+      targetClock: formatSecondsToClock(targetSeconds),
+      targetHours,
+      completionPercentage,
       isLeader,
     };
   });
@@ -258,21 +278,21 @@ export function buildScoreboardViewModel(
     signedMarginSeconds: 0,
   };
 
+  let sharePercentages = {
+    ratioPercentageA: 0,
+    ratioPercentageB: 0,
+  };
+
   if (teamA && teamB) {
     leadMarginResult = calculateLeadMargin(
       teamA.totalLoggedSeconds,
       teamB.totalLoggedSeconds,
     );
+    sharePercentages = calculateSharePercentages(
+      teamA.totalLoggedSeconds,
+      teamB.totalLoggedSeconds,
+    );
   }
-
-  const totalMatchSeconds =
-    (teamA?.totalLoggedSeconds ?? 0) + (teamB?.totalLoggedSeconds ?? 0);
-  const ratioPercentageA =
-    totalMatchSeconds > 0 && teamA
-      ? Math.round((teamA.totalLoggedSeconds / totalMatchSeconds) * 1000) / 10
-      : 50;
-  const ratioPercentageB =
-    totalMatchSeconds > 0 ? Math.round((100 - ratioPercentageA) * 10) / 10 : 50;
 
   const matchHeader: ScoreboardMatchHeader = {
     hasMatchup: teams.length >= 2,
@@ -288,8 +308,8 @@ export function buildScoreboardViewModel(
           ? teamB.id
           : null,
     leaderSide: leadMarginResult.leader,
-    ratioPercentageA,
-    ratioPercentageB,
+    ratioPercentageA: sharePercentages.ratioPercentageA,
+    ratioPercentageB: sharePercentages.ratioPercentageB,
   };
 
   // 4. Standings rows (FEAT-LEAD-02)
