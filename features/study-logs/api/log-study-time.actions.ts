@@ -79,6 +79,7 @@ export async function logStudyTimeAction(
 
     revalidatePath("/");
     revalidatePath("/dashboard");
+    revalidatePath(`/challenge/${parsed.data.challengeId}`);
     return { ok: true };
   } catch (error) {
     if (error instanceof AuthError) {

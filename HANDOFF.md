@@ -267,12 +267,59 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run typecheck` exits 0 (zero TypeScript errors).
     - `npm run build` succeeds cleanly with all routes compiled.
 
+### Session 35 — 2026-10-05
+- **Agent Role:** Participant UI & Scoring / Domain Engine Agent
+- **Changes Completed (Study Log Update & Input Pre-fill Flow):**
+  - **Pure Domain Engine (`features/study-logs/domain/duration.ts` / Law L7):**
+    - Implemented `decomposeSecondsToParts(totalSeconds)` to cleanly decompose integer seconds into `{ hours, minutes, seconds }`.
+    - Added unit tests in `duration.test.ts` covering zero, negative, partial, and 24-hour limits.
+  - **Presentation Layer (`features/study-logs/presentation/daily-hours-modal.tsx`):**
+    - Extended `DailyHoursModalProps` to accept `todayLoggedSeconds`, `yesterdayLoggedSeconds`, and `existingLogs`.
+    - Initialized state synchronously and pre-populated `hours`, `minutes`, `seconds` input fields with the selected date's committed duration whenever $> 0$.
+    - Added dynamic date tab switching: toggling between "Today" and "Yesterday" instantly re-populates inputs with that specific day's saved record.
+    - Added contextual badge displaying previously committed time (`Previously committed: HH:MM:SS`).
+    - Dynamically changed submit button text to `"Update Hours"` when editing an existing record vs `"Submit"` for initial logs.
+    - Updated hours input attribute constraint from `max="16"` to `max="24"` (Law L8).
+    - Added `router.refresh()` upon successful save for instant client cache synchronization.
+    - Added comprehensive component tests in `daily-hours-modal.test.tsx`.
+  - **Cockpit View Integration (`features/study-logs/presentation/home-cockpit-view.tsx`):**
+    - Wired `effectiveTodaySeconds`, `cockpit.yesterdayLoggedSeconds`, and `existingLogsMap` directly into `DailyHoursModal`.
+  - **Server Action Enhancements (`features/study-logs/api/log-study-time.actions.ts`):**
+    - Added path revalidation for `/challenge/${parsed.data.challengeId}` alongside `/` and `/dashboard`.
+    - Updated `log-study-time.actions.test.ts` to assert all three revalidated paths.
+  - **Quality Gates:**
+    - `npm run test` exits 0 (41 test files, 459/459 tests green).
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
+### Session 36 — 2026-10-05
+- **Agent Role:** Participant UI & Scoring / Domain Engine Agent
+- **Changes Completed (Study Log Modal Refinements: Removal of Committed Badge & Conditional Yesterday Toggle):**
+  - **Removal of Previously Committed Badge (`features/study-logs/presentation/daily-hours-modal.tsx`):**
+    - Removed the visual badge container (`Previously committed: HH:MM:SS`) to keep the study log modal uncluttered and focused.
+    - Preserved input pre-population (`hours`, `minutes`, `seconds`) with previously committed time and the dynamic button label (`"Update Hours"` vs `"Submit"`).
+    - Removed unused `formatSecondsToClock` import from the presentation modal.
+  - **Conditional "Yesterday" Toggle Visibility (`daily-hours-modal.tsx`, `home-cockpit-view.tsx`):**
+    - Directly utilized existing `isYesterdayMissed` from `CockpitViewModel` (which checks `challengeStatus === "ACTIVE" && yesterdayDate >= challengeStartDate && yesterdayLog === undefined`), ensuring zero redundant schema fields.
+    - Passed `isYesterdayMissed={cockpit?.isYesterdayMissed ?? false}` to `DailyHoursModal`.
+    - Computed `showYesterdayOption = Boolean(isYesterdayMissed && yesterdayDate)` in `DailyHoursModal`.
+    - Gated the "Today" vs "Yesterday" tab buttons on `showYesterdayOption`, hiding "Yesterday" when yesterday's hours are already logged or when the challenge only started today.
+    - Ensured `selectedDate` strictly defaults to `todayDate` whenever `showYesterdayOption` is false.
+  - **Component Tests (`features/study-logs/presentation/daily-hours-modal.test.tsx`):**
+    - Added assertions verifying `Previously committed` is not rendered anywhere in the modal.
+    - Added test cases asserting the "Yesterday" toggle button is hidden when `isYesterdayMissed` is false and visible when `isYesterdayMissed` is true.
+  - **Quality Gates:**
+    - `npm run test` exits 0 (41 test files, 460/460 tests green).
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify UI in Dev Mode:** Run `npm run dev` and navigate through `/`, `/challenge/:id`, and `/admin` to verify that all restructured components render seamlessly, and confirm that without an active/upcoming event, no banner is rendered on the home cockpit.
+1. **Verify In-Browser Flow:** Start `npm run dev` and verify that the study log modal:
+   - Does NOT show the "Previously committed: HH:MM:SS" box.
+   - Hides the "Yesterday" toggle button when yesterday's hours have already been logged or if the event started today.
+   - Shows the "Yesterday" toggle button only when `isYesterdayMissed` is true.
+   - Successfully updates hours on submit and reflects updated hours in the input when reopened.
 2. **Phase 1 Feature Roadmap:** Begin implementation of Yeolpumta (YPT) automated ingestion (`FEAT-LOG-03`) or Discord bot slash commands (`FEAT-DISC-03`) per `ROADMAP.md`.
-
-
-

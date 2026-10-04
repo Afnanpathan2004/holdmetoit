@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Calendar } from "lucide-react";
 import { DailyHoursModal } from "./daily-hours-modal";
 import { EnrollmentModal as JoinChallengeModal } from "@/features/challenges/presentation/enrollment-modal";
@@ -81,6 +81,14 @@ export function HomeCockpitView({
     year: "numeric",
   });
 
+  const existingLogsMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    cockpit?.logs.forEach((log) => {
+      map[log.logDate] = log.durationSeconds;
+    });
+    return map;
+  }, [cockpit?.logs]);
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto px-4 py-8 sm:py-12">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -124,12 +132,16 @@ export function HomeCockpitView({
       />
 
       <DailyHoursModal
-        key={hoursModalDate ?? "today"}
+        key={`${hoursModalDate ?? "today"}-${isHoursModalOpen}`}
         challengeId={activeChallengeId}
         isOpen={isHoursModalOpen}
         onClose={() => setIsHoursModalOpen(false)}
         todayDate={cockpit?.todayDate || new Date().toISOString().slice(0, 10)}
         yesterdayDate={cockpit?.yesterdayDate}
+        isYesterdayMissed={cockpit?.isYesterdayMissed ?? false}
+        todayLoggedSeconds={effectiveTodaySeconds}
+        yesterdayLoggedSeconds={cockpit?.yesterdayLoggedSeconds ?? 0}
+        existingLogs={existingLogsMap}
         initialDate={hoursModalDate}
       />
 

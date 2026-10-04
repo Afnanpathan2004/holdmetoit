@@ -1,18 +1,26 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { logStudyTimeAction } from "@/features/study-logs/api/log-study-time.actions";
+import {
+  decomposeSecondsToParts,
+} from "@/features/study-logs/domain/duration";
 
-interface DailyHoursModalProps {
+export interface DailyHoursModalProps {
   challengeId: string;
   isOpen: boolean;
   onClose: () => void;
   todayDate: string;
   yesterdayDate?: string;
+  isYesterdayMissed?: boolean;
   initialDate?: string;
+  todayLoggedSeconds?: number;
+  yesterdayLoggedSeconds?: number;
+  existingLogs?: Record<string, number>;
   initialHours?: number;
   initialMinutes?: number;
   initialSeconds?: number;
@@ -25,37 +33,98 @@ export function DailyHoursModal({
   onClose,
   todayDate,
   yesterdayDate,
+  isYesterdayMissed = false,
   initialDate,
+  todayLoggedSeconds = 0,
+  yesterdayLoggedSeconds = 0,
+  existingLogs,
   initialHours = 0,
   initialMinutes = 0,
   initialSeconds = 0,
   onSuccess,
 }: DailyHoursModalProps) {
-  const [selectedDate, setSelectedDate] = useState(initialDate || todayDate);
-  const [hours, setHours] = useState(
-    initialHours > 0 ? String(initialHours) : "",
-  );
-  const [minutes, setMinutes] = useState(
-    initialMinutes > 0 ? String(initialMinutes) : "",
-  );
-  const [seconds, setSeconds] = useState(
-    initialSeconds > 0 ? String(initialSeconds) : "",
-  );
+  const router = useRouter();
+  const showYesterdayOption = Boolean(isYesterdayMissed && yesterdayDate);
+  const initialDateToUse: string =
+    showYesterdayOption && yesterdayDate && initialDate === yesterdayDate
+      ? yesterdayDate
+      : todayDate;
+
+  const getExistingSecondsForDate = (date: string): number => {
+    if (existingLogs && date in existingLogs) {
+      return existingLogs[date];
+    }
+    if (date === todayDate) return todayLoggedSeconds ?? 0;
+    if (date === yesterdayDate) return yesterdayLoggedSeconds ?? 0;
+    return 0;
+  };
+
+  const getInitialInputValues = (date: string) => {
+    if (initialHours > 0 || initialMinutes > 0 || initialSeconds > 0) {
+      return {
+        hours: initialHours > 0 ? String(initialHours) : "",
+        minutes: initialMinutes > 0 ? String(initialMinutes) : "",
+        seconds: initialSeconds > 0 ? String(initialSeconds) : "",
+      };
+    }
+    const existing = getExistingSecondsForDate(date);
+    if (existing > 0) {
+      const parts = decomposeSecondsToParts(existing);
+      return {
+        hours: String(parts.hours),
+        minutes: String(parts.minutes),
+        seconds: String(parts.seconds),
+      };
+    }
+    return { hours: "", minutes: "", seconds: "" };
+  };
+
+  const initialInputs = getInitialInputValues(initialDateToUse);
+  const [selectedDate, setSelectedDate] = useState(initialDateToUse);
+  const [hours, setHours] = useState(initialInputs.hours);
+  const [minutes, setMinutes] = useState(initialInputs.minutes);
+  const [seconds, setSeconds] = useState(initialInputs.seconds);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const populateInputsForDate = (date: string) => {
+    const existing = getExistingSecondsForDate(date);
+    if (existing > 0) {
+      const parts = decomposeSecondsToParts(existing);
+      setHours(String(parts.hours));
+      setMinutes(String(parts.minutes));
+      setSeconds(String(parts.seconds));
+    } else {
+      setHours("");
+      setMinutes("");
+      setSeconds("");
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
-      setSelectedDate(initialDate || todayDate);
-      setHours(initialHours > 0 ? String(initialHours) : "");
-      setMinutes(initialMinutes > 0 ? String(initialMinutes) : "");
-      setSeconds(initialSeconds > 0 ? String(initialSeconds) : "");
+      const dateToUse: string =
+        showYesterdayOption && yesterdayDate && initialDate === yesterdayDate
+          ? yesterdayDate
+          : todayDate;
+      setSelectedDate(dateToUse);
+      if (initialHours > 0 || initialMinutes > 0 || initialSeconds > 0) {
+        setHours(initialHours > 0 ? String(initialHours) : "");
+        setMinutes(initialMinutes > 0 ? String(initialMinutes) : "");
+        setSeconds(initialSeconds > 0 ? String(initialSeconds) : "");
+      } else {
+        populateInputsForDate(dateToUse);
+      }
       setFeedback(null);
     }
   }, [
     isOpen,
     initialDate,
     todayDate,
+    yesterdayDate,
+    showYesterdayOption,
+    todayLoggedSeconds,
+    yesterdayLoggedSeconds,
     initialHours,
     initialMinutes,
     initialSeconds,
@@ -65,6 +134,14 @@ export function DailyHoursModal({
 
   const isToday = selectedDate === todayDate;
   const isYesterday = yesterdayDate && selectedDate === yesterdayDate;
+  const currentLoggedSeconds = getExistingSecondsForDate(selectedDate);
+  const isUpdating = currentLoggedSeconds > 0;
+
+  const handleDateChange = (newDate: string) => {
+    setSelectedDate(newDate);
+    populateInputsForDate(newDate);
+    setFeedback(null);
+  };
 
   const handleLog = (h: number, m: number, s: number) => {
     setFeedback(null);
@@ -78,6 +155,7 @@ export function DailyHoursModal({
       });
 
       if (result.ok) {
+        router.refresh();
         onSuccess?.();
         onClose();
       } else {
@@ -124,11 +202,11 @@ export function DailyHoursModal({
           </button>
         </div>
 
-        {yesterdayDate && (
+        {showYesterdayOption && (
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setSelectedDate(todayDate)}
+              onClick={() => handleDateChange(todayDate)}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
                 isToday
                   ? "bg-[#ffffff] text-[#0d0d0d]"
@@ -139,7 +217,7 @@ export function DailyHoursModal({
             </button>
             <button
               type="button"
-              onClick={() => setSelectedDate(yesterdayDate)}
+              onClick={() => handleDateChange(yesterdayDate!)}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
                 isYesterday
                   ? "bg-[#ffffff] text-[#0d0d0d]"
@@ -160,7 +238,7 @@ export function DailyHoursModal({
               <Input
                 type="number"
                 min="0"
-                max="16"
+                max="24"
                 placeholder="0"
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
@@ -229,7 +307,7 @@ export function DailyHoursModal({
                 disabled={isPending}
                 className="h-10 px-5 rounded-xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold"
               >
-                {isPending ? "Logging..." : "Submit"}
+                {isPending ? "Logging..." : isUpdating ? "Update Hours" : "Submit"}
               </Button>
             </div>
           </div>

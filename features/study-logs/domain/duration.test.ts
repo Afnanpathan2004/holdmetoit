@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   DurationParseError,
   DurationRangeError,
+  decomposeSecondsToParts,
   formatSecondsToClock,
   formatSecondsToHuman,
   MAX_DAILY_LOG_SECONDS,
@@ -102,3 +103,24 @@ describe("duration constants", () => {
     expect(MAX_DAILY_LOG_SECONDS).toBe(86_400);
   });
 });
+
+describe("decomposeSecondsToParts", () => {
+  it("decomposes 0 seconds to all zeros", () => {
+    expect(decomposeSecondsToParts(0)).toEqual({ hours: 0, minutes: 0, seconds: 0 });
+  });
+
+  it("decomposes negative or non-integer seconds to all zeros safely", () => {
+    expect(decomposeSecondsToParts(-100)).toEqual({ hours: 0, minutes: 0, seconds: 0 });
+    expect(decomposeSecondsToParts(12.5)).toEqual({ hours: 0, minutes: 0, seconds: 0 });
+  });
+
+  it("decomposes seconds into exact hours, minutes, and seconds", () => {
+    expect(decomposeSecondsToParts(7_200)).toEqual({ hours: 2, minutes: 0, seconds: 0 }); // 2h
+    expect(decomposeSecondsToParts(9_000)).toEqual({ hours: 2, minutes: 30, seconds: 0 }); // 2h 30m
+    expect(decomposeSecondsToParts(9_035)).toEqual({ hours: 2, minutes: 30, seconds: 35 }); // 2h 30m 35s
+    expect(decomposeSecondsToParts(45)).toEqual({ hours: 0, minutes: 0, seconds: 45 });
+    expect(decomposeSecondsToParts(3_599)).toEqual({ hours: 0, minutes: 59, seconds: 59 });
+    expect(decomposeSecondsToParts(86_400)).toEqual({ hours: 24, minutes: 0, seconds: 0 });
+  });
+});
+
