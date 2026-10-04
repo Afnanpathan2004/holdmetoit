@@ -51,10 +51,6 @@ describe("buildScoreboardViewModel", () => {
           { durationSeconds: 16_200 }, // 4h30m
           { durationSeconds: 18_900 }, // 5h15m
         ],
-        weeklyGoals: [
-          { id: "g1", description: "Read Ch 1-3", completed: true },
-          { id: "g2", description: "Past paper 1", completed: true },
-        ],
       },
       {
         id: "part-2",
@@ -71,10 +67,6 @@ describe("buildScoreboardViewModel", () => {
         },
         dailyStudyLogs: [
           { durationSeconds: 7_200 }, // 2h
-        ],
-        weeklyGoals: [
-          { id: "g3", description: "Chemistry problem set", completed: false },
-          { id: "g4", description: "Bio notes", completed: false },
         ],
       },
     ],
@@ -198,7 +190,7 @@ describe("buildScoreboardViewModel", () => {
     // AuraStudier also hasn't met 35h yet (has 35100s) during ACTIVE sprint
     const sloth = result.punishmentWall.flaggedMembers.find((m) => m.displayName === "SlothBrain");
     expect(sloth).toBeDefined();
-    expect(sloth?.incompleteGoalsCount).toBe(2);
+    expect(sloth?.incompleteGoalsCount).toBe(0);
     expect(sloth?.hoursDeficitSeconds).toBe(118_800);
   });
 
@@ -246,5 +238,59 @@ describe("buildScoreboardViewModel", () => {
     expect(result.punishmentWall.flaggedMembers).toEqual([]);
     expect(result.matchHeader.leadMarginSeconds).toBe(0);
     expect(result.teams[0].totalLoggedSeconds).toBe(0);
+  });
+
+  describe("countdown and dynamic lifecycle status", () => {
+    it("calculates daysRemaining against startAt when challenge is UPCOMING (e.g. tomorrow = 1 day left)", () => {
+      // Challenge starts tomorrow Oct 5 and ends Oct 12
+      const upcomingChallenge: RawChallengePayload = {
+        ...mockChallenge,
+        status: undefined,
+        startAt: new Date("2026-10-05T00:00:00.000Z"),
+        endAt: new Date("2026-10-12T00:00:00.000Z"),
+      };
+
+      // Current time is Oct 4
+      const nowOct4 = new Date("2026-10-04T12:00:00.000Z");
+      const result = buildScoreboardViewModel(upcomingChallenge, undefined, nowOct4);
+
+      expect(result.status).toBe("UPCOMING");
+      // Must be 1 day left, NOT 8 days left!
+      expect(result.daysRemaining).toBe(1);
+      expect(result.currentDayNumber).toBe(0);
+      expect(result.timeRemainingHuman).toContain("Starts in");
+    });
+
+    it("calculates daysRemaining as 0 and starts today when current time is kickoff day before startAt", () => {
+      const upcomingChallenge: RawChallengePayload = {
+        ...mockChallenge,
+        status: undefined,
+        startAt: new Date("2026-10-05T18:00:00.000Z"),
+        endAt: new Date("2026-10-12T00:00:00.000Z"),
+      };
+
+      const nowKickoffDay = new Date("2026-10-05T08:00:00.000Z");
+      const result = buildScoreboardViewModel(upcomingChallenge, undefined, nowKickoffDay);
+
+      expect(result.status).toBe("UPCOMING");
+      expect(result.daysRemaining).toBe(0);
+      expect(result.timeRemainingHuman).toContain("Starts in");
+    });
+
+    it("calculates daysRemaining against endAt when challenge is ACTIVE", () => {
+      const activeChallenge: RawChallengePayload = {
+        ...mockChallenge,
+        status: undefined,
+        startAt: new Date("2026-10-01T00:00:00.000Z"),
+        endAt: new Date("2026-10-08T00:00:00.000Z"),
+      };
+
+      const midDate = new Date("2026-10-04T12:00:00.000Z");
+      const result = buildScoreboardViewModel(activeChallenge, undefined, midDate);
+
+      expect(result.status).toBe("ACTIVE");
+      expect(result.daysRemaining).toBe(4);
+      expect(result.currentDayNumber).toBe(4);
+    });
   });
 });

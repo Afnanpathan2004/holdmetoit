@@ -1,4 +1,5 @@
 import { findParticipantForUser } from "@/features/challenges/data/participant.repository";
+import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 import {
   buildCatchUpSummary,
   calculateInclusiveDaysRemaining,
@@ -8,17 +9,11 @@ import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
 import {
   canEditDeclarations,
   canLogStudyTime,
-  canToggleGoalCompletion,
   isChallengeReadOnly,
 } from "@/features/declarations/domain/declaration-lock";
 import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-data";
-
-export interface CockpitGoal {
-  id: string;
-  description: string;
-  completed: boolean;
-  sortOrder: number;
-}
+import { getUserCategorizedTasks } from "@/features/tasks/data/task.repository";
+import type { UserCategorizedTasks } from "@/features/tasks/domain/task.types";
 
 export interface CockpitLogDay {
   logDate: string;
@@ -48,9 +43,8 @@ export interface CockpitViewModel {
   totalLoggedClock: string;
   canEditDeclarations: boolean;
   canLogStudyTime: boolean;
-  canToggleGoals: boolean;
   isReadOnly: boolean;
-  goals: CockpitGoal[];
+  userTasks?: UserCategorizedTasks;
   logs: CockpitLogDay[];
   catchUp: ReturnType<typeof buildCatchUpSummary>;
   todayDate: string;
@@ -98,14 +92,15 @@ export async function getParticipantCockpit(
   );
   const yesterdayLoggedSeconds = yesterdayLog?.durationSeconds ?? 0;
 
+  const challengeStatus = calculateChallengeStatus(participant.challenge, now);
   const challengeStartDate = formatUtcDateKey(participant.challenge.startAt);
   const isYesterdayMissed =
-    participant.challenge.status === "ACTIVE" &&
+    challengeStatus === "ACTIVE" &&
     yesterdayDate >= challengeStartDate &&
     yesterdayLog === undefined;
 
   let teamRank: number | null = null;
-  if (participant.challenge.status === "COMPLETED") {
+  if (challengeStatus === "COMPLETED") {
     try {
       const scoreboard = await getChallengeScoreboard(participant.challengeId, userId);
       if (participant.challenge.format === "SOLOS") {
@@ -129,10 +124,12 @@ export async function getParticipantCockpit(
     now,
   );
 
+  const userTasks = await getUserCategorizedTasks(userId);
+
   return {
     challengeId: participant.challengeId,
     challengeTitle: participant.challenge.title,
-    challengeStatus: participant.challenge.status,
+    challengeStatus,
     challengeFormat: participant.challenge.format,
     teamName: participant.team?.name ?? "Unassigned",
     teamIcon: participant.team?.iconEmoji ?? "⏳",
@@ -147,16 +144,10 @@ export async function getParticipantCockpit(
     targetClock: formatSecondsToClock(participant.targetSeconds),
     totalLoggedSeconds,
     totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
-    canEditDeclarations: canEditDeclarations(participant.challenge.status),
-    canLogStudyTime: canLogStudyTime(participant.challenge.status),
-    canToggleGoals: canToggleGoalCompletion(participant.challenge.status),
-    isReadOnly: isChallengeReadOnly(participant.challenge.status),
-    goals: participant.weeklyGoals.map((goal) => ({
-      id: goal.id,
-      description: goal.description,
-      completed: goal.completed,
-      sortOrder: goal.sortOrder,
-    })),
+    canEditDeclarations: canEditDeclarations(challengeStatus),
+    canLogStudyTime: canLogStudyTime(challengeStatus),
+    isReadOnly: isChallengeReadOnly(challengeStatus),
+    userTasks,
     logs: participant.dailyStudyLogs.map((log) => ({
       logDate: formatUtcDateKey(log.logDate),
       durationSeconds: log.durationSeconds,

@@ -178,4 +178,35 @@ describe("ChallengeHeroBanner", () => {
     expect(html).not.toContain("Days Left");
     expect(html).not.toContain('href="/?challenge=challenge-1"');
   });
+
+  it("renders singular '1 Day Left' when daysRemaining is 1", () => {
+    const html = render({
+      ...challenge,
+      status: "UPCOMING",
+      daysRemaining: 1,
+      currentUser: { isLoggedIn: false, isEnrolled: false, participantId: null },
+    });
+    expect(html).toContain("1 Day Left");
+    expect(html).not.toContain("1 Days Left");
+  });
+
+  it("renders 'Starts Today' when daysRemaining is 0 and status is UPCOMING", () => {
+    const html = render({
+      ...challenge,
+      status: "UPCOMING",
+      daysRemaining: 0,
+      currentUser: { isLoggedIn: false, isEnrolled: false, participantId: null },
+    });
+    expect(html).toContain("Starts Today");
+  });
+
+  it("renders plural '6 Days Left' when daysRemaining is 6", () => {
+    const html = render({
+      ...challenge,
+      status: "ACTIVE",
+      daysRemaining: 6,
+      currentUser: { isLoggedIn: false, isEnrolled: false, participantId: null },
+    });
+    expect(html).toContain("6 Days Left");
+  });
 });

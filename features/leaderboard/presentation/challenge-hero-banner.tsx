@@ -116,7 +116,9 @@ function ChallengeHeroActions({ challenge }: ChallengeHeroBannerProps) {
         <div className="w-full py-2 sm:py-2.5 px-3 text-center text-xs sm:text-sm font-semibold text-[#ff5c5c]">
           {challenge.status === "COMPLETED"
             ? "Completed"
-            : `${challenge.daysRemaining} Days Left`}
+            : challenge.status === "UPCOMING" && challenge.daysRemaining === 0
+              ? "Starts Today"
+              : `${challenge.daysRemaining} ${challenge.daysRemaining === 1 ? "Day" : "Days"} Left`}
         </div>
       </div>
 

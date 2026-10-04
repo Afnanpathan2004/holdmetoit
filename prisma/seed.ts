@@ -19,7 +19,6 @@ async function main() {
       eventBannerUrl: "/assets/challenge_hero_battle.jpg",
       title: "Midterm Reading Week Sprint",
       format: "TEAM_VS_TEAM",
-      status: "UPCOMING",
       startAt,
       endAt,
       punishmentPfpUrl: "/prototype/assets/punishment_pfp.jpg",
@@ -28,7 +27,6 @@ async function main() {
       eventBannerUrl: "/assets/challenge_hero_battle.jpg",
       title: "Midterm Reading Week Sprint",
       format: "TEAM_VS_TEAM",
-      status: "UPCOMING",
       startAt,
       endAt,
       punishmentPfpUrl: "/prototype/assets/punishment_pfp.jpg",
@@ -75,8 +73,40 @@ async function main() {
     },
   });
 
+  // Seed sample categories & tasks for existing users if they have none
+  const existingUsers = await prisma.user.findMany();
+  for (const user of existingUsers) {
+    const existingCats = await prisma.category.findMany({ where: { userId: user.id } });
+    if (existingCats.length === 0) {
+      const defaultCategory = await prisma.category.create({
+        data: {
+          userId: user.id,
+          name: "Deep Work",
+        },
+      });
+      await prisma.task.createMany({
+        data: [
+          {
+            userId: user.id,
+            categoryId: defaultCategory.id,
+            title: "Complete 2 hours of focused study",
+            taskType: "DAILY",
+            isComplete: false,
+          },
+          {
+            userId: user.id,
+            categoryId: defaultCategory.id,
+            title: "Review weekly lecture notes",
+            taskType: "WEEKLY",
+            isComplete: false,
+          },
+        ],
+      });
+    }
+  }
+
   console.log(
-    `Seed complete: challenge "${challenge.title}" (${challenge.id}) with Honey Bees vs Lavender Butterflies.`,
+    `Seed complete: challenge "${challenge.title}" (${challenge.id}) with Honey Bees vs Lavender Butterflies and sample user tasks.`,
   );
 }
 

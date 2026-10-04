@@ -44,7 +44,6 @@ describe("participant repository", () => {
           team: true,
           user: true,
           dailyStudyLogs: { orderBy: { logDate: "asc" } },
-          weeklyGoals: { orderBy: { sortOrder: "asc" } },
         },
       });
     });
@@ -52,7 +51,10 @@ describe("participant repository", () => {
     it("prefers active challenge when challengeId is not specified", async () => {
       const activeParticipant = {
         id: "part_active",
-        challenge: { status: "ACTIVE" },
+        challenge: {
+          startAt: new Date(Date.now() - 3600000),
+          endAt: new Date(Date.now() + 7 * 86400000),
+        },
       };
       vi.mocked(prisma.challengeParticipant.findFirst).mockResolvedValue(
         activeParticipant as never,
@@ -62,10 +64,13 @@ describe("participant repository", () => {
       expect(result).toEqual(activeParticipant);
       expect(prisma.challengeParticipant.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {
+          where: expect.objectContaining({
             userId: "u_1",
-            challenge: { status: "ACTIVE" },
-          },
+            challenge: expect.objectContaining({
+              startAt: expect.any(Object),
+              endAt: expect.any(Object),
+            }),
+          }),
         }),
       );
     });
@@ -181,7 +186,8 @@ describe("participant repository", () => {
     it("rejects enrollment when challenge is COMPLETED", async () => {
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "c_1",
-        status: "COMPLETED",
+        startAt: new Date(Date.now() - 7 * 86400000),
+        endAt: new Date(Date.now() - 3600000),
       } as never);
 
       await expect(
@@ -197,7 +203,8 @@ describe("participant repository", () => {
     it("rejects enrollment when user is already enrolled", async () => {
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "c_1",
-        status: "UPCOMING",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
 
       vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue({
@@ -217,7 +224,8 @@ describe("participant repository", () => {
     it("rejects enrollment when selected team is full", async () => {
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "c_1",
-        status: "UPCOMING",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
 
       vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(null);
@@ -243,7 +251,8 @@ describe("participant repository", () => {
     it("successfully enrolls as unassigned when teamId is omitted or no-assigned", async () => {
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "c_1",
-        status: "UPCOMING",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
 
       vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(null);

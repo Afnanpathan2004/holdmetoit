@@ -4,11 +4,12 @@ import { recordAuditEvent } from "@/features/audit/data/audit-log.repository";
 import {
   assertCanKickoffChallenge,
   assertCanLockChallenge,
+  calculateChallengeStatus,
   type ChallengeCreationInput,
 } from "@/features/challenges/domain/challenge-lifecycle";
 
 export async function listAllChallengesForAdmin() {
-  return prisma.challenge.findMany({
+  const challenges = await prisma.challenge.findMany({
     include: {
       host: {
         select: {
@@ -29,6 +30,11 @@ export async function listAllChallengesForAdmin() {
     },
     orderBy: { createdAt: "desc" },
   });
+
+  return challenges.map((c) => ({
+    ...c,
+    status: calculateChallengeStatus(c),
+  }));
 }
 
 export async function findAdminChallengeDetails(challengeId: string) {
@@ -74,9 +80,6 @@ export async function findAdminChallengeDetails(challengeId: string) {
               },
             },
           },
-          weeklyGoals: {
-            orderBy: { sortOrder: "asc" },
-          },
           punishmentRecord: true,
         },
         orderBy: { enrolledAt: "asc" },
@@ -97,7 +100,6 @@ export async function createAdminChallenge(
       data: {
         title: input.title.trim(),
         format: input.format,
-        status: "UPCOMING",
         startAt: new Date(input.startAt),
         endAt: new Date(input.endAt),
         eventBannerUrl: input.eventBannerUrl?.trim() || null,
@@ -150,11 +152,16 @@ export async function kickoffChallenge(
     throw new Error("Challenge not found.");
   }
 
-  assertCanKickoffChallenge(challenge.status);
+  const currentStatus = calculateChallengeStatus(challenge);
+  assertCanKickoffChallenge(currentStatus);
 
+  const now = new Date();
   const updated = await prisma.challenge.update({
     where: { id: challengeId },
-    data: { status: "ACTIVE" },
+    data: {
+      startAt:
+        now.getTime() > challenge.startAt.getTime() ? challenge.startAt : now,
+    },
   });
 
   await recordAuditEvent({
@@ -164,12 +171,15 @@ export async function kickoffChallenge(
     targetEntityId: challengeId,
     targetEntityType: "CHALLENGE",
     challengeId,
-    previousValue: { status: challenge.status },
+    previousValue: { status: currentStatus },
     newValue: { status: "ACTIVE" },
     auditReason: "Host manually triggered event kickoff (FEAT-CHAL-02)",
   });
 
-  return updated;
+  return {
+    ...updated,
+    status: calculateChallengeStatus(updated),
+  };
 }
 
 export async function lockChallengeResults(
@@ -182,7 +192,6 @@ export async function lockChallengeResults(
       participants: {
         include: {
           dailyStudyLogs: true,
-          weeklyGoals: true,
           punishmentRecord: true,
         },
       },
@@ -193,13 +202,18 @@ export async function lockChallengeResults(
     throw new Error("Challenge not found.");
   }
 
-  assertCanLockChallenge(challenge.status);
+  const currentStatus = calculateChallengeStatus(challenge);
+  assertCanLockChallenge(currentStatus);
 
   return prisma.$transaction(async (tx) => {
-    // 1. Transition challenge status to COMPLETED
+    // 1. Transition challenge status to COMPLETED by adjusting endAt
+    const now = new Date();
     const completedChallenge = await tx.challenge.update({
       where: { id: challengeId },
-      data: { status: "COMPLETED" },
+      data: {
+        endAt:
+          now.getTime() < challenge.endAt.getTime() ? now : challenge.endAt,
+      },
     });
 
     // 2. Dual-Failure Punishment Evaluation (Law L6 / FEAT-PUN-01)
@@ -212,7 +226,7 @@ export async function lockChallengeResults(
       const evaluation = evaluateParticipantPunishment(
         participant.targetSeconds,
         totalLoggedSeconds,
-        participant.weeklyGoals,
+        [],
       );
 
       const isPardoned = participant.punishmentRecord?.isPardoned ?? false;
@@ -254,7 +268,7 @@ export async function lockChallengeResults(
       targetEntityId: challengeId,
       targetEntityType: "CHALLENGE",
       challengeId,
-      previousValue: { status: challenge.status },
+      previousValue: { status: currentStatus },
       newValue: {
         status: "COMPLETED",
         participantsEvaluated: challenge.participants.length,
@@ -262,7 +276,10 @@ export async function lockChallengeResults(
       auditReason: "Host finalized results and locked challenge (FEAT-CHAL-05)",
     });
 
-    return completedChallenge;
+    return {
+      ...completedChallenge,
+      status: calculateChallengeStatus(completedChallenge),
+    };
   });
 }
 
@@ -589,16 +606,7 @@ export async function deleteAdminChallenge(
       },
     });
 
-    // 2. Delete weekly goals for all participants in this challenge
-    await tx.weeklyGoal.deleteMany({
-      where: {
-        participant: {
-          challengeId,
-        },
-      },
-    });
-
-    // 3. Delete punishment records
+    // 2. Delete punishment records
     await tx.punishmentRecord.deleteMany({
       where: { challengeId },
     });
@@ -641,7 +649,7 @@ export async function deleteAdminChallenge(
       challengeId,
       previousValue: {
         title: challenge.title,
-        status: challenge.status,
+        status: calculateChallengeStatus(challenge),
       },
       newValue: null,
       auditReason: `Host permanently deleted challenge "${challenge.title}"`,

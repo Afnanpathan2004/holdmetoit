@@ -36,9 +36,6 @@ vi.mock("@/core/db", () => {
     dailyStudyLog: {
       deleteMany: vi.fn(),
     },
-    weeklyGoal: {
-      deleteMany: vi.fn(),
-    },
     leaderboardEntry: {
       deleteMany: vi.fn(),
     },
@@ -65,11 +62,23 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
 
   describe("listAllChallengesForAdmin", () => {
     it("queries challenges with host, teams, and participant counts", async () => {
-      const mockList = [{ id: "c_1", title: "Battle" }];
+      const mockList = [
+        {
+          id: "c_1",
+          title: "Battle",
+          startAt: new Date(Date.now() - 3600000),
+          endAt: new Date(Date.now() + 7 * 86400000),
+        },
+      ];
       vi.mocked(prisma.challenge.findMany).mockResolvedValue(mockList as never);
 
       const result = await listAllChallengesForAdmin();
-      expect(result).toEqual(mockList);
+      expect(result).toEqual([
+        {
+          ...mockList[0],
+          status: "ACTIVE",
+        },
+      ]);
       expect(prisma.challenge.findMany).toHaveBeenCalled();
     });
   });
@@ -101,7 +110,6 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
         expect.objectContaining({
           data: expect.objectContaining({
             title: "Sprint Battle",
-            status: "UPCOMING",
             eventBannerUrl: "https://example.com/banner.webp",
             punishmentPfpUrl: "https://example.com/pfp.png",
           }),
@@ -141,11 +149,13 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
     it("transitions challenge from UPCOMING to ACTIVE", async () => {
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "c_up",
-        status: "UPCOMING",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
       vi.mocked(prisma.challenge.update).mockResolvedValue({
         id: "c_up",
-        status: "ACTIVE",
+        startAt: new Date(Date.now() - 3600000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
 
       const result = await kickoffChallenge("c_up", {
@@ -153,16 +163,18 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
         username: "HostAdmin",
       });
       expect(result.status).toBe("ACTIVE");
-      expect(prisma.challenge.update).toHaveBeenCalledWith({
-        where: { id: "c_up" },
-        data: { status: "ACTIVE" },
-      });
+      expect(prisma.challenge.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "c_up" },
+        }),
+      );
     });
 
     it("throws when challenge is already ACTIVE", async () => {
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "c_act",
-        status: "ACTIVE",
+        startAt: new Date(Date.now() - 3600000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
 
       await expect(
@@ -175,7 +187,8 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
     it("evaluates dual-failure accountability and locks challenge", async () => {
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "c_act",
-        status: "ACTIVE",
+        startAt: new Date(Date.now() - 7 * 86400000),
+        endAt: new Date(Date.now() + 86400000),
         participants: [
           {
             id: "p_1",
@@ -190,7 +203,8 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
 
       vi.mocked(prisma.challenge.update).mockResolvedValue({
         id: "c_act",
-        status: "COMPLETED",
+        startAt: new Date(Date.now() - 7 * 86400000),
+        endAt: new Date(Date.now() - 3600000),
       } as never);
 
       const result = await lockChallengeResults("c_act", {
@@ -489,7 +503,8 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "c_1",
         title: "Test Challenge",
-        status: "UPCOMING",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
 
       const mockDeleted = { id: "c_1", title: "Test Challenge" };
@@ -502,7 +517,6 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
 
       expect(result).toEqual(mockDeleted);
       expect(prisma.dailyStudyLog.deleteMany).toHaveBeenCalled();
-      expect(prisma.weeklyGoal.deleteMany).toHaveBeenCalled();
       expect(prisma.punishmentRecord.deleteMany).toHaveBeenCalled();
       expect(prisma.leaderboardEntry.deleteMany).toHaveBeenCalled();
       expect(prisma.challengeParticipant.deleteMany).toHaveBeenCalled();

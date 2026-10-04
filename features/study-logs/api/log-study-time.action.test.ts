@@ -37,7 +37,10 @@ describe("logStudyTimeAction", () => {
 
     vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
       id: "part_1",
-      challenge: { status: "ACTIVE" },
+      challenge: {
+        startAt: new Date(Date.now() - 3600000),
+        endAt: new Date(Date.now() + 7 * 86400000),
+      },
     } as never);
 
     const result = await logStudyTimeAction({
@@ -63,7 +66,10 @@ describe("logStudyTimeAction", () => {
 
     vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
       id: "part_1",
-      challenge: { status: "ACTIVE" },
+      challenge: {
+        startAt: new Date(Date.now() - 3600000),
+        endAt: new Date(Date.now() + 7 * 86400000),
+      },
     } as never);
 
     const result = await logStudyTimeAction({
@@ -89,7 +95,10 @@ describe("logStudyTimeAction", () => {
 
     vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
       id: "part_1",
-      challenge: { status: "ACTIVE" },
+      challenge: {
+        startAt: new Date(Date.now() - 3600000),
+        endAt: new Date(Date.now() + 7 * 86400000),
+      },
     } as never);
 
     const result = await logStudyTimeAction({
@@ -115,7 +124,10 @@ describe("logStudyTimeAction", () => {
 
     vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
       id: "part_1",
-      challenge: { status: "UPCOMING" },
+      challenge: {
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
+      },
     } as never);
 
     const result = await logStudyTimeAction({

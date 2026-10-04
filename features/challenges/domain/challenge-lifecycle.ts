@@ -8,6 +8,26 @@ export class ChallengeStateError extends Error {
 }
 
 /**
+ * Calculates challenge lifecycle status dynamically based on timestamps (startAt and endAt).
+ */
+export function calculateChallengeStatus(
+  challenge: { startAt: Date | string; endAt: Date | string },
+  now = new Date(),
+): ChallengeStatus {
+  const currentTime = now.getTime();
+  const startTime = new Date(challenge.startAt).getTime();
+  const endTime = new Date(challenge.endAt).getTime();
+
+  if (currentTime < startTime) {
+    return "UPCOMING";
+  }
+  if (currentTime >= endTime) {
+    return "COMPLETED";
+  }
+  return "ACTIVE";
+}
+
+/**
  * Validates if a challenge can transition from its current status to ACTIVE (Kickoff).
  */
 export function canKickoffChallenge(status: ChallengeStatus): boolean {

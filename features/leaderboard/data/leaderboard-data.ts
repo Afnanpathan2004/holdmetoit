@@ -16,6 +16,7 @@ import {
   formatSecondsToClock,
   formatSecondsToHuman,
 } from "@/features/study-logs/domain/duration";
+import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 
 export interface ScoreboardTeam {
   id: string;
@@ -124,7 +125,7 @@ export interface RawChallengePayload {
   id: string;
   title: string;
   format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
-  status: "UPCOMING" | "ACTIVE" | "COMPLETED";
+  status?: "UPCOMING" | "ACTIVE" | "COMPLETED";
   startAt: Date;
   endAt: Date;
   eventBannerUrl: string | null;
@@ -153,11 +154,6 @@ export interface RawChallengePayload {
     dailyStudyLogs: Array<{
       durationSeconds: number;
     }>;
-    weeklyGoals: Array<{
-      id: string;
-      description: string;
-      completed: boolean;
-    }>;
     punishmentRecord?: {
       isPunished: boolean;
       isPardoned: boolean;
@@ -173,20 +169,25 @@ export function buildScoreboardViewModel(
   currentUserId?: string,
   now = new Date(),
 ): ChallengeScoreboardViewModel {
-  const daysRemaining = calculateInclusiveDaysRemaining(challenge.endAt, now);
+  const status = challenge.status ?? calculateChallengeStatus(challenge, now);
+  const isUpcoming = status === "UPCOMING";
+  const targetDate = isUpcoming ? challenge.startAt : challenge.endAt;
+  const daysRemaining = calculateInclusiveDaysRemaining(targetDate, now);
   const totalDays = Math.max(
     1,
     Math.ceil(
       (challenge.endAt.getTime() - challenge.startAt.getTime()) / 86_400_000,
     ),
   );
-  const elapsedDays = Math.max(
-    1,
-    Math.min(
-      totalDays,
-      Math.ceil((now.getTime() - challenge.startAt.getTime()) / 86_400_000),
-    ),
-  );
+  const elapsedDays = isUpcoming
+    ? 0
+    : Math.max(
+        1,
+        Math.min(
+          totalDays,
+          Math.ceil((now.getTime() - challenge.startAt.getTime()) / 86_400_000),
+        ),
+      );
 
   // 1. Participant logs mapping
   const participantScores = challenge.participants.map((p) => {
@@ -296,8 +297,8 @@ export function buildScoreboardViewModel(
 
   const participantRows = challenge.participants.map((p) => {
     const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
-    const goalsCompletedCount = p.weeklyGoals.filter((g) => g.completed).length;
-    const goalsTotalCount = p.weeklyGoals.length;
+    const goalsCompletedCount = 0;
+    const goalsTotalCount = 0;
     const deficitSeconds = Math.max(0, p.targetSeconds - totalLoggedSeconds);
 
     const completionPercentage =
@@ -311,15 +312,14 @@ export function buildScoreboardViewModel(
     let paceStatus: ParticipantPaceStatus = "on-track";
     let paceLabel = "On Track";
 
-    if (challenge.status === "COMPLETED") {
+    if (status === "COMPLETED") {
       if (p.status === "EXCUSED" || p.punishmentRecord?.isPardoned) {
         paceStatus = "excused";
         paceLabel = "Excused";
       } else if (
         p.status === "PUNISHED" ||
         p.punishmentRecord?.isPunished ||
-        deficitSeconds > 0 ||
-        (goalsTotalCount > 0 && goalsCompletedCount < goalsTotalCount)
+        deficitSeconds > 0
       ) {
         paceStatus = "punished";
         paceLabel = "Punished";
@@ -328,18 +328,12 @@ export function buildScoreboardViewModel(
         paceLabel = "Completed";
       }
     } else {
-      if (
-        deficitSeconds === 0 &&
-        (goalsTotalCount === 0 || goalsCompletedCount === goalsTotalCount)
-      ) {
+      if (deficitSeconds === 0) {
         paceStatus = "serene";
         paceLabel = "Serene";
-      } else if (deficitSeconds > 0) {
+      } else {
         paceStatus = "catch-up";
         paceLabel = "Catch-Up";
-      } else {
-        paceStatus = "on-track";
-        paceLabel = "On Track";
       }
     }
 
@@ -388,21 +382,18 @@ export function buildScoreboardViewModel(
   );
 
   // 5. Punishment Wall data (FEAT-PUN-02, FEAT-PUN-03, Law L6)
-  const isEventCompleted = challenge.status === "COMPLETED";
+  const isEventCompleted = status === "COMPLETED";
   const defaultPunishmentPfp = "/assets/punishment_pfp.jpg";
 
   const flaggedMembers: FlaggedPunishmentMember[] = [];
 
   for (const p of challenge.participants) {
     const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
-    const goalsStatusList: WeeklyGoalStatus[] = p.weeklyGoals.map((g) => ({
-      completed: g.completed,
-    }));
 
     const evaluation = evaluateParticipantPunishment(
       p.targetSeconds,
       totalLoggedSeconds,
-      goalsStatusList,
+      [],
     );
 
     const isExplicitlyPunished =
@@ -460,14 +451,27 @@ export function buildScoreboardViewModel(
     ? challenge.participants.find((p) => p.userId === currentUserId)
     : undefined;
 
-  const timeRemainingMs = challenge.endAt.getTime() - now.getTime();
   let timeRemainingHuman = "Event concluded";
-  if (timeRemainingMs > 0) {
-    const totalRemainingSecs = Math.floor(timeRemainingMs / 1000);
-    const remDays = Math.floor(totalRemainingSecs / 86400);
-    const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
-    const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
-    timeRemainingHuman = `${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
+  if (isUpcoming) {
+    const timeUntilStartMs = challenge.startAt.getTime() - now.getTime();
+    if (timeUntilStartMs > 0) {
+      const totalRemainingSecs = Math.floor(timeUntilStartMs / 1000);
+      const remDays = Math.floor(totalRemainingSecs / 86400);
+      const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
+      const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
+      timeRemainingHuman = `Starts in ${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
+    } else {
+      timeRemainingHuman = "Starts today";
+    }
+  } else if (!isEventCompleted) {
+    const timeRemainingMs = challenge.endAt.getTime() - now.getTime();
+    if (timeRemainingMs > 0) {
+      const totalRemainingSecs = Math.floor(timeRemainingMs / 1000);
+      const remDays = Math.floor(totalRemainingSecs / 86400);
+      const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
+      const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
+      timeRemainingHuman = `${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
+    }
   }
 
   return {
@@ -477,7 +481,7 @@ export function buildScoreboardViewModel(
     eventBannerUrl: challenge.eventBannerUrl,
     punishmentPfpUrl: challenge.punishmentPfpUrl,
     format: challenge.format,
-    status: challenge.status,
+    status,
     startAt: challenge.startAt.toISOString(),
     endAt: challenge.endAt.toISOString(),
     daysRemaining,
@@ -524,13 +528,6 @@ export async function getChallengeScoreboard(
           dailyStudyLogs: {
             select: {
               durationSeconds: true,
-            },
-          },
-          weeklyGoals: {
-            select: {
-              id: true,
-              description: true,
-              completed: true,
             },
           },
           punishmentRecord: {

@@ -9,6 +9,7 @@ import {
   kickoffChallenge,
   lockChallengeResults,
 } from "@/features/challenges/data/challenge-admin.repository";
+import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 import { canEditDeclarations, canLogStudyTime } from "@/features/declarations/domain/declaration-lock";
 import {
   validateWeeklyGoalDescriptions,
@@ -115,7 +116,8 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
         id: "chal_created",
         title: "Bees vs Butterflies",
         format: "TEAM_VS_TEAM" as const,
-        status: "UPCOMING" as const,
+        startAt: new Date("2026-09-01T08:00:00Z"),
+        endAt: new Date("2026-09-08T08:00:00Z"),
         teams: [
           { id: "t_1", name: "Honey Bees", maxMembers: null },
           { id: "t_2", name: "Lavender Butterflies", maxMembers: null },
@@ -140,7 +142,7 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
         { id: "admin_host", username: "HostMod" },
       );
 
-      expect(challenge.status).toBe("UPCOMING");
+      expect(calculateChallengeStatus(challenge, new Date("2026-08-31T08:00:00Z"))).toBe("UPCOMING");
       expect(challenge.teams).toHaveLength(2);
 
       // Verify audit log recorded creation event (FEAT-AUDIT-01)
@@ -172,11 +174,13 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
       // 2. Host triggers kickoff
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "chal_kickoff",
-        status: "UPCOMING",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
       vi.mocked(prisma.challenge.update).mockResolvedValue({
         id: "chal_kickoff",
-        status: "ACTIVE",
+        startAt: new Date(Date.now() - 3600000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
 
       const activeChallenge = await kickoffChallenge("chal_kickoff", {
@@ -308,7 +312,8 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
       // 2. Host locks results
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "chal_complete",
-        status: "ACTIVE",
+        startAt: new Date(Date.now() - 7 * 86400000),
+        endAt: new Date(Date.now() + 86400000),
         participants: [
           {
             id: "part_1",
@@ -323,7 +328,8 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
 
       vi.mocked(prisma.challenge.update).mockResolvedValue({
         id: "chal_complete",
-        status: "COMPLETED",
+        startAt: new Date(Date.now() - 7 * 86400000),
+        endAt: new Date(Date.now() - 3600000),
       } as never);
 
       const completed = await lockChallengeResults("chal_complete", {

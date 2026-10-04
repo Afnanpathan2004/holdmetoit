@@ -1,4 +1,5 @@
 import { prisma } from "@/core/db";
+import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 import {
   aggregateManualLeaderboard,
   type LeaderboardEntryRef,
@@ -149,7 +150,7 @@ export async function getManualLeaderboardData(
       punishmentPfp: challenge.punishmentPfpUrl,
       startAt: challenge.startAt.toISOString(),
       endAt: challenge.endAt.toISOString(),
-      status: challenge.status,
+      status: calculateChallengeStatus(challenge),
     },
     summary,
   };

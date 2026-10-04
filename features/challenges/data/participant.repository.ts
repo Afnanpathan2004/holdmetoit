@@ -1,8 +1,10 @@
 import { prisma } from "@/core/db";
+import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 
 export async function findParticipantForUser(
   userId: string,
   challengeId?: string,
+  now = new Date(),
 ) {
   const include = {
     challenge: true,
@@ -10,9 +12,6 @@ export async function findParticipantForUser(
     user: true,
     dailyStudyLogs: {
       orderBy: { logDate: "asc" as const },
-    },
-    weeklyGoals: {
-      orderBy: { sortOrder: "asc" as const },
     },
   };
 
@@ -26,7 +25,10 @@ export async function findParticipantForUser(
   const activeParticipant = await prisma.challengeParticipant.findFirst({
     where: {
       userId,
-      challenge: { status: "ACTIVE" },
+      challenge: {
+        startAt: { lte: now },
+        endAt: { gt: now },
+      },
     },
     include,
     orderBy: { enrolledAt: "desc" },
@@ -39,7 +41,9 @@ export async function findParticipantForUser(
   const upcomingParticipant = await prisma.challengeParticipant.findFirst({
     where: {
       userId,
-      challenge: { status: "UPCOMING" },
+      challenge: {
+        startAt: { gt: now },
+      },
     },
     include,
     orderBy: { enrolledAt: "desc" },
@@ -52,7 +56,9 @@ export async function findParticipantForUser(
   return prisma.challengeParticipant.findFirst({
     where: {
       userId,
-      challenge: { status: "COMPLETED" },
+      challenge: {
+        endAt: { lte: now },
+      },
     },
     include,
     orderBy: { enrolledAt: "desc" },
@@ -110,7 +116,7 @@ export async function enrollParticipantInChallenge(params: {
     throw new Error("Challenge not found.");
   }
 
-  if (challenge.status === "COMPLETED") {
+  if (calculateChallengeStatus(challenge) === "COMPLETED") {
     throw new Error("Cannot enroll in a completed challenge.");
   }
 
