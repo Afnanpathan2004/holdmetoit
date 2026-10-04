@@ -10,7 +10,8 @@ vi.mock("next/link", () => ({
     createElement("a", { href, className }, children),
 }));
 
-vi.mock("@/features/challenges/presentation/join-challenge-modal", () => ({
+vi.mock("@/features/challenges/presentation/enrollment-modal", () => ({
+  EnrollmentModal: () => null,
   JoinChallengeModal: () => null,
 }));
 

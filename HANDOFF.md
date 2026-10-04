@@ -44,10 +44,10 @@ Phase 0 focuses exclusively on **The Spreadsheet Exorcism** — running a full w
 | `FEAT-CHAL-02` | Host Manual Event Kickoff Trigger | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 & J3 |
 | `FEAT-CHAL-05` | Event Lock & Freeze Final Results | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 & J6 |
 | `FEAT-CHAL-06` | Duo Partner Self-Naming & Dynamic Team Identities | Challenge Ops | Participant, Admin | `DONE` | ✅ Completed in Slice 5 & J2 |
-| `FEAT-DECL-01` | Declared Target Hours (`HH:MM:SS`) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 & J3 |
-| `FEAT-DECL-02` | Mandatory Weekly Goals Checklist (1–10 tasks) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 & J3 |
-| `FEAT-DECL-03` | Pre-Kickoff Declaration Lock on `ACTIVE` | Declarations | System | `DONE` | ✅ Completed in Slice 3 & J3 |
-| `FEAT-DECL-04` | Host Goal Unlock & Mid-Event Edit Modal | Declarations | Admin | `DONE` | ✅ Completed in Slice 5 |
+| `FEAT-DECL-01` | Declared Target Hours (`HH:MM:SS`) | Challenge Ops | Participant | `DONE` | ✅ Completed in Slice 3 & J3 |
+| `FEAT-DECL-02` | Categorizable Task Checklist (Daily & Weekly) | Tasks & Checklists | Participant | `DONE` | ✅ Decoupled to user tasks in Session 30 & Session 33 |
+| `FEAT-DECL-03` | Pre-Kickoff Target Hours Lock on `ACTIVE` | Challenge Lifecycle | System | `DONE` | ✅ Guarded in `challenge-lifecycle.ts` |
+| `FEAT-DECL-04` | Host Inline Target Edit Modal | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 |
 | `FEAT-LOG-01` | Daily Clock-Time Self-Logging (`HH:MM:SS`) | Study Logging | Participant | `DONE` | ✅ Completed in Slice 3 & J4 |
 | `FEAT-LOG-02` | 24-Hour Single-Day Limit Validation ($\le 86,400\text{s}$) | Study Logging | System | `DONE` | ✅ Completed in Slice 3 & J4 |
 | `FEAT-LOG-04` | Admin Inline Hours Override Grid (`is_override=true`) | Study Logging | Admin | `DONE` | ✅ Completed in Slice 5 & J5 |
@@ -142,72 +142,7 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 ### Previous Sessions (Summarized)
 - **Sessions 1–19 (2026-09-06 – 2026-10-04):** Core MVP architecture, cozy & obsidian theme tokens, pure domain math engine, Discord OAuth, participant cockpit, head-to-head live scoreboards, admin challenge ops, and E2E J1–J6 certification.
 - **Sessions 20–25 (2026-10-04):** Manage tab in ChallengeView with event deletion & participant reassignment, Supabase Storage integration for dual image uploads (header banner and punishment PFP), query optimization (caching NextAuth `auth()`, parallelizing queries with `Promise.all`), and database migration deployments.
-
-### Session 26 — 2026-10-04
-- **Agent Role:** Participant UI & Identity / Roster Ops Agent
-- **Changes Completed (Enrollment Modal Redesign & 'No-Assigned' Roster Flow):**
-  - **Redesigned Enrollment Modal (`features/challenges/presentation/join-challenge-modal.tsx`):**
-    - Removed the "Select Your House / Team *" card grid and split minutes input.
-    - Implemented the streamlined Figma mockup: full-width pill inputs for **"So how many hours can you put in?"** (`placeholder="Enter hours..."`) and **"How many leaves you might take"** (`placeholder="Enter days..."`).
-    - Styled with dark obsidian container (`rounded-[28px]`, `bg-[#242424]`, `border-[#383838]`) and rounded-full `Cancel` (`bg-[#3d3d3d]`) and `Submit` (`bg-white text-black font-bold`) action buttons.
-  - **'No-Assigned' Team Flow:**
-    - Updated `ChallengeParticipant` in `prisma/schema.prisma` with nullable `teamId: String?` and `team: Team? @relation(onDelete: SetNull)`.
-    - Created and deployed migration `20261004010000_make_participant_team_optional` (`ALTER TABLE "ChallengeParticipant" ALTER COLUMN "teamId" DROP NOT NULL;`).
-    - Updated `enrollParticipantInChallenge` and `enrollInChallengeAction` to allow enrolling without a house (`teamId: null`), accepting `leaveDays`.
-    - Updated `reassignParticipantTeam` (`features/challenges/data/challenge-admin.repository.ts`) to support `newTeamId: "no-assigned"` (unassigning a participant) and safely handle null previous team.
-    - Updated `ChallengeManageTab` (`features/challenges/presentation/challenge-manage-tab.tsx`) roster dropdown to include `<option value="no-assigned">⏳ Not Assigned</option>` so hosts can review unassigned scholars and manually allocate them to a house.
-    - Added unassigned fallbacks (`teamName: "Unassigned"`, `teamIcon: "⏳"`, `teamId: "no-assigned"`) across `leaderboard-data.ts` and `cockpit-data.ts`.
-  - **Quality Gates:**
-    - `npm run test` exits 0 (37 test files, 393/393 tests green).
-    - `npm run typecheck` exits 0 (zero TypeScript errors).
-    - `npm run build` succeeds cleanly with all routes compiled.
-
-### Session 27 — 2026-10-04
-- **Agent Role:** Participant UI & Scoring / Domain Engine Agent
-- **Changes Completed (Dynamic Dashboard Cockpit Banner Variants):**
-  - **Pure Domain Engine (`features/study-logs/domain/cockpit-banner.ts` / Law L7):**
-    - Created pure domain helper functions: `determineBannerVariant`, `formatStudiedTodayHours`, and `formatOrdinalRank`.
-    - Implemented condition evaluation for all 7 Figma mockup variants (`STUDIED_TODAY`, `NOT_LOGGED_TODAY`, `FORGOT_YESTERDAY`, `CHALLENGE_COMPLETED`, `ENROLL_SOLO`, `ENROLL_GROUP`, `ENROLL_DUO`) plus `ENROLLED_UPCOMING`.
-    - Added 19 comprehensive Vitest unit tests in `features/study-logs/domain/cockpit-banner.test.ts`.
-  - **Data Hydration Enhancements:**
-    - `features/challenges/data/participant.repository.ts`: Added fallback to `COMPLETED` challenges in `findParticipantForUser` when neither `ACTIVE` nor `UPCOMING` exists. Added regression test in `participant.repository.test.ts`.
-    - `features/challenges/data/challenge.repository.ts`: Added `findLatestAvailableChallenge` to query upcoming/active challenges with team relations.
-    - `features/study-logs/data/cockpit-data.ts`: Hydrated `yesterdayDate`, `yesterdayLoggedSeconds`, `isYesterdayMissed`, `teamRank` (computed from completed scoreboard), and `challengeFormat` on `CockpitViewModel`.
-    - `app/page.tsx`: Hydrated `upcomingChallenge` for guest or non-enrolled users, passing to `HomeCockpitView`.
-  - **Presentation & Modal Interactions (`features/study-logs/presentation/home-cockpit-view.tsx`):**
-    - Implemented the dynamic 7-variant banner with exact Figma styling:
-      - **Variant 1 (Studied today):** Dark green (`#0f4a24`, border `#1e6b35/40`), *"Wow, you studied {hours} today"*, `View Leaderboard` outline pill + `Log Today's Hours` white pill.
-      - **Variant 2 (Not logged today):** Rust brown (`#451f15`, border `#6b3020/40`), *"You haven't logged today's hours"*, `View Leaderboard` outline pill + `Log Today's Hours` white pill.
-      - **Variant 3 (Forgot yesterday):** Deep burgundy (`#6b1818`, border `#942626/40`), *"Don't forget yesterday's hard work!"*, *"Log Yesterday Hours"* white pill.
-      - **Variant 4 (Completed challenge):** Deep teal (`#16536e`, border `#237599/40`), *"Congrats, your team secured {rank} in this challenge"*, `View Leaderboard` white pill.
-      - **Variants 5, 6, 7 (Battles):** Dark purple (`#251744`, border `#3e2475/40`), *"Enroll in {solo/group/duo} battle this week"*, `View` outline pill + `Enroll` white pill.
-    - Removed the redundant non-enrolled enrollment alert banner from `features/leaderboard/presentation/challenge-view.tsx` to streamline the challenge page layout (enrollment is handled cleanly via the hero banner and cockpit).
-    - Guarded home cockpit banner and modal visibility with `isLoggedIn`: unauthenticated visitors will no longer see the battle enrollment card on the home dashboard.
-
-### Session 28 — 2026-10-04
-- **Agent Role:** Participant UI & Challenge Ops Agent
-- **Changes Completed (Challenge Hero Banner Redesign & In-Place Modal):**
-  - **Banner Layout Redesign Matching Mockup (`features/leaderboard/presentation/challenge-hero-banner.tsx`):**
-    - Set the banner hero image opacity to exactly 66% (`opacity-[0.66]`) with refined vignette gradient overlays (`from-[#0e0e10]/80 via-transparent to-[#0e0e10]/70`).
-    - Redesigned the left content column to mirror the mockup:
-      - `← Back to home` with underline navigation link.
-      - Bold/extrabold challenge title (e.g. *"October Monthly Team Battle"*).
-      - Matchup subtitle directly beneath title (e.g. *"Team Raven VS Team Serpents"*).
-      - Event date range formatted as `D Mon - D Mon` (e.g. *"5 Oct - 12 Oct"*) directly beneath matchup.
-    - **Unified Two-Tier Action Card (Figma Match):**
-      - Merged the disconnected floating pills into a single unified card (`rounded-2xl bg-[#351517] border border-[#ff5757]/20 shadow-xl overflow-hidden`).
-      - Top tier: Flush white `Enroll Now` button with bold black text, rounded corners, and shadow.
-      - Bottom tier: Connected deep wine-red status footer with centered coral text (e.g. *"2 Days Left"* / *"6 Days Left"*) with zero transparent gap.
-      - **Enrolled State Handling:** When `currentUser.isEnrolled` is true, the entire action widget is hidden (`returns null`), keeping the banner clean and uncluttered for participants.
-    - Preserved in-place `JoinChallengeModal` trigger on `/challenge/:id` for logged-in unenrolled participants, spectator sign-in redirect, and `router.refresh()`.
-  - **Test Suite Updates (`features/leaderboard/presentation/challenge-hero-banner.test.tsx`):**
-    - Updated image opacity assertion to expect `opacity-[0.66]`.
-    - Added test verifying that neither Quick Log nor Days Left capsule is rendered when the user is enrolled.
-    - All 8 unit tests passing green.
-  - **Quality Gates:**
-    - `npm run test` exits 0 (38 test files, 416/416 tests green).
-    - `npm run typecheck` exits 0 (zero TypeScript errors).
-    - `npm run build` succeeds cleanly with all routes compiled.
+- **Sessions 26–28 (2026-10-04):** Streamlined enrollment modal with "hours" & "leaves" inputs and unassigned house flow; dynamic 7-variant dashboard cockpit banner matching Figma; redesigned two-tier challenge hero banner with in-place enrollment modal and 66% opacity overlay.
 
 ### Session 29 — 2026-10-04
 - **Agent Role:** Scoring & Engine Agent / Data & Identity Agent
@@ -226,17 +161,12 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - Fixed countdown calculation: When `status === "UPCOMING"`, compares `now` against `challenge.startAt` (resolving the bug where an event starting tomorrow showed *"8 Days Left"* based on `endAt` instead of *"1 Day Left"*).
     - Added elapsed day clamping (`0` while upcoming) and formatted `timeRemainingHuman` for upcoming (`"Starts in Xd Yh Zm"` / `"Starts today"`).
     - Made `status` optional on `RawChallengePayload` and computed dynamically in `buildScoreboardViewModel`.
-  - **Hero Banner Presentation (`features/leaderboard/presentation/challenge-hero-banner.tsx`):**
+  - **Hero Banner Presentation (`features/challenges/presentation/challenge-hero-banner.tsx`):**
     - Updated countdown pill text formatting:
       - `"1 Day Left"` (singular grammar for 1 day remaining).
       - `"Starts Today"` (when 0 days left before kickoff).
       - `"X Days Left"` (plural for 2+ days).
       - `"Completed"` (when event has concluded).
-  - **Data Repositories & Action Handlers:**
-    - `features/challenges/data/challenge.repository.ts`: Rewrote `findLatestAvailableChallenge` to query upcoming via `startAt: { gt: now }` and active via `startAt: { lte: now }, endAt: { gt: now }`.
-    - `features/challenges/data/participant.repository.ts`: Rewrote `findParticipantForUser` to query by time intervals and `enrollParticipantInChallenge` to check `calculateChallengeStatus(challenge) === "COMPLETED"`.
-    - `features/challenges/data/challenge-admin.repository.ts`: Removed `status` from creation; `kickoffChallenge` updates `startAt: now`; `lockChallengeResults` updates `endAt: now`; `listAllChallengesForAdmin` computes dynamic status on output.
-    - `features/study-logs/data/cockpit-data.ts`, `declaration.actions.ts`, and `log-study-time.action.ts`: Converted all lifecycle gating to `calculateChallengeStatus(participant.challenge)`.
   - **Quality Gates:**
     - `npm run typecheck` exits 0 (0 TypeScript errors).
     - `npm run test` exits 0 (38 test files, 425/425 tests green).
@@ -259,13 +189,6 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - Added 8 unit tests in `task.repository.test.ts`.
     - Implemented Next.js Server Actions in `task.actions.ts` (`createTaskAction`, `toggleTaskAction`, `deleteTaskAction`, `createCategoryAction`) with session validation (`requireSessionUser`) and path revalidation.
     - Added 7 unit tests in `task.actions.test.ts`.
-  - **Presentation & Cockpit Integration (`features/study-logs/presentation/home-cockpit-view.tsx`):**
-    - Decoupled todo list from challenge enrollment: user-scoped tasks load for any logged-in user on the dashboard.
-    - Added category accordion/group views for both Daily and Weekly todos.
-    - Optimistic task completion toggles with instant visual strikethrough.
-    - Task deletion with hover trash icon button.
-    - "Add Daily Todo" and "Add Weekly Todo" modal with dynamic category selector or instant new category creation.
-    - Dynamic completion badge (`{completed}/{total} Completed`).
   - **Quality Gates:**
     - `npm run typecheck` exits 0 (zero TypeScript errors).
     - `npm run test` exits 0 (41 test files, 450/450 tests green).
@@ -294,11 +217,40 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run test` exits 0 (43 test files, 465/465 tests green).
     - `npm run build` succeeds cleanly with all routes compiled.
 
+### Session 33 — 2026-10-04
+- **Agent Role:** Fullstack Architect & Participant UI / Challenge Ops Agent
+- **Changes Completed (Codebase Restructuring, Dead Code Elimination & Cockpit Decomposition):**
+  - **Phase 1: Legacy Declarations Pruning & Relocation:**
+    - Extracted declared target study hours domain validation into pure domain module `features/challenges/domain/target-hours.validation.ts` (with `target-hours.validation.test.ts`).
+    - Added lifecycle guard functions (`areDeclarationsLocked`, `canEditDeclarations`, `canLogStudyTime`, `isChallengeReadOnly`) to `features/challenges/domain/challenge-lifecycle.ts`.
+    - Added `updateParticipantTargetSeconds` to `features/challenges/data/participant.repository.ts`.
+    - Completely removed dead `features/declarations/` folder (10 files deleted).
+  - **Phase 2: Challenge Views Relocation:**
+    - Moved `/challenge/[id]` views (`challenge-view.tsx`, `challenge-hero-banner.tsx`, `challenge-overview-tab.tsx`) from `features/leaderboard/presentation/` to `features/challenges/presentation/` where challenge entities belong.
+    - Kept `features/leaderboard/presentation/` focused strictly on leaderboard scoring views (`challenge-leaderboard-tab.tsx`, `manual-leaderboard-view.tsx`).
+    - Updated all call sites and import paths.
+  - **Phase 3: Naming Harmonization & Action Suffix Standards:**
+    - Renamed `join-challenge-modal.tsx` $\rightarrow$ `features/challenges/presentation/enrollment-modal.tsx` (exporting `EnrollmentModal` with alias `JoinChallengeModal`).
+    - Renamed `lib/scaffold.test.ts` $\rightarrow$ `lib/utils.test.ts`.
+    - Standardized all server action file names to `.actions.ts` across the codebase (`enroll-participant.actions.ts`, `log-study-time.actions.ts`, `admin-override.actions.ts`, `admin-pardon.actions.ts`).
+  - **Phase 4: Punishment Wall Removal:**
+    - Deleted obsolete `features/leaderboard/presentation/punishment-wall.tsx` per user instruction.
+  - **Phase 5: Home Cockpit View Decomposition:**
+    - Modularized the monolithic 1,052-line `home-cockpit-view.tsx` down to 134 clean lines by extracting focused subcomponents:
+      - `features/study-logs/presentation/cockpit/cockpit-banner-card.tsx` (all 7 banner variants).
+      - `features/study-logs/presentation/cockpit/cockpit-progress-card.tsx` (weekly commitment meter and deficit badge).
+      - `features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx` (daily & weekly categorized todos, accordions, and add-todo modal).
+      - `features/study-logs/presentation/cockpit/index.ts` (subcomponent barrel).
+  - **Quality Gates:**
+    - `npm run test` exits 0 (40 test files, 448/448 tests green).
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Local Visual Inspection:** Run `npm run dev` and navigate to `/challenge/:id` to verify the head-to-head battle card displays dynamic weekly targets, accurate completion percentage bars, and dynamic share percentages (e.g. 100% vs 0%).
-2. **Phase 1 Evolution:** Proceed with automated Yeolpumta (YPT) ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`) per `ROADMAP.md`.
+1. **Verify UI in Dev Mode:** Run `npm run dev` and navigate through `/`, `/challenge/:id`, and `/admin` to verify that all restructured components render seamlessly.
+2. **Phase 1 Feature Roadmap:** Begin implementation of Yeolpumta (YPT) automated ingestion (`FEAT-LOG-03`) or Discord bot slash commands (`FEAT-DISC-03`) per `ROADMAP.md`.
 
 
