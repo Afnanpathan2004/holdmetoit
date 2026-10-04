@@ -8,6 +8,12 @@ import { Input } from "@/components/ui/input";
 import { DailyHoursModal } from "./daily-hours-modal";
 import { toggleWeeklyGoalAction } from "@/features/declarations/api/declaration.actions";
 import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
+import {
+  determineBannerVariant,
+  formatOrdinalRank,
+  formatStudiedTodayHours,
+} from "@/features/study-logs/domain/cockpit-banner";
+import { JoinChallengeModal } from "@/features/challenges/presentation/join-challenge-modal";
 import type { CockpitGoal, CockpitViewModel } from "@/features/study-logs/data/cockpit-data";
 
 interface TaskItem {
@@ -36,23 +42,43 @@ interface HomeCockpitViewProps {
   } | null;
   initialGoals?: CockpitGoal[];
   cockpit?: CockpitViewModel | null;
+  upcomingChallenge?: {
+    id: string;
+    title: string;
+    format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
+    teams?: Array<{
+      id: string;
+      name: string;
+      color: string | null;
+      iconEmoji: string | null;
+    }>;
+  } | null;
 }
 
 export function HomeCockpitView({
-  displayName = "$USER",
+  displayName = "Unauthenticated",
   challengeId = "seed-honey-bees-vs-lavender-butterflies",
   todayLoggedSeconds = 0,
   todayLoggedClock = "00:00:00",
+  user,
   initialGoals,
   cockpit,
+  upcomingChallenge,
 }: HomeCockpitViewProps) {
   const [isPending, startTransition] = useTransition();
   const [isHoursModalOpen, setIsHoursModalOpen] = useState(false);
+  const [hoursModalDate, setHoursModalDate] = useState<string | undefined>(undefined);
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [addModalType, setAddModalType] = useState<"daily" | "weekly" | null>(null);
   const [newTodoText, setNewTodoText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Category 1");
   const [customCategory, setCustomCategory] = useState("");
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+
+  const openHoursModal = (date?: string) => {
+    setHoursModalDate(date);
+    setIsHoursModalOpen(true);
+  };
 
   const effectiveGoals = cockpit?.goals ?? initialGoals;
   const activeChallengeId = cockpit?.challengeId ?? challengeId;
@@ -60,6 +86,10 @@ export function HomeCockpitView({
     cockpit?.participant.displayName ||
     cockpit?.participant.username ||
     displayName;
+
+  const isLoggedIn = Boolean(
+    (user && (user.id || user.name || user.username)) || cockpit?.participant.userId,
+  );
 
   const effectiveTodaySeconds = cockpit ? cockpit.todayLoggedSeconds : todayLoggedSeconds;
   const effectiveTodayClock = cockpit ? cockpit.todayLoggedClock : todayLoggedClock;
@@ -296,67 +326,280 @@ export function HomeCockpitView({
         </div>
       </div>
 
-      {hasLoggedToday ? (
-        <div className="rounded-2xl border border-[#22c55e]/40 bg-[#144520] p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
-          <div>
-            <h3 className="text-base font-bold text-[#ffffff]">
-              Nice, you studied {effectiveTodayClock} today!
-            </h3>
-            <p className="text-xs text-[#d1d1d1] mt-1">
-              Your hours are recorded, and your team is holding strong in the standings.
-            </p>
-          </div>
+      {/* Dynamic Cockpit Banner Card (Variants 1–7 from Figma mockup) */}
+      {isLoggedIn && (() => {
+        const isEnrolledInChallenge = Boolean(cockpit);
+        const activeChallengeStatus = cockpit?.challengeStatus ?? (upcomingChallenge ? "UPCOMING" : null);
+        const activeChallengeFormat = cockpit?.challengeFormat ?? upcomingChallenge?.format ?? "TEAM_VS_TEAM";
+        const todayDateString = cockpit?.todayDate || new Date().toISOString().slice(0, 10);
+        const yesterdayDateString = cockpit?.yesterdayDate;
+        const targetChallengeId = upcomingChallenge?.id ?? activeChallengeId;
 
-          <div className="flex items-center gap-3 shrink-0">
-            <Button
-              asChild
-              variant="outline"
-              className="h-10 px-4 rounded-xl border-[#ffffff] text-[#ffffff] bg-transparent hover:bg-white/10 text-xs font-semibold"
-            >
-              <Link href={`/challenge/${activeChallengeId}?tab=leaderboard`}>
-                View Leaderboard
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setIsHoursModalOpen(true)}
-              className="h-10 px-5 rounded-xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold"
-            >
-              Edit Today&apos;s Hours
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-[#ff5757]/30 bg-[#401010]/80 p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
-          <div>
-            <h3 className="text-base font-bold text-[#ffffff]">
-              You haven&apos;t logged today&apos;s hours
-            </h3>
-            <p className="text-xs text-[#d1d1d1] mt-1">
-              Work hard, stay consistent, and keep your team on top
-            </p>
-          </div>
+        const bannerVariant = determineBannerVariant({
+          isEnrolled: isEnrolledInChallenge,
+          challengeStatus: activeChallengeStatus,
+          challengeFormat: activeChallengeFormat,
+          todayLoggedSeconds: effectiveTodaySeconds,
+          isYesterdayMissed: cockpit?.isYesterdayMissed ?? false,
+        });
 
-          <div className="flex items-center gap-3 shrink-0">
-            <Button
-              asChild
-              variant="outline"
-              className="h-10 px-4 rounded-xl border-[#ffffff] text-[#ffffff] bg-transparent hover:bg-white/10 text-xs font-semibold"
-            >
-              <Link href={`/challenge/${activeChallengeId}?tab=leaderboard`}>
-                View Leaderboard
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              onClick={() => setIsHoursModalOpen(true)}
-              className="h-10 px-5 rounded-xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold"
-            >
-              Log Today&apos;s Hours
-            </Button>
+        if (bannerVariant === "STUDIED_TODAY") {
+          return (
+            <div className="rounded-2xl border border-[#1e6b35]/40 bg-[#0f4a24] p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[#ffffff] tracking-tight">
+                  Wow, you studied {formatStudiedTodayHours(effectiveTodaySeconds)} today
+                </h3>
+                <p className="text-xs sm:text-sm text-[#d1d1d1] mt-1">
+                  Work hard, stay consistent, and keep your team on top
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+                >
+                  <Link href={`/challenge/${activeChallengeId}?tab=leaderboard`}>
+                    View Leaderboard
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => openHoursModal(todayDateString)}
+                  className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+                >
+                  Log Today&apos;s Hours
+                </Button>
+              </div>
+            </div>
+          );
+        }
+
+        if (bannerVariant === "NOT_LOGGED_TODAY") {
+          return (
+            <div className="rounded-2xl border border-[#6b3020]/40 bg-[#451f15] p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[#ffffff] tracking-tight">
+                  You haven&apos;t logged today&apos;s hours
+                </h3>
+                <p className="text-xs sm:text-sm text-[#d1d1d1] mt-1">
+                  Work hard, stay consistent, and keep your team on top
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+                >
+                  <Link href={`/challenge/${activeChallengeId}?tab=leaderboard`}>
+                    View Leaderboard
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => openHoursModal(todayDateString)}
+                  className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+                >
+                  Log Today&apos;s Hours
+                </Button>
+              </div>
+            </div>
+          );
+        }
+
+        if (bannerVariant === "FORGOT_YESTERDAY") {
+          return (
+            <div className="rounded-2xl border border-[#942626]/40 bg-[#6b1818] p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[#ffffff] tracking-tight">
+                  Don&apos;t forget yesterday&apos;s hard work!
+                </h3>
+                <p className="text-xs sm:text-sm text-[#d1d1d1] mt-1">
+                  Log it as leave and get right back into the challenge today
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  type="button"
+                  onClick={() => openHoursModal(yesterdayDateString)}
+                  className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+                >
+                  Log Yesterday Hours
+                </Button>
+              </div>
+            </div>
+          );
+        }
+
+        if (bannerVariant === "CHALLENGE_COMPLETED") {
+          return (
+            <div className="rounded-2xl border border-[#237599]/40 bg-[#16536e] p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[#ffffff] tracking-tight">
+                  Congrats, your team secured {formatOrdinalRank(cockpit?.teamRank ?? 1)} in this challenge
+                </h3>
+                <p className="text-xs sm:text-sm text-[#d1d1d1] mt-1">
+                  Work hard, stay consistent, and come stronger next time
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  asChild
+                  className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+                >
+                  <Link href={`/challenge/${activeChallengeId}?tab=leaderboard`}>
+                    View Leaderboard
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          );
+        }
+
+        if (bannerVariant === "ENROLL_SOLO") {
+          return (
+            <div className="rounded-2xl border border-[#3e2475]/40 bg-[#251744] p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[#ffffff] tracking-tight">
+                  Enroll in solo battle this week
+                </h3>
+                <p className="text-xs sm:text-sm text-[#d1d1d1] mt-1">
+                  Work hard, stay consistent, and keep your team on top
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+                >
+                  <Link href={`/challenge/${targetChallengeId}`}>
+                    View
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setIsEnrollModalOpen(true)}
+                  className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+                >
+                  Enroll
+                </Button>
+              </div>
+            </div>
+          );
+        }
+
+        if (bannerVariant === "ENROLL_GROUP") {
+          return (
+            <div className="rounded-2xl border border-[#3e2475]/40 bg-[#251744] p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[#ffffff] tracking-tight">
+                  Enroll in group battle this week
+                </h3>
+                <p className="text-xs sm:text-sm text-[#d1d1d1] mt-1">
+                  Work hard, stay consistent, and keep your team on top
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+                >
+                  <Link href={`/challenge/${targetChallengeId}`}>
+                    View
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setIsEnrollModalOpen(true)}
+                  className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+                >
+                  Enroll
+                </Button>
+              </div>
+            </div>
+          );
+        }
+
+        if (bannerVariant === "ENROLL_DUO") {
+          return (
+            <div className="rounded-2xl border border-[#3e2475]/40 bg-[#251744] p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-[#ffffff] tracking-tight">
+                  Enroll in duo battle this week
+                </h3>
+                <p className="text-xs sm:text-sm text-[#d1d1d1] mt-1">
+                  Work hard, stay consistent, and keep your team on top
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+                >
+                  <Link href={`/challenge/${targetChallengeId}`}>
+                    View
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setIsEnrollModalOpen(true)}
+                  className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+                >
+                  Enroll
+                </Button>
+              </div>
+            </div>
+          );
+        }
+
+        // ENROLLED_UPCOMING
+        return (
+          <div className="rounded-2xl border border-[#3e2475]/40 bg-[#251744] p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-[#ffffff] tracking-tight">
+                {activeChallengeFormat === "SOLOS"
+                  ? "You are enrolled in solo battle this week"
+                  : activeChallengeFormat === "DUOS"
+                    ? "You are enrolled in duo battle this week"
+                    : "You are enrolled in group battle this week"}
+              </h3>
+              <p className="text-xs sm:text-sm text-[#d1d1d1] mt-1">
+                Work hard, stay consistent, and keep your team on top
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <Button
+                asChild
+                variant="outline"
+                className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+              >
+                <Link href={`/challenge/${activeChallengeId}`}>
+                  View
+                </Link>
+              </Button>
+              <Button
+                disabled
+                className="h-10 px-5 rounded-full bg-white/80 text-black text-xs sm:text-sm font-bold opacity-90 cursor-default"
+              >
+                Enrolled ✓
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {cockpit && effectiveTargetSeconds > 0 && (
         <div className="rounded-2xl border border-[#262626] bg-[#141414] p-5 sm:p-6 shadow-md space-y-4">
@@ -664,11 +907,26 @@ export function HomeCockpitView({
       )}
 
       <DailyHoursModal
+        key={hoursModalDate ?? "today"}
         challengeId={activeChallengeId}
         isOpen={isHoursModalOpen}
         onClose={() => setIsHoursModalOpen(false)}
         todayDate={cockpit?.todayDate || new Date().toISOString().slice(0, 10)}
+        yesterdayDate={cockpit?.yesterdayDate}
+        initialDate={hoursModalDate}
       />
+
+      {isLoggedIn && (upcomingChallenge || cockpit) && (
+        <JoinChallengeModal
+          challengeId={upcomingChallenge?.id ?? activeChallengeId}
+          challengeTitle={upcomingChallenge?.title ?? cockpit?.challengeTitle ?? "Challenge"}
+          format={upcomingChallenge?.format ?? cockpit?.challengeFormat}
+          teams={upcomingChallenge?.teams}
+          isOpen={isEnrollModalOpen}
+          onOpenChange={setIsEnrollModalOpen}
+          showTrigger={false}
+        />
+      )}
     </div>
   );
 }

@@ -196,9 +196,58 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run typecheck` exits 0 (zero TypeScript errors).
     - `npm run build` succeeds cleanly with all routes compiled.
 
+### Session 27 — 2026-10-04
+- **Agent Role:** Participant UI & Scoring / Domain Engine Agent
+- **Changes Completed (Dynamic Dashboard Cockpit Banner Variants):**
+  - **Pure Domain Engine (`features/study-logs/domain/cockpit-banner.ts` / Law L7):**
+    - Created pure domain helper functions: `determineBannerVariant`, `formatStudiedTodayHours`, and `formatOrdinalRank`.
+    - Implemented condition evaluation for all 7 Figma mockup variants (`STUDIED_TODAY`, `NOT_LOGGED_TODAY`, `FORGOT_YESTERDAY`, `CHALLENGE_COMPLETED`, `ENROLL_SOLO`, `ENROLL_GROUP`, `ENROLL_DUO`) plus `ENROLLED_UPCOMING`.
+    - Added 19 comprehensive Vitest unit tests in `features/study-logs/domain/cockpit-banner.test.ts`.
+  - **Data Hydration Enhancements:**
+    - `features/challenges/data/participant.repository.ts`: Added fallback to `COMPLETED` challenges in `findParticipantForUser` when neither `ACTIVE` nor `UPCOMING` exists. Added regression test in `participant.repository.test.ts`.
+    - `features/challenges/data/challenge.repository.ts`: Added `findLatestAvailableChallenge` to query upcoming/active challenges with team relations.
+    - `features/study-logs/data/cockpit-data.ts`: Hydrated `yesterdayDate`, `yesterdayLoggedSeconds`, `isYesterdayMissed`, `teamRank` (computed from completed scoreboard), and `challengeFormat` on `CockpitViewModel`.
+    - `app/page.tsx`: Hydrated `upcomingChallenge` for guest or non-enrolled users, passing to `HomeCockpitView`.
+  - **Presentation & Modal Interactions (`features/study-logs/presentation/home-cockpit-view.tsx`):**
+    - Implemented the dynamic 7-variant banner with exact Figma styling:
+      - **Variant 1 (Studied today):** Dark green (`#0f4a24`, border `#1e6b35/40`), *"Wow, you studied {hours} today"*, `View Leaderboard` outline pill + `Log Today's Hours` white pill.
+      - **Variant 2 (Not logged today):** Rust brown (`#451f15`, border `#6b3020/40`), *"You haven't logged today's hours"*, `View Leaderboard` outline pill + `Log Today's Hours` white pill.
+      - **Variant 3 (Forgot yesterday):** Deep burgundy (`#6b1818`, border `#942626/40`), *"Don't forget yesterday's hard work!"*, *"Log Yesterday Hours"* white pill.
+      - **Variant 4 (Completed challenge):** Deep teal (`#16536e`, border `#237599/40`), *"Congrats, your team secured {rank} in this challenge"*, `View Leaderboard` white pill.
+      - **Variants 5, 6, 7 (Battles):** Dark purple (`#251744`, border `#3e2475/40`), *"Enroll in {solo/group/duo} battle this week"*, `View` outline pill + `Enroll` white pill.
+    - Removed the redundant non-enrolled enrollment alert banner from `features/leaderboard/presentation/challenge-view.tsx` to streamline the challenge page layout (enrollment is handled cleanly via the hero banner and cockpit).
+    - Guarded home cockpit banner and modal visibility with `isLoggedIn`: unauthenticated visitors will no longer see the battle enrollment card on the home dashboard.
+### Session 28 — 2026-10-04
+- **Agent Role:** Participant UI & Challenge Ops Agent
+- **Changes Completed (Challenge Hero Banner Redesign & In-Place Modal):**
+  - **Banner Layout Redesign Matching Mockup (`features/leaderboard/presentation/challenge-hero-banner.tsx`):**
+    - Set the banner hero image opacity to exactly 66% (`opacity-[0.66]`) with refined vignette gradient overlays (`from-[#0e0e10]/80 via-transparent to-[#0e0e10]/70`).
+    - Redesigned the left content column to mirror the mockup:
+      - `← Back to home` with underline navigation link.
+      - Bold/extrabold challenge title (e.g. *"October Monthly Team Battle"*).
+      - Matchup subtitle directly beneath title (e.g. *"Team Raven VS Team Serpents"*).
+      - Event date range formatted as `D Mon - D Mon` (e.g. *"5 Oct - 12 Oct"*) directly beneath matchup.
+    - **Unified Two-Tier Action Card (Figma Match):**
+      - Merged the disconnected floating pills into a single unified card (`rounded-2xl bg-[#351517] border border-[#ff5757]/20 shadow-xl overflow-hidden`).
+      - Top tier: Flush white `Enroll Now` button with bold black text, rounded corners, and shadow.
+      - Bottom tier: Connected deep wine-red status footer with centered coral text (e.g. *"2 Days Left"* / *"6 Days Left"*) with zero transparent gap.
+      - **Enrolled State Handling:** When `currentUser.isEnrolled` is true, the entire action widget is hidden (`returns null`), keeping the banner clean and uncluttered for participants.
+    - Preserved in-place `JoinChallengeModal` trigger on `/challenge/:id` for logged-in unenrolled participants, spectator sign-in redirect, and `router.refresh()`.
+  - **Test Suite Updates (`features/leaderboard/presentation/challenge-hero-banner.test.tsx`):**
+    - Updated image opacity assertion to expect `opacity-[0.66]`.
+    - Added test verifying that neither Quick Log nor Days Left capsule is rendered when the user is enrolled.
+    - All 8 unit tests passing green.
+  - **Quality Gates:**
+    - `npm run test` exits 0 (38 test files, 416/416 tests green).
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Manual browser verification:** Open `/challenge/:id` as a non-enrolled user, click "Enroll Now", and verify the new streamlined hours and leaves modal. Confirm enrollment saves the user in `⏳ Not Assigned` state and displays them in the host's Manage tab dropdown for allocation.
+1. **Manual Verification:** Open `/challenge/:id` in browser:
+   - As an unauthenticated spectator: verify clicking "Enroll Now" redirects to Discord OAuth with callback URL to `/challenge/:id`.
+   - As an authenticated unenrolled user: verify clicking "Enroll Now" opens `JoinChallengeModal` directly on the challenge page without navigating to `/`.
+   - Submit hours and leave days: verify modal closes and challenge page updates to show the enrolled state ("Quick Log").
 2. **Phase 1 Evolution:** Proceed with automated Yeolpumta (YPT) ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`) per `ROADMAP.md`.

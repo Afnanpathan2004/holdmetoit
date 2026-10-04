@@ -11,6 +11,7 @@ import {
   canToggleGoalCompletion,
   isChallengeReadOnly,
 } from "@/features/declarations/domain/declaration-lock";
+import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-data";
 
 export interface CockpitGoal {
   id: string;
@@ -37,6 +38,7 @@ export interface CockpitViewModel {
   challengeId: string;
   challengeTitle: string;
   challengeStatus: "UPCOMING" | "ACTIVE" | "COMPLETED";
+  challengeFormat: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
   teamName: string;
   teamIcon: string | null;
   participant: ParticipantIdentity;
@@ -54,6 +56,10 @@ export interface CockpitViewModel {
   todayDate: string;
   todayLoggedSeconds: number;
   todayLoggedClock: string;
+  yesterdayDate: string;
+  yesterdayLoggedSeconds: number;
+  isYesterdayMissed: boolean;
+  teamRank: number | null;
   remainingDailyAllowanceSeconds: number;
 }
 
@@ -73,6 +79,10 @@ export async function getParticipantCockpit(
 
   const now = new Date();
   const todayDate = formatUtcDateKey(now);
+  const yesterday = new Date(now);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const yesterdayDate = formatUtcDateKey(yesterday);
+
   const totalLoggedSeconds = sumLoggedSeconds(participant.dailyStudyLogs);
   const todayLog = participant.dailyStudyLogs.find(
     (log) => formatUtcDateKey(log.logDate) === todayDate,
@@ -83,6 +93,37 @@ export async function getParticipantCockpit(
     86_400 - todayLoggedSeconds,
   );
 
+  const yesterdayLog = participant.dailyStudyLogs.find(
+    (log) => formatUtcDateKey(log.logDate) === yesterdayDate,
+  );
+  const yesterdayLoggedSeconds = yesterdayLog?.durationSeconds ?? 0;
+
+  const challengeStartDate = formatUtcDateKey(participant.challenge.startAt);
+  const isYesterdayMissed =
+    participant.challenge.status === "ACTIVE" &&
+    yesterdayDate >= challengeStartDate &&
+    yesterdayLog === undefined;
+
+  let teamRank: number | null = null;
+  if (participant.challenge.status === "COMPLETED") {
+    try {
+      const scoreboard = await getChallengeScoreboard(participant.challengeId, userId);
+      if (participant.challenge.format === "SOLOS") {
+        const userStanding = scoreboard?.standings.find((s) => s.participantId === participant.id);
+        teamRank = userStanding?.rank ?? 1;
+      } else {
+        if (scoreboard?.teams && participant.teamId) {
+          const idx = scoreboard.teams.findIndex((t) => t.id === participant.teamId);
+          teamRank = idx >= 0 ? idx + 1 : 1;
+        } else {
+          teamRank = 1;
+        }
+      }
+    } catch {
+      teamRank = 1;
+    }
+  }
+
   const daysRemaining = calculateInclusiveDaysRemaining(
     participant.challenge.endAt,
     now,
@@ -92,6 +133,7 @@ export async function getParticipantCockpit(
     challengeId: participant.challengeId,
     challengeTitle: participant.challenge.title,
     challengeStatus: participant.challenge.status,
+    challengeFormat: participant.challenge.format,
     teamName: participant.team?.name ?? "Unassigned",
     teamIcon: participant.team?.iconEmoji ?? "⏳",
     participant: {
@@ -128,6 +170,10 @@ export async function getParticipantCockpit(
     todayDate,
     todayLoggedSeconds,
     todayLoggedClock: formatSecondsToClock(todayLoggedSeconds),
+    yesterdayDate,
+    yesterdayLoggedSeconds,
+    isYesterdayMissed,
+    teamRank,
     remainingDailyAllowanceSeconds,
   };
 }

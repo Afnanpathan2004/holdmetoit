@@ -84,6 +84,22 @@ describe("participant repository", () => {
       expect(result).toEqual(upcomingParticipant);
       expect(prisma.challengeParticipant.findFirst).toHaveBeenCalledTimes(2);
     });
+
+    it("falls back to completed challenge when neither active nor upcoming challenge is found", async () => {
+      const completedParticipant = {
+        id: "part_completed",
+        challenge: { status: "COMPLETED" },
+      };
+
+      vi.mocked(prisma.challengeParticipant.findFirst)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(completedParticipant as never);
+
+      const result = await findParticipantForUser("u_1");
+      expect(result).toEqual(completedParticipant);
+      expect(prisma.challengeParticipant.findFirst).toHaveBeenCalledTimes(3);
+    });
   });
 
   describe("findOwnedParticipant", () => {

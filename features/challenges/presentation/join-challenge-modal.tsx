@@ -16,13 +16,26 @@ interface JoinChallengeModalProps {
     color: string | null;
     iconEmoji: string | null;
   }>;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
+  onSuccess?: () => void;
 }
 
 export function JoinChallengeModal({
   challengeId,
   challengeTitle,
+  isOpen: controlledIsOpen,
+  onOpenChange,
+  showTrigger = true,
+  onSuccess,
 }: JoinChallengeModalProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const setIsOpen = (open: boolean) => {
+    setInternalIsOpen(open);
+    onOpenChange?.(open);
+  };
   const [hours, setHours] = useState<string>("35");
   const [leaveDays, setLeaveDays] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -57,34 +70,37 @@ export function JoinChallengeModal({
         setErrorMsg(res.message);
       } else {
         setIsOpen(false);
+        onSuccess?.();
       }
     });
   };
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-[#262626] bg-[#141414] p-4 text-xs shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#292929] text-[#ffffff] border border-[#333333]">
-            <Sparkles className="h-5 w-5" />
+      {showTrigger && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-[#262626] bg-[#141414] p-4 text-xs shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#292929] text-[#ffffff] border border-[#333333]">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm text-[#ffffff]">
+                Join {challengeTitle}
+              </p>
+              <p className="text-[11px] text-[#868686]">
+                Declare your target study hours and expected leaves before kickoff.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-sm text-[#ffffff]">
-              Join {challengeTitle}
-            </p>
-            <p className="text-[11px] text-[#868686]">
-              Declare your target study hours and expected leaves before kickoff.
-            </p>
-          </div>
-        </div>
 
-        <Button
-          onClick={() => setIsOpen(true)}
-          className="min-h-[40px] px-5 font-bold bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0]"
-        >
-          <span>Enroll Now</span>
-        </Button>
-      </div>
+          <Button
+            onClick={() => setIsOpen(true)}
+            className="min-h-[40px] px-5 font-bold bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] rounded-full"
+          >
+            <span>Enroll Now</span>
+          </Button>
+        </div>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">

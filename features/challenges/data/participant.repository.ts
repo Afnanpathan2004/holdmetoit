@@ -36,10 +36,23 @@ export async function findParticipantForUser(
     return activeParticipant;
   }
 
-  return prisma.challengeParticipant.findFirst({
+  const upcomingParticipant = await prisma.challengeParticipant.findFirst({
     where: {
       userId,
       challenge: { status: "UPCOMING" },
+    },
+    include,
+    orderBy: { enrolledAt: "desc" },
+  });
+
+  if (upcomingParticipant) {
+    return upcomingParticipant;
+  }
+
+  return prisma.challengeParticipant.findFirst({
+    where: {
+      userId,
+      challenge: { status: "COMPLETED" },
     },
     include,
     orderBy: { enrolledAt: "desc" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { X, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,16 @@ export function DailyHoursModal({
   const [seconds, setSeconds] = useState(initialSeconds > 0 ? String(initialSeconds) : "");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDate(initialDate || todayDate);
+      setHours(initialHours > 0 ? String(initialHours) : "");
+      setMinutes(initialMinutes > 0 ? String(initialMinutes) : "");
+      setSeconds(initialSeconds > 0 ? String(initialSeconds) : "");
+      setFeedback(null);
+    }
+  }, [isOpen, initialDate, todayDate, initialHours, initialMinutes, initialSeconds]);
 
   if (!isOpen) return null;
 

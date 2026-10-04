@@ -50,6 +50,15 @@ vi.mock("@/components/ui/button", () => ({
   Button: ({ children }: { children: ReactNode }) => createElement("div", null, children),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
+
+vi.mock("@/features/challenges/presentation/join-challenge-modal", () => ({
+  JoinChallengeModal: ({ isOpen, challengeTitle }: { isOpen: boolean; challengeTitle: string }) =>
+    isOpen ? createElement("div", { "data-testid": "join-challenge-modal" }, `Modal: ${challengeTitle}`) : null,
+}));
+
 const uploadedUrl = "https://example.supabase.co/storage/v1/object/public/holdmetoit-bucket/event-banners/banner.png";
 const challenge: ChallengeScoreboardViewModel = {
   id: "challenge-1",
@@ -108,7 +117,7 @@ describe("ChallengeHeroBanner", () => {
     imageState.onLoad?.();
     const html = render();
     expect(html).not.toContain("Loading challenge image");
-    expect(html).toContain("opacity-60");
+    expect(html).toContain("opacity-[0.66]");
   });
 
   it("offers retry on an image error while keeping challenge controls usable", () => {
@@ -128,7 +137,6 @@ describe("ChallengeHeroBanner", () => {
     expect(html).not.toContain("<img");
     expect(html).not.toContain("Loading challenge image");
     expect(html).not.toContain("Retry image");
-    expect(html).toContain("bg-gradient-to-br");
     expect(html).toContain("Study Battle");
   });
 
@@ -139,5 +147,35 @@ describe("ChallengeHeroBanner", () => {
     expect(before.props.children[0].key).toBe(uploadedUrl);
     expect(after.props.children[0].key).toBe(replacementUrl);
     expect(after.props.children[0].props.src).toBe(replacementUrl);
+  });
+
+  it("renders Enroll Now as a sign-in link for guest spectators", () => {
+    const html = render({
+      ...challenge,
+      currentUser: { isLoggedIn: false, isEnrolled: false, participantId: null },
+    });
+    expect(html).toContain('href="/api/auth/signin?callbackUrl=/challenge/challenge-1"');
+    expect(html).toContain("Enroll Now");
+    expect(html).not.toContain('href="/?challenge=challenge-1"');
+  });
+
+  it("renders Enroll Now button for logged-in unenrolled participants without routing to home", () => {
+    const html = render({
+      ...challenge,
+      currentUser: { isLoggedIn: true, isEnrolled: false, participantId: null },
+    });
+    expect(html).toContain("Enroll Now");
+    expect(html).not.toContain('href="/?challenge=challenge-1"');
+    expect(html).not.toContain("/api/auth/signin");
+  });
+
+  it("does not render Quick Log or days left capsule when the user is enrolled", () => {
+    const html = render({
+      ...challenge,
+      currentUser: { isLoggedIn: true, isEnrolled: true, participantId: "part-1" },
+    });
+    expect(html).not.toContain("Quick Log");
+    expect(html).not.toContain("Days Left");
+    expect(html).not.toContain('href="/?challenge=challenge-1"');
   });
 });

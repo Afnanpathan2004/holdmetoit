@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Clock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { JoinChallengeModal } from "@/features/challenges/presentation/join-challenge-modal";
 import type { ChallengeScoreboardViewModel } from "../data/leaderboard-data";
 
 interface ChallengeHeroBannerProps {
@@ -13,12 +15,14 @@ interface ChallengeHeroBannerProps {
 }
 
 function ChallengeHeroImage({ src }: { src: string | null }) {
-  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
+    "loading",
+  );
   const [attempt, setAttempt] = useState(0);
 
   return (
     <>
-      <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#292929] to-[#0e0e10]">
+      <div className="absolute inset-0 z-0">
         {src && status === "loading" && (
           <div
             role="status"
@@ -37,15 +41,16 @@ function ChallengeHeroImage({ src }: { src: string | null }) {
             onLoad={() => setStatus("loaded")}
             onError={() => setStatus("error")}
             className={`object-cover object-center transition-opacity motion-reduce:transition-none ${
-              status === "loaded" ? "opacity-60" : "opacity-0"
+              status === "loaded" ? "opacity-[0.66]" : "opacity-0"
             }`}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e10] via-[#0e0e10]/70 to-[#0e0e10]/30" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0e0e10]/90 via-transparent to-[#0e0e10]/80" />
       </div>
       {src && status === "error" && (
-        <div role="status" className="relative z-10 flex flex-wrap items-center gap-2 px-6 pt-4 text-xs text-[#d1d1d1] sm:px-8">
+        <div
+          role="status"
+          className="relative z-10 flex flex-wrap items-center gap-2 px-6 pt-4 text-xs text-[#d1d1d1] sm:px-8"
+        >
           <span>Challenge image unavailable.</span>
           <button
             type="button"
@@ -63,8 +68,78 @@ function ChallengeHeroImage({ src }: { src: string | null }) {
   );
 }
 
-export function ChallengeHeroBanner({ challenge, onQuickLog }: ChallengeHeroBannerProps) {
-  const { matchHeader, currentUser, teams } = challenge;
+function formatChallengeDate(dateString: string): string {
+  const d = new Date(dateString);
+  const day = d.getUTCDate();
+  const month = d.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  });
+  return `${day} ${month}`;
+}
+
+function ChallengeHeroActions({ challenge }: ChallengeHeroBannerProps) {
+  const router = useRouter();
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const { currentUser } = challenge;
+
+  if (currentUser.isEnrolled) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="w-36 sm:w-44 rounded-2xl bg-[#351517] border border-[#ff5757]/20 shadow-xl overflow-hidden shrink-0 self-start sm:self-center flex flex-col">
+        {challenge.status !== "COMPLETED" ? (
+          currentUser.isLoggedIn ? (
+            <Button
+              type="button"
+              onClick={() => setIsEnrollModalOpen(true)}
+              className="w-full h-11 sm:h-12 rounded-2xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-sm sm:text-base font-bold shadow-md transition-colors flex items-center justify-center border-none"
+            >
+              Enroll Now
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className="w-full h-11 sm:h-12 rounded-2xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-sm sm:text-base font-bold shadow-md transition-colors flex items-center justify-center border-none"
+            >
+              <Link
+                href={`/api/auth/signin?callbackUrl=/challenge/${challenge.id}`}
+              >
+                Enroll Now
+              </Link>
+            </Button>
+          )
+        ) : null}
+
+        <div className="w-full py-2 sm:py-2.5 px-3 text-center text-xs sm:text-sm font-semibold text-[#ff5c5c]">
+          {challenge.status === "COMPLETED"
+            ? "Completed"
+            : `${challenge.daysRemaining} Days Left`}
+        </div>
+      </div>
+
+      {currentUser.isLoggedIn &&
+        !currentUser.isEnrolled &&
+        challenge.status !== "COMPLETED" && (
+          <JoinChallengeModal
+            challengeId={challenge.id}
+            challengeTitle={challenge.title}
+            format={challenge.format}
+            teams={challenge.teams}
+            isOpen={isEnrollModalOpen}
+            onOpenChange={setIsEnrollModalOpen}
+            showTrigger={false}
+            onSuccess={() => router.refresh()}
+          />
+        )}
+    </>
+  );
+}
+
+export function ChallengeHeroBanner({ challenge }: ChallengeHeroBannerProps) {
+  const { matchHeader, teams } = challenge;
   const teamA = matchHeader.teamA ?? teams[0];
   const teamB = matchHeader.teamB ?? teams[1];
 
@@ -77,83 +152,39 @@ export function ChallengeHeroBanner({ challenge, onQuickLog }: ChallengeHeroBann
           ? "Solos FFA"
           : "House Battle";
 
-  const startDateFormatted = new Date(challenge.startAt).toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-  });
-  const endDateFormatted = new Date(challenge.endAt).toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "short",
-  });
+  const dateRangeFormatted = `${formatChallengeDate(challenge.startAt)} - ${formatChallengeDate(challenge.endAt)}`;
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-[#262626] bg-[#0e0e10] shadow-2xl min-h-[220px]">
-      {/* A new saved URL remounts the image, clearing any prior load/error state. */}
-      <ChallengeHeroImage key={challenge.heroImageUrl} src={challenge.heroImageUrl} />
+      <ChallengeHeroImage
+        key={challenge.heroImageUrl}
+        src={challenge.heroImageUrl}
+      />
 
-      {/* 2. Content Layer */}
-      <div className="relative z-10 p-6 sm:p-8 flex flex-col justify-between min-h-[220px]">
-        {/* Back Link & Matchup Subtitle */}
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="relative z-10 p-6 sm:p-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 min-h-[220px]">
+        <div className="flex flex-col justify-center">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-[#d1d1d1] hover:text-[#ffffff] transition-colors font-medium"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[#d1d1d1] hover:text-[#ffffff] transition-colors underline underline-offset-4 mb-3 sm:mb-4 w-fit"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Back to home</span>
           </Link>
 
-          <div className="flex items-center gap-3">
-            <span className="text-[#d1d1d1] font-medium hidden sm:inline-block">
-              {matchupText}
-            </span>
-            <span className="rounded-full bg-[#1c1c1c]/80 border border-[#333333] px-3.5 py-1 text-xs font-medium text-[#ffffff]">
-              {startDateFormatted} - {endDateFormatted}
-            </span>
-          </div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#ffffff] tracking-tight">
+            {challenge.title}
+          </h1>
+
+          <p className="text-sm sm:text-base font-medium text-[#d1d1d1] mt-2">
+            {matchupText}
+          </p>
+
+          <p className="text-xs sm:text-sm text-[#a3a3a3] mt-1">
+            {dateRangeFormatted}
+          </p>
         </div>
 
-        {/* Title & Action Row */}
-        <div className="mt-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-[#ffffff] tracking-tight">
-              {challenge.title}
-            </h1>
-            <p className="text-xs sm:text-sm text-[#d1d1d1] mt-1 sm:hidden">
-              {matchupText}
-            </p>
-          </div>
-
-          {/* Action & Status Capsule */}
-          <div className="flex items-center gap-2.5 self-start sm:self-auto shrink-0">
-            <span className="inline-flex items-center gap-1 rounded-md bg-[#381717] border border-[#ff5757]/30 px-3 py-1.5 text-xs font-semibold text-[#ff5757]">
-              <Clock className="h-3 w-3" />
-              {challenge.status === "COMPLETED"
-                ? "Completed"
-                : `${challenge.daysRemaining} Days Left`}
-            </span>
-
-            {currentUser.isEnrolled ? (
-              <Button
-                asChild
-                className="h-10 px-5 rounded-md bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold shadow-md"
-              >
-                <Link href={`/?challenge=${challenge.id}`}>
-                  Quick Log
-                </Link>
-              </Button>
-            ) : challenge.status !== "COMPLETED" ? (
-              <Button
-                asChild
-                className="h-10 px-5 rounded-md bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold shadow-md"
-              >
-                <Link href={`/?challenge=${challenge.id}`}>
-                  Enroll Now
-                </Link>
-              </Button>
-            ) : null}
-          </div>
-        </div>
+        <ChallengeHeroActions challenge={challenge} />
       </div>
     </div>
   );

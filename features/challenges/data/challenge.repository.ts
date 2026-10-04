@@ -18,3 +18,31 @@ export async function findChallengeWithTeamsById(
     },
   });
 }
+
+export async function findLatestAvailableChallenge(): Promise<ChallengeWithTeams | null> {
+  // First check for UPCOMING challenges that participants can enroll in
+  const upcoming = await prisma.challenge.findFirst({
+    where: { status: "UPCOMING" },
+    include: {
+      teams: {
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+    orderBy: { startAt: "asc" },
+  });
+
+  if (upcoming) {
+    return upcoming;
+  }
+
+  // Fall back to ACTIVE challenge if one is running
+  return prisma.challenge.findFirst({
+    where: { status: "ACTIVE" },
+    include: {
+      teams: {
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+    orderBy: { startAt: "desc" },
+  });
+}
