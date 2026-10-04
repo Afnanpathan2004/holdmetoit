@@ -246,11 +246,33 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run typecheck` exits 0 (zero TypeScript errors).
     - `npm run build` succeeds cleanly with all routes compiled.
 
+### Session 34 — 2026-10-04
+- **Agent Role:** Scoring & Engine Agent / Participant UI Agent
+- **Changes Completed (Cockpit Banner No-Event Condition Handling):**
+  - **Pure Domain Engine (`features/study-logs/domain/cockpit-banner.ts` / Law L7):**
+    - Added `"NONE"` variant to `BannerVariant` union type.
+    - Added `hasChallenge?: boolean` to `BannerEvaluationInput`.
+    - Updated `determineBannerVariant`:
+      - Returns `"NONE"` if `hasChallenge === false`.
+      - Returns `"NONE"` if `!isEnrolled` and there is no event in the app (`challengeFormat` is null/undefined or not a recognized battle format).
+    - Added comprehensive unit tests in `cockpit-banner.test.ts` for `"NONE"` variant conditions.
+  - **Presentation Layer (`features/study-logs/presentation/cockpit/cockpit-banner-card.tsx`):**
+    - Computed `hasChallenge = Boolean(cockpit || upcomingChallenge)`.
+    - Removed hardcoded `"TEAM_VS_TEAM"` fallback from `activeChallengeFormat` (defaults cleanly to `null`).
+    - Handled `bannerVariant === "NONE"` by returning `null`, ensuring no banner is displayed when zero challenges exist.
+  - **Component Tests (`features/study-logs/presentation/home-cockpit-view.test.tsx`):**
+    - Added test verifying that an authenticated user on the home cockpit with zero events in the database renders no banner card.
+  - **Quality Gates:**
+    - `npm run test` exits 0 (40 test files, 452/452 tests green).
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify UI in Dev Mode:** Run `npm run dev` and navigate through `/`, `/challenge/:id`, and `/admin` to verify that all restructured components render seamlessly.
+1. **Verify UI in Dev Mode:** Run `npm run dev` and navigate through `/`, `/challenge/:id`, and `/admin` to verify that all restructured components render seamlessly, and confirm that without an active/upcoming event, no banner is rendered on the home cockpit.
 2. **Phase 1 Feature Roadmap:** Begin implementation of Yeolpumta (YPT) automated ingestion (`FEAT-LOG-03`) or Discord bot slash commands (`FEAT-DISC-03`) per `ROADMAP.md`.
+
 
 

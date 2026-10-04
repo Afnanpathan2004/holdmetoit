@@ -33,7 +33,8 @@ export function EnrollmentModal({
   onSuccess,
 }: EnrollmentModalProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
-  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const isOpen =
+    controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
   const setIsOpen = (open: boolean) => {
     setInternalIsOpen(open);
     onOpenChange?.(open);
@@ -90,7 +91,8 @@ export function EnrollmentModal({
                 Join {challengeTitle}
               </p>
               <p className="text-[11px] text-[#868686]">
-                Declare your target study hours and expected leaves before kickoff.
+                Declare your target study hours and expected leaves before
+                kickoff.
               </p>
             </div>
           </div>
@@ -106,10 +108,8 @@ export function EnrollmentModal({
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
-          {/* Modal Container: matches Figma mockup */}
           <div className="w-full max-w-sm sm:max-w-md rounded-[28px] border border-[#383838] bg-[#242424] p-7 sm:p-8 shadow-2xl space-y-6">
             <form onSubmit={handleEnroll} className="space-y-6">
-              {/* Field 1: Hours */}
               <div className="space-y-3">
                 <label className="block text-xl font-bold text-[#ffffff] tracking-tight">
                   So how many hours can you put in?
@@ -117,7 +117,7 @@ export function EnrollmentModal({
                 <input
                   type="number"
                   min={1}
-                  max={105}
+                  max={100}
                   value={hours}
                   onChange={(e) => setHours(e.target.value)}
                   placeholder="Enter hours..."
@@ -126,7 +126,6 @@ export function EnrollmentModal({
                 />
               </div>
 
-              {/* Field 2: Leaves */}
               <div className="space-y-3">
                 <label className="block text-xl font-bold text-[#ffffff] tracking-tight">
                   How many leaves you might take
@@ -134,7 +133,7 @@ export function EnrollmentModal({
                 <input
                   type="number"
                   min={0}
-                  max={30}
+                  max={3}
                   value={leaveDays}
                   onChange={(e) => setLeaveDays(e.target.value)}
                   placeholder="Enter days..."
@@ -148,7 +147,6 @@ export function EnrollmentModal({
                 </div>
               )}
 
-              {/* Actions: Cancel & Submit pill buttons */}
               <div className="flex items-center justify-between pt-2">
                 <button
                   type="button"
@@ -175,4 +173,3 @@ export function EnrollmentModal({
 }
 
 export const JoinChallengeModal = EnrollmentModal;
-

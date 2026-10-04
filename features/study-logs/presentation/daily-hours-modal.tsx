@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Clock } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { logStudyTimeAction } from "@/features/study-logs/api/log-study-time.actions";
@@ -32,9 +32,15 @@ export function DailyHoursModal({
   onSuccess,
 }: DailyHoursModalProps) {
   const [selectedDate, setSelectedDate] = useState(initialDate || todayDate);
-  const [hours, setHours] = useState(initialHours > 0 ? String(initialHours) : "");
-  const [minutes, setMinutes] = useState(initialMinutes > 0 ? String(initialMinutes) : "");
-  const [seconds, setSeconds] = useState(initialSeconds > 0 ? String(initialSeconds) : "");
+  const [hours, setHours] = useState(
+    initialHours > 0 ? String(initialHours) : "",
+  );
+  const [minutes, setMinutes] = useState(
+    initialMinutes > 0 ? String(initialMinutes) : "",
+  );
+  const [seconds, setSeconds] = useState(
+    initialSeconds > 0 ? String(initialSeconds) : "",
+  );
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -46,7 +52,14 @@ export function DailyHoursModal({
       setSeconds(initialSeconds > 0 ? String(initialSeconds) : "");
       setFeedback(null);
     }
-  }, [isOpen, initialDate, todayDate, initialHours, initialMinutes, initialSeconds]);
+  }, [
+    isOpen,
+    initialDate,
+    todayDate,
+    initialHours,
+    initialMinutes,
+    initialSeconds,
+  ]);
 
   if (!isOpen) return null;
 
@@ -80,7 +93,9 @@ export function DailyHoursModal({
     const s = parseInt(seconds || "0", 10);
 
     if (isNaN(h) || isNaN(m) || isNaN(s)) {
-      setFeedback("Please enter valid positive numbers for hours, minutes, and seconds.");
+      setFeedback(
+        "Please enter valid positive numbers for hours, minutes, and seconds.",
+      );
       return;
     }
 
@@ -96,7 +111,9 @@ export function DailyHoursModal({
       <div className="w-full max-w-md rounded-2xl border border-[#434343] bg-[#292929] p-6 shadow-2xl space-y-5">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-[#ffffff]">
-            {isYesterday ? "How much did you study yesterday?" : "How much did you study today?"}
+            {isYesterday
+              ? "How much did you study yesterday?"
+              : "How much did you study today?"}
           </h3>
           <button
             type="button"
@@ -137,11 +154,13 @@ export function DailyHoursModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">Hours</label>
+              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">
+                Hours
+              </label>
               <Input
                 type="number"
                 min="0"
-                max="24"
+                max="16"
                 placeholder="0"
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
@@ -149,7 +168,9 @@ export function DailyHoursModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">Minutes</label>
+              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">
+                Minutes
+              </label>
               <Input
                 type="number"
                 min="0"
@@ -161,7 +182,9 @@ export function DailyHoursModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">Seconds</label>
+              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">
+                Seconds
+              </label>
               <Input
                 type="number"
                 min="0"

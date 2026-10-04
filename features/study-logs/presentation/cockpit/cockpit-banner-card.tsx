@@ -37,19 +37,25 @@ export function CockpitBannerCard({
   onOpenEnrollModal,
 }: CockpitBannerCardProps) {
   const isEnrolledInChallenge = Boolean(cockpit);
+  const hasChallenge = Boolean(cockpit || upcomingChallenge);
   const activeChallengeStatus = cockpit?.challengeStatus ?? (upcomingChallenge ? "UPCOMING" : null);
-  const activeChallengeFormat = cockpit?.challengeFormat ?? upcomingChallenge?.format ?? "TEAM_VS_TEAM";
+  const activeChallengeFormat = cockpit?.challengeFormat ?? upcomingChallenge?.format ?? null;
   const todayDateString = cockpit?.todayDate || new Date().toISOString().slice(0, 10);
   const yesterdayDateString = cockpit?.yesterdayDate;
   const targetChallengeId = upcomingChallenge?.id ?? activeChallengeId;
 
   const bannerVariant = determineBannerVariant({
     isEnrolled: isEnrolledInChallenge,
+    hasChallenge,
     challengeStatus: activeChallengeStatus,
     challengeFormat: activeChallengeFormat,
     todayLoggedSeconds: effectiveTodaySeconds,
     isYesterdayMissed: cockpit?.isYesterdayMissed ?? false,
   });
+
+  if (bannerVariant === "NONE") {
+    return null;
+  }
 
   if (bannerVariant === "STUDIED_TODAY") {
     return (

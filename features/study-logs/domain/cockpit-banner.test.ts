@@ -95,6 +95,37 @@ describe("determineBannerVariant", () => {
     });
     expect(result).toBe("NOT_LOGGED_TODAY");
   });
+
+  it("returns NONE when hasChallenge is explicitly false", () => {
+    const result = determineBannerVariant({
+      isEnrolled: false,
+      hasChallenge: false,
+      challengeFormat: "TEAM_VS_TEAM",
+      todayLoggedSeconds: 0,
+      isYesterdayMissed: false,
+    });
+    expect(result).toBe("NONE");
+  });
+
+  it("returns NONE when not enrolled and there is no event in the app (format/status undefined)", () => {
+    const result = determineBannerVariant({
+      isEnrolled: false,
+      todayLoggedSeconds: 0,
+      isYesterdayMissed: false,
+    });
+    expect(result).toBe("NONE");
+  });
+
+  it("returns NONE when not enrolled and format is null", () => {
+    const result = determineBannerVariant({
+      isEnrolled: false,
+      challengeFormat: null,
+      challengeStatus: null,
+      todayLoggedSeconds: 0,
+      isYesterdayMissed: false,
+    });
+    expect(result).toBe("NONE");
+  });
 });
 
 describe("formatStudiedTodayHours", () => {
