@@ -11,37 +11,37 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        cafe: {
-          bg: "#12100e",
-          wood: "#181512",
-          card: "#1e1a16",
-          elevated: "#26211c",
-          border: "#2f2821",
-          borderLight: "#3d342b",
-          parchment: "#f5f0e6",
-          linen: "#d8cfc4",
-          oatmeal: "#9e9284",
-          ash: "#6e6459",
-          honey: {
-            DEFAULT: "#d9822b",
-            light: "#ebb06e",
-            dark: "#b86a1e",
+        obsidian: {
+          bg: "#0d0d0d",
+          card: "#141414",
+          elevated: "#1c1c1c",
+          nested: "#292929",
+          input: "#545454",
+          inputBorder: "#484848",
+          border: "#292929",
+          borderLight: "#434343",
+          text: "#f4f3f6",
+          textMuted: "#d1d1d1",
+          textDim: "#868686",
+          serpents: {
+            bg: "#144520",
+            border: "#22c55e",
+            text: "#85ff93",
           },
-          sage: {
-            DEFAULT: "#4b8b67",
-            surface: "#18271e",
+          raven: {
+            bg: "#102d40",
+            border: "#3b82f6",
+            text: "#85d6ff",
           },
-          terracotta: {
-            DEFAULT: "#c7634c",
-            surface: "#2a1916",
+          purple: {
+            bg: "#230e40",
+            border: "#8b5cf6",
+            text: "#a29dae",
           },
-          cinnamon: {
-            DEFAULT: "#c87948",
-            surface: "#271c14",
-          },
-          lavender: {
-            DEFAULT: "#9986b8",
-            surface: "#211c2b",
+          crimson: {
+            bg: "#401010",
+            border: "#ef4444",
+            text: "#ff5757",
           },
         },
         border: "hsl(var(--border))",
@@ -79,10 +79,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ["var(--font-serif)", "Georgia", "serif"],
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", "monospace"],
-        script: ["var(--font-script)", "cursive"],
+        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Outfit", "Inter", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -92,8 +90,7 @@ const config: Config = {
         "3xl": "1.5rem",
       },
       boxShadow: {
-        cafe: "0 8px 30px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.03)",
-        "amber-subtle": "0 0 20px -3px rgba(217, 130, 43, 0.15)",
+        obsidian: "0 8px 30px -4px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.04)",
       },
     },
   },

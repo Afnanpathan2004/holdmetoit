@@ -347,3 +347,269 @@ export async function adminEnrollParticipant(params: {
   return participant;
 }
 
+export interface UpdateAdminChallengeInput {
+  title: string;
+  startAt: string;
+  endAt: string;
+  punishmentPfpUrl?: string | null;
+  teams: Array<{
+    id?: string;
+    name: string;
+    color?: string | null;
+    iconEmoji?: string | null;
+    mascotUrl?: string | null;
+  }>;
+}
+
+export async function updateAdminChallenge(
+  challengeId: string,
+  input: UpdateAdminChallengeInput,
+  actor: { id: string; username: string },
+) {
+  const challenge = await prisma.challenge.findUnique({
+    where: { id: challengeId },
+    include: { teams: true },
+  });
+
+  if (!challenge) {
+    throw new Error("Challenge not found.");
+  }
+
+  const maxMembers =
+    challenge.format === "SOLOS" ? 1 : challenge.format === "DUOS" ? 2 : null;
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Update challenge basic details
+    const updatedChallenge = await tx.challenge.update({
+      where: { id: challengeId },
+      data: {
+        title: input.title.trim(),
+        startAt: new Date(input.startAt),
+        endAt: new Date(input.endAt),
+        punishmentPfpUrl: input.punishmentPfpUrl?.trim() || null,
+      },
+    });
+
+    // 2. Process teams: update existing or create new ones
+    const keptTeamIds: string[] = [];
+    for (let i = 0; i < input.teams.length; i++) {
+      const teamInput = input.teams[i];
+      if (teamInput.id) {
+        keptTeamIds.push(teamInput.id);
+        await tx.team.update({
+          where: { id: teamInput.id },
+          data: {
+            name: teamInput.name.trim(),
+            color: teamInput.color?.trim() || null,
+            iconEmoji: teamInput.iconEmoji?.trim() || null,
+            mascotUrl: teamInput.mascotUrl?.trim() || null,
+            sortOrder: i,
+          },
+        });
+      } else {
+        const newTeam = await tx.team.create({
+          data: {
+            challengeId,
+            name: teamInput.name.trim(),
+            color: teamInput.color?.trim() || null,
+            iconEmoji: teamInput.iconEmoji?.trim() || null,
+            mascotUrl: teamInput.mascotUrl?.trim() || null,
+            maxMembers,
+            sortOrder: i,
+          },
+        });
+        if (newTeam?.id) {
+          keptTeamIds.push(newTeam.id);
+        }
+      }
+    }
+
+    // Delete removed teams that have no participants
+    if (keptTeamIds.length > 0) {
+      await tx.team.deleteMany({
+        where: {
+          challengeId,
+          id: { notIn: keptTeamIds },
+          participants: { none: {} },
+        },
+      });
+    }
+
+    await recordAuditEvent({
+      actorId: actor.id,
+      actorUsername: actor.username,
+      actionType: "CHALLENGE_UPDATED",
+      targetEntityId: challengeId,
+      targetEntityType: "CHALLENGE",
+      challengeId,
+      previousValue: {
+        title: challenge.title,
+        startAt: challenge.startAt,
+        endAt: challenge.endAt,
+      },
+      newValue: {
+        title: updatedChallenge.title,
+        startAt: updatedChallenge.startAt,
+        endAt: updatedChallenge.endAt,
+      },
+      auditReason: "Admin updated challenge configuration and team identities",
+    });
+
+    return updatedChallenge;
+  });
+}
+
+export async function reassignParticipantTeam(params: {
+  participantId: string;
+  newTeamId: string;
+  reason?: string;
+  admin: { id: string; username: string };
+}) {
+  const participant = await prisma.challengeParticipant.findUnique({
+    where: { id: params.participantId },
+    include: { team: true, user: true },
+  });
+
+  if (!participant) {
+    throw new Error("Participant not found.");
+  }
+
+  if (participant.teamId === params.newTeamId) {
+    return participant;
+  }
+
+  const destinationTeam = await prisma.team.findUnique({
+    where: { id: params.newTeamId },
+    include: {
+      _count: { select: { participants: true } },
+    },
+  });
+
+  if (!destinationTeam || destinationTeam.challengeId !== participant.challengeId) {
+    throw new Error("Selected destination team does not belong to this challenge.");
+  }
+
+  if (
+    destinationTeam.maxMembers &&
+    destinationTeam._count.participants >= destinationTeam.maxMembers
+  ) {
+    throw new Error(
+      `Team ${destinationTeam.name} is full (max ${destinationTeam.maxMembers} member${destinationTeam.maxMembers === 1 ? "" : "s"}).`,
+    );
+  }
+
+  const updatedParticipant = await prisma.challengeParticipant.update({
+    where: { id: params.participantId },
+    data: { teamId: params.newTeamId },
+    include: { team: true, user: true },
+  });
+
+  await recordAuditEvent({
+    actorId: params.admin.id,
+    actorUsername: params.admin.username,
+    actionType: "ROSTER_EDIT",
+    targetEntityId: participant.id,
+    targetEntityType: "PARTICIPANT",
+    challengeId: participant.challengeId,
+    previousValue: {
+      teamId: participant.teamId,
+      teamName: participant.team.name,
+    },
+    newValue: {
+      teamId: updatedParticipant.teamId,
+      teamName: updatedParticipant.team.name,
+    },
+    auditReason:
+      params.reason?.trim() ||
+      `Host reassigned ${participant.user.displayName || participant.user.username} from ${participant.team.name} to ${destinationTeam.name}`,
+  });
+
+  return updatedParticipant;
+}
+
+export async function deleteAdminChallenge(
+  challengeId: string,
+  actor: { id: string; username: string },
+) {
+  const challenge = await prisma.challenge.findUnique({
+    where: { id: challengeId },
+    include: { teams: true },
+  });
+
+  if (!challenge) {
+    throw new Error("Challenge not found.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Delete daily study logs for all participants in this challenge
+    await tx.dailyStudyLog.deleteMany({
+      where: {
+        participant: {
+          challengeId,
+        },
+      },
+    });
+
+    // 2. Delete weekly goals for all participants in this challenge
+    await tx.weeklyGoal.deleteMany({
+      where: {
+        participant: {
+          challengeId,
+        },
+      },
+    });
+
+    // 3. Delete punishment records
+    await tx.punishmentRecord.deleteMany({
+      where: { challengeId },
+    });
+
+    // 4. Delete leaderboard entries
+    await tx.leaderboardEntry.deleteMany({
+      where: { challengeId },
+    });
+
+    // 5. Delete challenge participants
+    await tx.challengeParticipant.deleteMany({
+      where: { challengeId },
+    });
+
+    // 6. Delete team members
+    await tx.teamMember.deleteMany({
+      where: {
+        team: {
+          challengeId,
+        },
+      },
+    });
+
+    // 7. Delete teams
+    await tx.team.deleteMany({
+      where: { challengeId },
+    });
+
+    // 8. Delete the challenge
+    const deleted = await tx.challenge.delete({
+      where: { id: challengeId },
+    });
+
+    await recordAuditEvent({
+      actorId: actor.id,
+      actorUsername: actor.username,
+      actionType: "CHALLENGE_DELETED",
+      targetEntityId: challengeId,
+      targetEntityType: "CHALLENGE",
+      challengeId,
+      previousValue: {
+        title: challenge.title,
+        status: challenge.status,
+      },
+      newValue: null,
+      auditReason: `Host permanently deleted challenge "${challenge.title}"`,
+    });
+
+    return deleted;
+  });
+}
+
+

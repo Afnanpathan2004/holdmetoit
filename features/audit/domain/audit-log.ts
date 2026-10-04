@@ -6,6 +6,8 @@ export type AuditEventType =
   | "CHALLENGE_KICKOFF"
   | "CHALLENGE_LOCKED"
   | "CHALLENGE_CREATED"
+  | "CHALLENGE_UPDATED"
+  | "CHALLENGE_DELETED"
   | "ROSTER_EDIT";
 
 export type AuditTargetType =
@@ -101,6 +103,10 @@ export function formatAuditActionHuman(action: AuditEventType): string {
       return "Final Results Locked";
     case "CHALLENGE_CREATED":
       return "Challenge Created";
+    case "CHALLENGE_UPDATED":
+      return "Challenge Updated";
+    case "CHALLENGE_DELETED":
+      return "Challenge Deleted";
     case "ROSTER_EDIT":
       return "Team Roster Reassigned";
     default:

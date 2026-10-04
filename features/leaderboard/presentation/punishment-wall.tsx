@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-
+import { Download, ShieldAlert, ShieldCheck } from "lucide-react";
 import type { PunishmentWallData } from "../data/leaderboard-data";
 
 interface PunishmentWallProps {
@@ -20,28 +20,29 @@ export function PunishmentWall({ wallData }: PunishmentWallProps) {
 
   return (
     <section
-      className="space-y-5 rounded-3xl border border-cafe-border bg-cafe-card p-6 shadow-cafe sm:p-8"
+      className="space-y-6 rounded-3xl border border-[#262626] bg-[#141414] p-6 sm:p-8 shadow-xl"
       aria-label="Accountability Nook and Forfeits"
     >
       {/* Section Header with Download Button */}
-      <div className="flex flex-col gap-3 pb-3 border-b border-cafe-border sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 pb-4 border-b border-[#262626] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🎪</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#401010] text-[#ff5757] border border-[#ef4444]/30">
+            <ShieldAlert className="h-5 w-5" />
+          </div>
           <div>
-            <h3 className="font-serif text-base font-semibold text-cafe-parchment">
-              The Accountability Nook & Forfeits
+            <h3 className="text-base font-bold text-[#ffffff]">
+              Forfeits & Accountability Wall
             </h3>
-            <p className="text-[11px] text-cafe-oatmeal">
-              Playful stakes: Dual-failure rule (missing target hours OR goals assigns the
-              forfeit avatar)
+            <p className="text-xs text-[#868686]">
+              Dual-failure rule (Law L6): Missing declared hours OR incomplete goals assigns the forfeit avatar
             </p>
           </div>
         </div>
 
         {/* 1-Click Direct Download Button (FEAT-PUN-03) */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {downloadNotified && (
-            <span className="font-script text-xs text-cafe-honey-light">
+            <span className="text-xs font-medium text-[#85ff93]">
               Downloading forfeit avatar...
             </span>
           )}
@@ -49,23 +50,10 @@ export function PunishmentWall({ wallData }: PunishmentWallProps) {
             href={punishmentPfpUrl}
             download="holdmetoit-punishment-avatar.jpg"
             onClick={handleDownloadClick}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-cafe-border bg-cafe-elevated px-4 py-2 text-xs font-medium text-cafe-parchment shadow-sm transition-all hover:border-cafe-honey/50 hover:bg-cafe-card active:scale-[0.98]"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#ffffff] px-4 py-2 text-xs font-bold text-[#0d0d0d] shadow transition-all hover:bg-[#e0e0e0] active:scale-[0.98]"
           >
-            <svg
-              className="h-3.5 w-3.5 text-cafe-honey"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            Download Event Avatar (.jpg)
+            <Download className="h-4 w-4" />
+            <span>Download Forfeit Avatar (.jpg)</span>
           </a>
         </div>
       </div>
@@ -73,39 +61,39 @@ export function PunishmentWall({ wallData }: PunishmentWallProps) {
       {/* Main Grid: Forfeit Asset Preview & Flagged Members */}
       <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-3">
         {/* Bespoke Asset Showcase Card */}
-        <div className="flex items-center gap-3.5 rounded-2xl border border-cafe-border bg-cafe-elevated/40 p-3.5 sm:col-span-1">
-          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-cafe-border bg-cafe-bg">
+        <div className="flex items-center gap-3.5 rounded-2xl border border-[#292929] bg-[#1c1c1c] p-4 sm:col-span-1">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#333333] bg-[#0d0d0d]">
             <Image
               src={punishmentPfpUrl}
-              alt="Whimsical Forfeit Avatar"
+              alt="Forfeit Avatar"
               fill
-              sizes="56px"
+              sizes="64px"
               className="object-cover"
             />
           </div>
           <div className="text-xs">
-            <span className="font-serif font-medium text-cafe-parchment">
-              Weekly Forfeit Avatar
+            <span className="font-bold text-[#ffffff]">
+              Event Forfeit Avatar
             </span>
-            <p className="mt-0.5 text-[11px] text-cafe-oatmeal">
-              Assigned to companions missing target hours or goals
+            <p className="mt-1 text-[11px] text-[#868686] leading-relaxed">
+              Assigned to participants with unmet target hours or goals upon completion
             </p>
           </div>
         </div>
 
         {/* Flagged Members List */}
-        <div className="space-y-2.5 sm:col-span-2">
+        <div className="space-y-3 sm:col-span-2">
           {flaggedMembers.length === 0 ? (
-            <div className="flex items-center gap-3 rounded-2xl border border-cafe-sage/30 bg-cafe-sage-surface/50 p-4 text-xs text-cafe-linen">
-              <span className="text-xl">🌿</span>
+            <div className="flex items-center gap-3 rounded-2xl border border-[#22c55e]/30 bg-[#144520]/20 p-4 text-xs text-[#d1d1d1]">
+              <ShieldCheck className="h-6 w-6 text-[#85ff93] shrink-0" />
               <div>
-                <p className="font-serif font-medium text-cafe-parchment">
-                  Lounge is serene and on pace
+                <p className="font-bold text-[#85ff93]">
+                  All participants currently on pace
                 </p>
-                <p className="text-[11px] text-cafe-oatmeal">
+                <p className="text-[11px] text-[#868686] mt-0.5">
                   {isEventCompleted
-                    ? "All companions successfully hit their target hours and weekly intentions! Zero forfeit avatars assigned."
-                    : "All companions are currently maintaining target pace with zero deficits. Keep the gentle rhythm going."}
+                    ? "All scholars successfully satisfied their target hours and weekly intentions! Zero forfeit avatars assigned."
+                    : "All scholars are currently maintaining pace with zero deficits. Keep up the momentum!"}
                 </p>
               </div>
             </div>
@@ -114,37 +102,37 @@ export function PunishmentWall({ wallData }: PunishmentWallProps) {
               {flaggedMembers.map((member) => (
                 <div
                   key={member.participantId}
-                  className="flex items-center justify-between rounded-2xl border border-cafe-border bg-cafe-elevated/40 p-3.5 text-xs shadow-sm"
+                  className="flex items-center justify-between rounded-xl border border-[#292929] bg-[#1c1c1c] p-3.5 text-xs shadow-sm"
                 >
-                  <div className="space-y-0.5">
+                  <div className="space-y-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-sans font-medium text-cafe-parchment">
+                      <span className="font-semibold text-[#ffffff]">
                         {member.displayName}
                       </span>
-                      <span className="text-[10px] text-cafe-ash">
+                      <span className="text-[10px] text-[#868686]">
                         ({member.teamName})
                       </span>
                     </div>
-                    <p className="text-[10px] text-cafe-oatmeal">
+                    <p className="text-[11px] text-[#868686]">
                       {member.incompleteGoalsCount > 0
                         ? `${member.incompleteGoalsCount} Incomplete Goal${
                             member.incompleteGoalsCount === 1 ? "" : "s"
                           }`
                         : "Goals finished"}{" "}
-                      • Deficit: -{member.hoursDeficitClock}
+                      • Deficit: <span className="font-sans font-sans-tabular text-[#ff5757] font-bold">-{member.hoursDeficitClock}</span>
                     </p>
                     {member.isPardoned && member.pardonReason && (
-                      <p className="font-script text-[11px] text-cafe-lavender">
+                      <p className="text-[11px] text-[#a29dae]">
                         Pardoned: {member.pardonReason}
                       </p>
                     )}
                   </div>
 
                   <span
-                    className={`rounded px-2 py-0.5 text-[10px] font-medium ${
+                    className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
                       member.statusBadge === "Excused"
-                        ? "border border-cafe-lavender/30 bg-cafe-lavender-surface text-cafe-lavender"
-                        : "border border-cafe-cinnamon/30 bg-cafe-cinnamon-surface text-cafe-cinnamon"
+                        ? "border border-[#8b5cf6]/40 bg-[#230e40] text-[#a29dae]"
+                        : "border border-[#ef4444]/40 bg-[#401010] text-[#ff5757]"
                     }`}
                   >
                     {member.statusBadge}

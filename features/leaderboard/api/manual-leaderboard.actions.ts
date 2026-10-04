@@ -47,6 +47,7 @@ export async function logManualSessionHoursAction(
 
     revalidatePath(`/challenge/${parsed.data.challengeId}`);
     revalidatePath("/dashboard");
+    revalidatePath("/");
 
     return { ok: true };
   } catch (error) {
@@ -97,6 +98,7 @@ export async function batchLogManualSessionHoursAction(
 
     revalidatePath(`/challenge/${parsed.data.challengeId}`);
     revalidatePath("/dashboard");
+    revalidatePath("/");
 
     return { ok: true };
   } catch (error) {

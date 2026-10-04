@@ -1,13 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import {
-  Calendar,
-  Flame,
-  Plus,
-  Shield,
-  Trophy,
-  Users,
-} from "lucide-react";
-
+import { ArrowLeft, Plus, Users, Palette, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listAllChallengesForAdmin } from "@/features/challenges/data/challenge-admin.repository";
 
@@ -19,172 +12,138 @@ export default async function AdminDashboardPage() {
   try {
     challenges = await listAllChallengesForAdmin();
   } catch (error) {
-    // If DB is offline or empty in demo, fallback to empty list
     challenges = [];
   }
 
-  const upcomingCount = challenges.filter((c) => c.status === "UPCOMING").length;
-  const activeCount = challenges.filter((c) => c.status === "ACTIVE").length;
-  const completedCount = challenges.filter((c) => c.status === "COMPLETED").length;
-
   return (
-    <div className="space-y-8">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-cafe-border">
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-cafe-parchment">
-            Challenge Management Hub
-          </h1>
-          <p className="mt-1 text-xs sm:text-sm text-cafe-oatmeal">
-            Create, balance, kickoff, and referee study tournaments without spreadsheets.
-          </p>
-        </div>
-
-        <Link href="/admin/challenges/new">
-          <Button className="h-11 min-h-[44px] gap-2 font-semibold shadow-cafe">
-            <Plus className="h-4 w-4" />
-            <span>+ Create New Challenge</span>
-          </Button>
+    <div className="space-y-8 max-w-6xl mx-auto">
+      {/* 1. Top Navigation & Action Controls (Admin console page 87:1796) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#d1d1d1] hover:text-[#ffffff] transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Back</span>
         </Link>
-      </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-cafe-border bg-cafe-card p-5 shadow-cafe">
-          <span className="text-xs text-cafe-ash font-medium uppercase tracking-wider">
-            Active Tournaments
-          </span>
-          <div className="mt-2 flex items-center justify-between">
-            <span className="font-mono text-3xl font-bold text-cafe-honey">
-              {activeCount}
-            </span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cafe-honey/15 text-cafe-honey">
-              <Flame className="h-5 w-5" />
-            </span>
-          </div>
-        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            asChild
+            className="h-10 px-5 rounded-full bg-[#1c1c1c] hover:bg-[#292929] border border-[#333333] text-[#ffffff] text-xs font-semibold shadow-sm"
+          >
+            <Link href="/admin/challenges/new" className="flex items-center gap-2">
+              <Plus className="h-3.5 w-3.5 stroke-[3]" />
+              <span>Create Challenge</span>
+            </Link>
+          </Button>
 
-        <div className="rounded-2xl border border-cafe-border bg-cafe-card p-5 shadow-cafe">
-          <span className="text-xs text-cafe-ash font-medium uppercase tracking-wider">
-            Upcoming Setup
-          </span>
-          <div className="mt-2 flex items-center justify-between">
-            <span className="font-mono text-3xl font-bold text-cafe-parchment">
-              {upcomingCount}
-            </span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cafe-elevated text-cafe-linen">
-              <Calendar className="h-5 w-5" />
-            </span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-cafe-border bg-cafe-card p-5 shadow-cafe">
-          <span className="text-xs text-cafe-ash font-medium uppercase tracking-wider">
-            Completed Archive
-          </span>
-          <div className="mt-2 flex items-center justify-between">
-            <span className="font-mono text-3xl font-bold text-cafe-sage">
-              {completedCount}
-            </span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cafe-sage/15 text-cafe-sage">
-              <Trophy className="h-5 w-5" />
-            </span>
-          </div>
+          <button
+            type="button"
+            className="h-10 px-4 rounded-full bg-[#1c1c1c] hover:bg-[#292929] border border-[#333333] text-[#ffffff] text-xs font-medium flex items-center gap-2 transition-colors"
+          >
+            <span className="h-2.5 w-2.5 rounded-full bg-[#ff4d4d]" />
+            <span>Change Accent Color</span>
+          </button>
         </div>
       </div>
 
-      {/* Challenges List */}
-      <div className="rounded-3xl border border-cafe-border bg-cafe-card p-6 shadow-cafe">
-        <h2 className="font-serif text-xl font-semibold text-cafe-parchment mb-4">
-          All Community Challenges
-        </h2>
+      {/* 2. Events Section Header */}
+      <div>
+        <h2 className="text-2xl font-extrabold text-[#ffffff] tracking-tight">Events</h2>
+      </div>
 
-        {challenges.length === 0 ? (
-          <div className="py-16 text-center">
-            <Trophy className="mx-auto h-12 w-12 text-cafe-ash" />
-            <h3 className="mt-4 font-serif text-lg font-semibold text-cafe-parchment">
-              No Challenges Created Yet
-            </h3>
-            <p className="mt-1 text-xs text-cafe-oatmeal max-w-sm mx-auto">
-              Get started by creating your first community study battle. It only takes 60 seconds.
-            </p>
-            <div className="mt-6">
-              <Link href="/admin/challenges/new">
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  <span>Create Your First Challenge</span>
-                </Button>
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="divide-y divide-cafe-border/60">
-            {challenges.map((c) => (
+      {/* 3. 3-Column Card Grid (Single Challenge Component 114:765) */}
+      {challenges.length === 0 ? (
+        <div className="rounded-3xl border border-[#262626] bg-[#141414] p-12 text-center space-y-4">
+          <p className="text-sm text-[#868686]">No challenges created yet.</p>
+          <Button asChild className="h-10 px-6 rounded-full bg-[#ffffff] text-[#0d0d0d] font-bold">
+            <Link href="/admin/challenges/new">
+              Create First Challenge
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {challenges.map((c) => {
+            const formattedDate = new Date(c.startAt).toLocaleDateString("en-US", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            });
+
+            const statusLabel =
+              c.status === "ACTIVE"
+                ? "Ongoing"
+                : c.status === "UPCOMING"
+                  ? "Upcoming"
+                  : "Completed";
+
+            const statusStyle =
+              c.status === "ACTIVE"
+                ? "bg-[#3a6a35] border-[#468c46] text-[#85ff93]"
+                : c.status === "UPCOMING"
+                  ? "bg-[#35596a] border-[#46748c] text-[#85d6ff]"
+                  : "bg-[#292929] border-[#434343] text-[#bcbcbc]";
+
+            return (
               <div
                 key={c.id}
-                className="py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 hover:bg-cafe-wood/40 rounded-xl px-3 transition-colors"
+                className="rounded-2xl border border-[#262626] bg-[#141414] overflow-hidden shadow-lg flex flex-col justify-between hover:border-[#383838] transition-all group"
               >
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span
-                      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold border ${
-                        c.status === "ACTIVE"
-                          ? "border-cafe-honey/40 bg-cafe-honey/15 text-cafe-honey"
-                          : c.status === "COMPLETED"
-                            ? "border-cafe-sage/40 bg-cafe-sage/15 text-cafe-sage"
-                            : "border-cafe-border bg-cafe-elevated text-cafe-linen"
-                      }`}
-                    >
-                      {c.status}
-                    </span>
-                    <span className="font-mono text-xs text-cafe-ash">
-                      {c.format}
-                    </span>
-                  </div>
-
-                  <h3 className="font-serif text-lg font-semibold text-cafe-parchment">
-                    {c.title}
-                  </h3>
-
-                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-cafe-oatmeal">
-                    <span>
-                      {new Date(c.startAt).toLocaleDateString()} —{" "}
-                      {new Date(c.endAt).toLocaleDateString()}
-                    </span>
-                    <span>•</span>
-                    <span>{c._count?.participants ?? 0} participants</span>
-                    <span>•</span>
-                    <span>
-                      Teams: {c.teams.map((t) => t.name).join(" vs ") || "None"}
-                    </span>
-                  </div>
+                {/* Banner Thumbnail (Rectangle 16) */}
+                <div className="relative h-36 w-full bg-[#1c1c1c] overflow-hidden">
+                  <Image
+                    src="/assets/challenge_hero_battle.jpg"
+                    alt={c.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 380px"
+                    className="object-cover object-center group-hover:scale-105 transition-transform duration-500 opacity-80"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#1d1d1d] via-transparent to-transparent" />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Link href={`/admin/challenges/${c.id}`}>
-                    <Button
-                      variant="secondary"
-                      className="min-h-[44px] h-10 gap-1.5 text-xs text-cafe-honey"
-                    >
-                      <Shield className="h-3.5 w-3.5" />
-                      <span>Manage Console</span>
-                    </Button>
-                  </Link>
+                {/* Card Content (Rectangle 17) */}
+                <div className="p-5 bg-[#1d1d1d] space-y-4 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-[#ffffff] truncate">
+                      {c.title}
+                    </h3>
 
-                  <Link href={`/challenge/${c.id}`}>
+                    {/* Metadata Badges Row */}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="flex items-center gap-1.5 text-xs text-[#ffffff]">
+                        <Users className="h-3.5 w-3.5 text-[#868686]" />
+                        <span>{c._count.participants}</span>
+                      </span>
+
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${statusStyle}`}
+                      >
+                        {statusLabel}
+                      </span>
+
+                      <span className="inline-flex items-center rounded-full border border-[#46748c] bg-[#35596a] px-2.5 py-0.5 font-sans font-medium text-[11px] text-[#85d6ff]">
+                        {formattedDate}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="pt-2 flex items-center">
                     <Button
-                      variant="outline"
-                      className="min-h-[44px] h-10 text-xs"
+                      asChild
+                      className="h-9 w-full rounded-xl bg-[#3d3d3d] border border-[#545454] text-[#ffffff] hover:bg-[#4a4a4a] text-xs font-semibold"
                     >
-                      Scoreboard ↗
+                      <Link href={`/challenge/${c.id}`}>View Challenge</Link>
                     </Button>
-                  </Link>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

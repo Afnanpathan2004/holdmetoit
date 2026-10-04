@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   adminEnrollParticipantAction,
+  deleteChallengeAction,
   kickoffChallengeAction,
   lockChallengeResultsAction,
+  reassignParticipantTeamAction,
+  updateChallengeAction,
 } from "@/features/challenges/api/challenge-admin.actions";
 import * as requireAdminModule from "@/features/auth/api/require-admin";
 import * as challengeAdminRepo from "@/features/challenges/data/challenge-admin.repository";
@@ -23,6 +26,9 @@ vi.mock("@/features/challenges/data/challenge-admin.repository", () => ({
   kickoffChallenge: vi.fn(),
   lockChallengeResults: vi.fn(),
   adminEnrollParticipant: vi.fn(),
+  updateAdminChallenge: vi.fn(),
+  reassignParticipantTeam: vi.fn(),
+  deleteAdminChallenge: vi.fn(),
 }));
 
 describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
@@ -137,6 +143,98 @@ describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
       const result = await lockChallengeResultsAction("c_1");
       expect(result).toEqual({ ok: true });
       expect(challengeAdminRepo.lockChallengeResults).toHaveBeenCalledWith("c_1", {
+        id: "admin_1",
+        username: "HostAdmin",
+      });
+    });
+  });
+
+  describe("updateChallengeAction", () => {
+    it("updates challenge when input is valid and called by admin", async () => {
+      vi.mocked(requireAdminModule.requireAdminUser).mockResolvedValue({
+        id: "admin_1",
+        username: "HostAdmin",
+      } as never);
+
+      vi.mocked(challengeAdminRepo.updateAdminChallenge).mockResolvedValue({
+        id: "c_1",
+      } as never);
+
+      const result = await updateChallengeAction({
+        challengeId: "c_1",
+        title: "Updated Title",
+        startAt: "2026-09-01T00:00:00Z",
+        endAt: "2026-09-08T00:00:00Z",
+        teams: [{ name: "Bees", color: "#FFB066", iconEmoji: "🐝" }],
+      });
+
+      expect(result).toEqual({ ok: true });
+      expect(challengeAdminRepo.updateAdminChallenge).toHaveBeenCalled();
+    });
+
+    it("rejects when endAt is before startAt", async () => {
+      vi.mocked(requireAdminModule.requireAdminUser).mockResolvedValue({
+        id: "admin_1",
+        username: "HostAdmin",
+      } as never);
+
+      const result = await updateChallengeAction({
+        challengeId: "c_1",
+        title: "Updated Title",
+        startAt: "2026-09-08T00:00:00Z",
+        endAt: "2026-09-01T00:00:00Z",
+        teams: [{ name: "Bees" }],
+      });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.code).toBe("INVALID_DATES");
+      }
+    });
+  });
+
+  describe("reassignParticipantTeamAction", () => {
+    it("reassigns participant when called by admin", async () => {
+      vi.mocked(requireAdminModule.requireAdminUser).mockResolvedValue({
+        id: "admin_1",
+        username: "HostAdmin",
+      } as never);
+
+      vi.mocked(challengeAdminRepo.reassignParticipantTeam).mockResolvedValue({
+        id: "part_1",
+      } as never);
+
+      const result = await reassignParticipantTeamAction({
+        challengeId: "c_1",
+        participantId: "part_1",
+        newTeamId: "t_2",
+      });
+
+      expect(result).toEqual({ ok: true });
+      expect(challengeAdminRepo.reassignParticipantTeam).toHaveBeenCalledWith({
+        participantId: "part_1",
+        newTeamId: "t_2",
+        reason: undefined,
+        admin: { id: "admin_1", username: "HostAdmin" },
+      });
+    });
+  });
+
+  describe("deleteChallengeAction", () => {
+    it("deletes challenge and returns redirectTo when called by admin", async () => {
+      vi.mocked(requireAdminModule.requireAdminUser).mockResolvedValue({
+        id: "admin_1",
+        username: "HostAdmin",
+      } as never);
+
+      vi.mocked(challengeAdminRepo.deleteAdminChallenge).mockResolvedValue({
+        id: "c_1",
+      } as never);
+
+      const result = await deleteChallengeAction("c_1");
+
+      expect(result).toEqual({ ok: true, data: { redirectTo: "/admin" } });
+      expect(challengeAdminRepo.deleteAdminChallenge).toHaveBeenCalledWith("c_1", {
         id: "admin_1",
         username: "HostAdmin",
       });

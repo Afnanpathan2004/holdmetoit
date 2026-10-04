@@ -4,33 +4,55 @@ import { prisma } from "@/core/db";
 import {
   adminEnrollParticipant,
   createAdminChallenge,
+  deleteAdminChallenge,
   kickoffChallenge,
   listAllChallengesForAdmin,
   lockChallengeResults,
+  reassignParticipantTeam,
+  updateAdminChallenge,
 } from "./challenge-admin.repository";
 
-vi.mock("@/core/db", () => ({
-  prisma: {
+vi.mock("@/core/db", () => {
+  const mockPrisma = {
     challenge: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
     team: {
       findUnique: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
     },
     challengeParticipant: {
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    dailyStudyLog: {
+      deleteMany: vi.fn(),
+    },
+    weeklyGoal: {
+      deleteMany: vi.fn(),
+    },
+    leaderboardEntry: {
+      deleteMany: vi.fn(),
+    },
+    teamMember: {
+      deleteMany: vi.fn(),
     },
     punishmentRecord: {
       upsert: vi.fn(),
+      deleteMany: vi.fn(),
     },
-    $transaction: vi.fn((cb) => cb(prisma)),
-  },
-}));
+    $transaction: vi.fn((cb) => cb(mockPrisma)),
+  };
+  return { prisma: mockPrisma };
+});
 
 vi.mock("@/features/audit/data/audit-log.repository", () => ({
   recordAuditEvent: vi.fn().mockResolvedValue({ id: "audit_1" }),
@@ -235,6 +257,148 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
           admin: { id: "admin_1", username: "HostAdmin" },
         }),
       ).rejects.toThrow("User is already enrolled in this challenge.");
+    });
+  });
+
+  describe("updateAdminChallenge", () => {
+    it("updates challenge details and teams with audit trail", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+        title: "Old Title",
+        format: "TEAM_VS_TEAM",
+        startAt: new Date("2026-09-01"),
+        endAt: new Date("2026-09-08"),
+        teams: [{ id: "t_1", name: "Old Team" }],
+      } as never);
+
+      const mockUpdated = {
+        id: "c_1",
+        title: "New Title",
+        startAt: new Date("2026-09-02"),
+        endAt: new Date("2026-09-09"),
+      };
+      vi.mocked(prisma.challenge.update).mockResolvedValue(mockUpdated as never);
+      vi.mocked(prisma.team.create).mockResolvedValue({ id: "t_created" } as never);
+
+      const result = await updateAdminChallenge(
+        "c_1",
+        {
+          title: "New Title",
+          startAt: "2026-09-02T00:00:00.000Z",
+          endAt: "2026-09-09T00:00:00.000Z",
+          punishmentPfpUrl: "https://example.com/pfp.png",
+          teams: [
+            { id: "t_1", name: "Updated Bees", color: "#FFB066", iconEmoji: "🐝" },
+            { name: "New Butterflies", color: "#A29DAE", iconEmoji: "🦋" },
+          ],
+        },
+        { id: "admin_1", username: "HostAdmin" },
+      );
+
+      expect(result).toEqual(mockUpdated);
+      expect(prisma.challenge.update).toHaveBeenCalled();
+      expect(prisma.team.update).toHaveBeenCalled();
+      expect(prisma.team.create).toHaveBeenCalled();
+    });
+  });
+
+  describe("reassignParticipantTeam", () => {
+    it("reassigns a participant to a new team in the challenge", async () => {
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue({
+        id: "part_1",
+        challengeId: "c_1",
+        teamId: "t_1",
+        team: { id: "t_1", name: "Bees" },
+        user: { id: "u_1", displayName: "Afnan", username: "afnan" },
+      } as never);
+
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({
+        id: "t_2",
+        challengeId: "c_1",
+        name: "Butterflies",
+        maxMembers: null,
+        _count: { participants: 3 },
+      } as never);
+
+      const mockUpdated = {
+        id: "part_1",
+        teamId: "t_2",
+        team: { id: "t_2", name: "Butterflies" },
+        user: { id: "u_1", displayName: "Afnan" },
+      };
+      vi.mocked(prisma.challengeParticipant.update).mockResolvedValue(
+        mockUpdated as never,
+      );
+
+      const result = await reassignParticipantTeam({
+        participantId: "part_1",
+        newTeamId: "t_2",
+        reason: "Rebalance teams",
+        admin: { id: "admin_1", username: "HostAdmin" },
+      });
+
+      expect(result).toEqual(mockUpdated);
+      expect(prisma.challengeParticipant.update).toHaveBeenCalledWith({
+        where: { id: "part_1" },
+        data: { teamId: "t_2" },
+        include: { team: true, user: true },
+      });
+    });
+
+    it("rejects when destination team belongs to a different challenge", async () => {
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue({
+        id: "part_1",
+        challengeId: "c_1",
+        teamId: "t_1",
+        team: { id: "t_1", name: "Bees" },
+        user: { id: "u_1", displayName: "Afnan" },
+      } as never);
+
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({
+        id: "t_other",
+        challengeId: "c_other",
+        name: "Foreign Team",
+        maxMembers: null,
+        _count: { participants: 0 },
+      } as never);
+
+      await expect(
+        reassignParticipantTeam({
+          participantId: "part_1",
+          newTeamId: "t_other",
+          admin: { id: "admin_1", username: "HostAdmin" },
+        }),
+      ).rejects.toThrow("Selected destination team does not belong to this challenge.");
+    });
+  });
+
+  describe("deleteAdminChallenge", () => {
+    it("deletes all related entities and challenge in correct order", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+        title: "Test Challenge",
+        status: "UPCOMING",
+      } as never);
+
+      const mockDeleted = { id: "c_1", title: "Test Challenge" };
+      vi.mocked(prisma.challenge.delete).mockResolvedValue(mockDeleted as never);
+
+      const result = await deleteAdminChallenge("c_1", {
+        id: "admin_1",
+        username: "HostAdmin",
+      });
+
+      expect(result).toEqual(mockDeleted);
+      expect(prisma.dailyStudyLog.deleteMany).toHaveBeenCalled();
+      expect(prisma.weeklyGoal.deleteMany).toHaveBeenCalled();
+      expect(prisma.punishmentRecord.deleteMany).toHaveBeenCalled();
+      expect(prisma.leaderboardEntry.deleteMany).toHaveBeenCalled();
+      expect(prisma.challengeParticipant.deleteMany).toHaveBeenCalled();
+      expect(prisma.teamMember.deleteMany).toHaveBeenCalled();
+      expect(prisma.team.deleteMany).toHaveBeenCalled();
+      expect(prisma.challenge.delete).toHaveBeenCalledWith({
+        where: { id: "c_1" },
+      });
     });
   });
 });

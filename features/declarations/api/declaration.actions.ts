@@ -88,6 +88,7 @@ export async function saveDeclarationsAction(
       parsed.data.goals.map((goal) => goal.trim()),
     );
 
+    revalidatePath("/");
     revalidatePath("/dashboard");
     return { ok: true };
   } catch (error) {
@@ -155,6 +156,7 @@ export async function toggleWeeklyGoalAction(
       };
     }
 
+    revalidatePath("/");
     revalidatePath("/dashboard");
     return { ok: true };
   } catch (error) {

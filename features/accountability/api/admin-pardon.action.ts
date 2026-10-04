@@ -43,6 +43,7 @@ export async function adminPardonAction(
     revalidatePath(`/admin/challenges/${parsed.data.challengeId}`);
     revalidatePath(`/challenge/${parsed.data.challengeId}`);
     revalidatePath("/dashboard");
+    revalidatePath("/");
 
     return { ok: true };
   } catch (error) {

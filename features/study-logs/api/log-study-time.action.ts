@@ -73,6 +73,7 @@ export async function logStudyTimeAction(
       durationSeconds,
     });
 
+    revalidatePath("/");
     revalidatePath("/dashboard");
     return { ok: true };
   } catch (error) {

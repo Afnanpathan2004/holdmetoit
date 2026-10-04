@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 30 9% 7%;
-    --foreground: 40 33% 93%;
+    --background: 0 0% 5%;
+    --foreground: 270 5% 96%;
 
-    --card: 30 12% 10%;
-    --card-foreground: 40 33% 93%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 30 11% 13%;
-    --popover-foreground: 40 33% 93%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 32 71% 51%;
-    --primary-foreground: 30 9% 7%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 5%;
 
-    --secondary: 30 11% 9%;
-    --secondary-foreground: 33 18% 81%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 30 11% 13%;
-    --muted-foreground: 33 9% 57%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 53%;
 
-    --accent: 30 11% 13%;
-    --accent-foreground: 40 33% 93%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 12 54% 54%;
-    --destructive-foreground: 40 33% 93%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 30 12% 15%;
-    --input: 30 12% 15%;
-    --ring: 32 71% 51%;
+    --border: 0 0% 16%;
+    --input: 0 0% 33%;
+    --ring: 0 0% 100%;
 
     --radius: 0.75rem;
   }
@@ -40,15 +40,11 @@
   }
 
   body {
-    @apply bg-cafe-bg text-cafe-parchment font-sans antialiased;
-    background-image:
-      radial-gradient(rgba(217, 130, 43, 0.04) 1px, transparent 1px),
-      radial-gradient(rgba(217, 130, 43, 0.02) 1px, transparent 1px);
-    background-size: 40px 40px, 20px 20px;
-    background-position: 0 0, 20px 20px;
+    @apply bg-[#0d0d0d] text-[#f4f3f6] font-sans antialiased;
+    background-color: #0d0d0d;
   }
 
-  .font-mono-tabular {
+  .font-sans-tabular {
     font-feature-settings: "tnum" 1, "zero" 1;
     font-variant-numeric: tabular-nums;
   }

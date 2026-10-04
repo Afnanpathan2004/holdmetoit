@@ -241,7 +241,7 @@ const config: Config = {
       fontFamily: {
         serif: ["var(--font-serif)", "Lora", "Georgia", "serif"],
         sans: ["var(--font-sans)", "Plus Jakarta Sans", "Inter", "sans-serif"],
-        mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
+        mono: ["var(--font-sans)", "JetBrains Mono", "monospace"],
       },
       borderRadius: {
         "2xl": "1rem",

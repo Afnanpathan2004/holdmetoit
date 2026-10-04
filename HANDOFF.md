@@ -203,5 +203,87 @@ In accordance with **`AGENTS.md` Rule §9.3**:
   - **Route & Loading:** Added `/challenge/[id]/manual` page (`app/challenge/[id]/manual/page.tsx`) and Law L9 loading skeleton (`app/challenge/[id]/manual/loading.tsx`).
   - **Quality Gates:** 29 test files (175 tests) passing 100% green, `npm run typecheck` exits with 0, `npm run build` succeeds cleanly.
 
+### Session 18 — 2026-10-04
+- **Agent Role:** Frontend Architect & UI Consolidation Agent
+- **Git Branch:** `afnan-jr`
+- **Changes Completed (Legacy UI Purge & Complete Obsidian Consolidation):**
+  - **Orphaned Component Deletion (8 files purged):** Deleted legacy files completely superseded by Figma components:
+    - `features/study-logs/presentation/study-desk-log.tsx`
+    - `features/study-logs/presentation/duration-input.tsx`
+    - `features/declarations/presentation/weekly-goals-panel.tsx`
+    - `features/leaderboard/presentation/match-banner.tsx`
+    - `features/leaderboard/presentation/standings-table.tsx`
+    - `features/study-logs/presentation/catch-up-card.tsx`
+    - `features/study-logs/presentation/participant-cockpit.tsx`
+    - `features/study-logs/presentation/cockpit-todo-lists.tsx`
+  - **Route & Layout Consolidation:**
+    - Configured permanent HTTP 308 redirect in `next.config.mjs` from `/dashboard` to `/`.
+    - Deleted redundant `app/(dashboard)` layout, loading, and page hierarchy.
+  - **CSS Variables & Theme Purge:**
+    - Replaced all warm brownish/orange HSL variables in `app/globals.css` `:root` with pure monochrome obsidian values (`--background: 0 0% 5%`, `--primary: 0 0% 100%`, `--card: 0 0% 8%`, `--border: 0 0% 16%`, `--ring: 0 0% 100%`).
+    - Purged legacy `cafe:` color object, `shadow-cafe`, and `obsidian.amber` from `tailwind.config.ts`.
+  - **Home Cockpit Dynamic Integration:**
+    - Connected `HomeCockpitView` with full `CockpitViewModel` data, interactive weekly goal server action toggles (`toggleWeeklyGoalAction`), and real-time deficit/target progress meters.
+  - **Asset & Prototype Quarantine:**
+    - Quarantined static `prototype/` site into `.archive/prototype/` per AGENTS.md §3 Rule 7.
+    - Removed `public/prototype/` and unused legacy assets (`public/assets/hero_cafe.jpg`, `public/assets/stamp_cafe.jpg`).
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero errors).
+    - `npm run test` passes 29/29 test suites (175/175 tests green).
+    - `npm run build` succeeds cleanly with all static and dynamic routes compiled.
+
+### Session 19 — 2026-10-04
+- **Agent Role:** Frontend Architect & UI Consolidation Agent
+- **Git Branch:** `afnan-jr`
+- **Changes Completed (Manage Challenge Route & Console Removal):**
+  - **Removed Route:** Completely deleted `app/admin/challenges/[id]` (including `page.tsx`, `loading.tsx`, and `roster/page.tsx`).
+  - **Removed Dedicated Console Components:** Deleted orphaned presentation files and data mapper:
+    - `features/challenges/presentation/admin-challenge-console.tsx`
+    - `features/challenges/presentation/admin-roster-grid.tsx`
+    - `features/challenges/presentation/admin-goals-pardons.tsx`
+    - `features/notifications/presentation/discord-summary-card.tsx`
+    - `features/audit/presentation/audit-trail-table.tsx`
+    - `features/challenges/data/admin-challenge-view.ts`
+  - **Cleaned Navigation & Links:**
+    - Updated `app/admin/page.tsx` tournament cards with a single "View Challenge" button (`/challenge/${c.id}`).
+    - Removed the "Manage" tab and button from `features/leaderboard/presentation/challenge-view.tsx` (now strictly `Overview`, `Leaderboard`, `About` matching Figma).
+### Session 20 — 2026-10-04
+- **Agent Role:** Admin Operations & UI Architect
+- **Git Branch:** `afnan-jr`
+- **Changes Completed (Manage Tab in Challenge View with Event Deletion & Participant Moves):**
+  - **Manage Tab Component (`features/challenges/presentation/challenge-manage-tab.tsx`):**
+    - Faithfully implemented Figma mockup (`media_1791061815092.png`) using the pure obsidian design system.
+    - **Section 1: Challenge Details & Timetable:** Title input and UTC datetime-local pickers with calendar icons.
+    - **Section 2: Dynamic House / Team Identities:** Dynamic team cards with emoji input, team name, color swatch/picker with hex label, and `+ Add Another Team` button.
+    - **Section 3: Assigned Punishment PFP Asset:** Avatar preview box with URL input.
+    - **Section 4: Participant House Assignments (Roster Reassignment):** Table of all enrolled scholars with Discord avatars, display names, and interactive dropdown selector to move any participant to another team with instant server action execution (`reassignParticipantTeamAction`).
+    - **Section 5: Danger Zone (Delete Event):** Prominent delete action with a confirmation modal ensuring safe cascading deletion across all related tables (`deleteChallengeAction`), redirecting to `/admin`.
+    - **Bottom Action Bar:** Form reset (`Cancel`) and `Save & Update Event` with loading spinners and feedback alert banners.
+  - **Repository & Transaction Updates (`features/challenges/data/challenge-admin.repository.ts`):**
+    - `updateAdminChallenge`: Transactionally updates title, startAt, endAt, punishmentPfpUrl, and upserts/prunes teams.
+    - `reassignParticipantTeam`: Reassigns `teamId` on `ChallengeParticipant` with capacity validation and audit logging.
+    - `deleteAdminChallenge`: Safely removes daily study logs, weekly goals, punishment records, leaderboard entries, participants, team members, teams, and challenge in strict transactional order to prevent foreign key errors.
+  - **Server Actions (`features/challenges/api/challenge-admin.actions.ts`):**
+    - `updateChallengeAction`: Zod validated, admin-gated, path revalidation.
+    - `reassignParticipantTeamAction`: Zod validated, admin-gated, path revalidation.
+    - `deleteChallengeAction`: Admin-gated, triggers deletion and returns redirect target.
+  - **Tab Integration in `ChallengeView`:**
+    - Gated `Manage` tab button to administrators (`isAdmin` prop) in `features/leaderboard/presentation/challenge-view.tsx`.
+    - Updated `app/challenge/[id]/page.tsx` to compute `isAdmin` from auth session and pass through `searchParams?.tab`.
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero errors).
+    - `npm run test` passes 29/29 test suites (183/183 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
+---
+
+## 5. Next Steps for Incoming Agent
+
+1. **Local Preview & Verification:** Run `bun run dev` (or `npm run dev`) and test the `/challenge/[id]` Manage tab at `http://localhost:3000`.
+2. **Phase 1 Evolution:** Proceed with automated YPT ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`) per `ROADMAP.md`.
+
+
+
+
 
 

@@ -57,6 +57,7 @@ export async function adminEditGoalAction(
     revalidatePath(`/admin/challenges/${parsed.data.challengeId}`);
     revalidatePath(`/challenge/${parsed.data.challengeId}`);
     revalidatePath("/dashboard");
+    revalidatePath("/");
 
     return { ok: true };
   } catch (error) {
@@ -97,6 +98,7 @@ export async function adminAddGoalAction(
     revalidatePath(`/admin/challenges/${parsed.data.challengeId}`);
     revalidatePath(`/challenge/${parsed.data.challengeId}`);
     revalidatePath("/dashboard");
+    revalidatePath("/");
 
     return { ok: true };
   } catch (error) {

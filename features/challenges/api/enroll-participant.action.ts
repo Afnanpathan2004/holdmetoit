@@ -59,6 +59,7 @@ export async function enrollInChallengeAction(
 
     revalidatePath(`/challenge/${parsed.data.challengeId}`);
     revalidatePath("/dashboard");
+    revalidatePath("/");
     revalidatePath("/admin");
 
     return { ok: true };

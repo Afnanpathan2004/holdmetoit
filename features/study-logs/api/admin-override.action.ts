@@ -73,6 +73,7 @@ export async function adminOverrideStudyHoursAction(
     revalidatePath(`/admin/challenges/${parsed.data.challengeId}/roster`);
     revalidatePath(`/challenge/${parsed.data.challengeId}`);
     revalidatePath("/dashboard");
+    revalidatePath("/");
 
     return { ok: true };
   } catch (error) {
