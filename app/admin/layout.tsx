@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Shield, Sparkles, Trophy, UserCheck } from "lucide-react";
 
 import { auth } from "@/core/auth";
+import { hasAdminPrivileges } from "@/features/auth/domain/auth-roles";
 import { AppHeader } from "@/features/auth/presentation/auth-nav";
 
 export default async function AdminLayout({
@@ -18,7 +19,7 @@ export default async function AdminLayout({
     redirect("/");
   }
 
-  if (session?.user && session.user.role !== "ADMIN" && !isDevBypass) {
+  if (session?.user && !hasAdminPrivileges(session.user.role) && !isDevBypass) {
     redirect("/");
   }
 

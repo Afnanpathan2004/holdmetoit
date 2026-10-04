@@ -288,6 +288,7 @@ model LeaderboardEntry {
 enum UserRole {
   PARTICIPANT
   ADMIN
+  DEV
 }
 
 enum ChallengeFormat {

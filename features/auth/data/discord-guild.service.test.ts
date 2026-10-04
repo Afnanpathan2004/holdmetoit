@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchMemberRoles, isDiscordAdmin } from "./discord-guild.service";
+import {
+  fetchMemberRoles,
+  isDiscordAdmin,
+  isDiscordDev,
+} from "./discord-guild.service";
 
 describe("discord-guild.service", () => {
   const originalEnv = process.env;
@@ -65,11 +69,18 @@ describe("discord-guild.service", () => {
   });
 
   describe("isDiscordAdmin", () => {
-    it("returns true if user Discord ID is in DISCORD_ADMIN_IDS whitelist", async () => {
-      process.env.DISCORD_ADMIN_IDS = "737561189755912223, 999999999999999999";
+    it("returns false when user has no matching admin role in the server", async () => {
+      process.env.DISCORD_GUILD_ID = "guild_123";
+      process.env.DISCORD_BOT_TOKEN = "bot_secret";
+      process.env.DISCORD_ADMIN_ROLE_IDS = "admin_role_a";
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ roles: ["regular_role"] }),
+      });
 
       const isAdmin = await isDiscordAdmin("737561189755912223");
-      expect(isAdmin).toBe(true);
+      expect(isAdmin).toBe(false);
     });
 
     it("returns true if user has a role matching DISCORD_ADMIN_ROLE_IDS", async () => {
@@ -103,6 +114,36 @@ describe("discord-guild.service", () => {
     it("returns false if user is empty string or undefined", async () => {
       const isAdmin = await isDiscordAdmin("");
       expect(isAdmin).toBe(false);
+    });
+  });
+
+  describe("isDiscordDev", () => {
+    it("returns true if user Discord ID is in DEV_DISCORD_IDS JSON array", () => {
+      process.env.DEV_DISCORD_IDS = '["123456789012345678", "987654321098765432"]';
+      expect(isDiscordDev("123456789012345678")).toBe(true);
+      expect(isDiscordDev("987654321098765432")).toBe(true);
+    });
+
+    it("returns true if user Discord ID is in DEV_DISCORD_IDS comma-separated string", () => {
+      process.env.DEV_DISCORD_IDS = "123456789012345678, 987654321098765432";
+      expect(isDiscordDev("123456789012345678")).toBe(true);
+      expect(isDiscordDev("987654321098765432")).toBe(true);
+    });
+
+    it("supports DISCORD_DEV_IDS fallback", () => {
+      delete process.env.DEV_DISCORD_IDS;
+      process.env.DISCORD_DEV_IDS = '["dev_user_snowflake"]';
+      expect(isDiscordDev("dev_user_snowflake")).toBe(true);
+    });
+
+    it("returns false if user Discord ID is not in DEV_DISCORD_IDS", () => {
+      process.env.DEV_DISCORD_IDS = '["123456789012345678"]';
+      expect(isDiscordDev("random_user_snowflake")).toBe(false);
+    });
+
+    it("returns false if user ID is empty or undefined", () => {
+      process.env.DEV_DISCORD_IDS = '["123456789012345678"]';
+      expect(isDiscordDev("")).toBe(false);
     });
   });
 });

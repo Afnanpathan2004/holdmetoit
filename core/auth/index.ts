@@ -4,6 +4,7 @@ import Discord from "next-auth/providers/discord";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import { prisma } from "@/core/db";
+import { isDiscordDev } from "@/features/auth/data/discord-guild.service";
 import {
   syncUserFromDiscordProfile,
   syncUserRoleFromDiscord,
@@ -56,6 +57,16 @@ const nextAuthResult = NextAuth({
         session.user.role = user.role;
         session.user.discordId = user.discordId;
         session.user.displayName = user.displayName;
+
+        if (user.discordId && isDiscordDev(user.discordId) && session.user.role !== "DEV") {
+          session.user.role = "DEV";
+          prisma.user
+            .update({
+              where: { id: user.id },
+              data: { role: "DEV" },
+            })
+            .catch(() => {});
+        }
       }
 
       return session;
