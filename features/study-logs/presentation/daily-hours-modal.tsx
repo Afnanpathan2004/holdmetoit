@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { X, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { logStudyTimeAction } from "@/features/study-logs/api/log-study-time.action";
+import { logStudyTimeAction } from "@/features/study-logs/api/log-study-time.actions";
 
 interface DailyHoursModalProps {
   challengeId: string;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { logStudyTimeAction } from "@/features/study-logs/api/log-study-time.action";
+import { logStudyTimeAction } from "@/features/study-logs/api/log-study-time.actions";
 import * as requireSessionModule from "@/features/auth/api/require-session";
 import * as requireParticipantModule from "@/features/auth/api/require-participant";
 import * as dailyStudyLogRepo from "@/features/study-logs/data/daily-study-log.repository";

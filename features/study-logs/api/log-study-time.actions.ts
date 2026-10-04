@@ -5,8 +5,10 @@ import { z } from "zod";
 
 import { ParticipantAccessError, requireOwnedParticipant } from "@/features/auth/api/require-participant";
 import { AuthError, requireSessionUser } from "@/features/auth/api/require-session";
-import { canLogStudyTime } from "@/features/declarations/domain/declaration-lock";
-import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
+import {
+  calculateChallengeStatus,
+  canLogStudyTime,
+} from "@/features/challenges/domain/challenge-lifecycle";
 import { upsertDailyStudyLog } from "@/features/study-logs/data/daily-study-log.repository";
 import {
   composeDurationSeconds,

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { ChallengeScoreboardViewModel } from "../data/leaderboard-data";
+import type { ChallengeScoreboardViewModel } from "@/features/leaderboard/data/leaderboard-data";
 import { ChallengeHeroBanner } from "./challenge-hero-banner";
 import { ChallengeOverviewTab } from "./challenge-overview-tab";
-import { ChallengeLeaderboardTab } from "./challenge-leaderboard-tab";
-import { ChallengeManageTab } from "@/features/challenges/presentation/challenge-manage-tab";
+import { ChallengeLeaderboardTab } from "@/features/leaderboard/presentation/challenge-leaderboard-tab";
+import { ChallengeManageTab } from "./challenge-manage-tab";
 
 interface ChallengeViewProps {
   challenge: ChallengeScoreboardViewModel;

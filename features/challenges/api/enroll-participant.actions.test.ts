@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { enrollInChallengeAction } from "@/features/challenges/api/enroll-participant.action";
+import { enrollInChallengeAction } from "@/features/challenges/api/enroll-participant.actions";
 import * as requireSessionModule from "@/features/auth/api/require-session";
 import * as participantRepoModule from "@/features/challenges/data/participant.repository";
 

@@ -5,7 +5,7 @@ import { ErrorState } from "@/components/state/error-state";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/core/auth";
 import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-data";
-import { ChallengeView } from "@/features/leaderboard/presentation/challenge-view";
+import { ChallengeView } from "@/features/challenges/presentation/challenge-view";
 
 interface ChallengePageProps {
   params: {

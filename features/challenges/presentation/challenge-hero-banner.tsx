@@ -6,8 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { JoinChallengeModal } from "@/features/challenges/presentation/join-challenge-modal";
-import type { ChallengeScoreboardViewModel } from "../data/leaderboard-data";
+import { EnrollmentModal } from "./enrollment-modal";
+import type { ChallengeScoreboardViewModel } from "@/features/leaderboard/data/leaderboard-data";
 
 interface ChallengeHeroBannerProps {
   challenge: ChallengeScoreboardViewModel;
@@ -125,7 +125,7 @@ function ChallengeHeroActions({ challenge }: ChallengeHeroBannerProps) {
       {currentUser.isLoggedIn &&
         !currentUser.isEnrolled &&
         challenge.status !== "COMPLETED" && (
-          <JoinChallengeModal
+          <EnrollmentModal
             challengeId={challenge.id}
             challengeTitle={challenge.title}
             format={challenge.format}

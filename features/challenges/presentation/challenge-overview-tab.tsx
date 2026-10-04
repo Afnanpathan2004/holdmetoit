@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, Users, CheckCircle, Shield, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ChallengeScoreboardViewModel } from "../data/leaderboard-data";
+import type { ChallengeScoreboardViewModel } from "@/features/leaderboard/data/leaderboard-data";
 
 interface ChallengeOverviewTabProps {
   challenge: ChallengeScoreboardViewModel;

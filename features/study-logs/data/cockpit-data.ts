@@ -1,16 +1,16 @@
 import { findParticipantForUser } from "@/features/challenges/data/participant.repository";
-import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
+import {
+  calculateChallengeStatus,
+  canEditDeclarations,
+  canLogStudyTime,
+  isChallengeReadOnly,
+} from "@/features/challenges/domain/challenge-lifecycle";
 import {
   buildCatchUpSummary,
   calculateInclusiveDaysRemaining,
   sumLoggedSeconds,
 } from "@/features/leaderboard/domain/catch-up-presentation";
 import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
-import {
-  canEditDeclarations,
-  canLogStudyTime,
-  isChallengeReadOnly,
-} from "@/features/declarations/domain/declaration-lock";
 import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-data";
 import { getUserCategorizedTasks } from "@/features/tasks/data/task.repository";
 import type { UserCategorizedTasks } from "@/features/tasks/domain/task.types";

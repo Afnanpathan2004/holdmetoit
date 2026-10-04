@@ -35,6 +35,25 @@ export function canKickoffChallenge(status: ChallengeStatus): boolean {
 }
 
 /**
+ * Participant declarations lock once the challenge starts (status !== "UPCOMING").
+ */
+export function areDeclarationsLocked(status: ChallengeStatus): boolean {
+  return status !== "UPCOMING";
+}
+
+export function canEditDeclarations(status: ChallengeStatus): boolean {
+  return status === "UPCOMING";
+}
+
+export function canLogStudyTime(status: ChallengeStatus): boolean {
+  return status === "ACTIVE";
+}
+
+export function isChallengeReadOnly(status: ChallengeStatus): boolean {
+  return status === "COMPLETED";
+}
+
+/**
  * Asserts that a challenge can be kicked off; throws ChallengeStateError otherwise.
  */
 export function assertCanKickoffChallenge(status: ChallengeStatus): void {

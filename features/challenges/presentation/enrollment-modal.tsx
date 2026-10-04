@@ -4,9 +4,9 @@ import { useState, useTransition } from "react";
 import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { enrollInChallengeAction } from "@/features/challenges/api/enroll-participant.action";
+import { enrollInChallengeAction } from "@/features/challenges/api/enroll-participant.actions";
 
-interface JoinChallengeModalProps {
+export interface EnrollmentModalProps {
   challengeId: string;
   challengeTitle: string;
   format?: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
@@ -22,14 +22,16 @@ interface JoinChallengeModalProps {
   onSuccess?: () => void;
 }
 
-export function JoinChallengeModal({
+export type JoinChallengeModalProps = EnrollmentModalProps;
+
+export function EnrollmentModal({
   challengeId,
   challengeTitle,
   isOpen: controlledIsOpen,
   onOpenChange,
   showTrigger = true,
   onSuccess,
-}: JoinChallengeModalProps) {
+}: EnrollmentModalProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
   const setIsOpen = (open: boolean) => {
@@ -171,3 +173,6 @@ export function JoinChallengeModal({
     </>
   );
 }
+
+export const JoinChallengeModal = EnrollmentModal;
+

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { adminOverrideStudyHoursAction } from "./admin-override.action";
+import { adminOverrideStudyHoursAction } from "./admin-override.actions";
 import * as requireAdminModule from "@/features/auth/api/require-admin";
 import * as overrideRepoModule from "@/features/study-logs/data/admin-override.repository";
 

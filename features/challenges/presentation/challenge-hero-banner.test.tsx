@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import type { ChallengeScoreboardViewModel } from "../data/leaderboard-data";
+import type { ChallengeScoreboardViewModel } from "@/features/leaderboard/data/leaderboard-data";
 import { ChallengeHeroBanner } from "./challenge-hero-banner";
 
 const imageState = vi.hoisted(() => ({
@@ -54,7 +54,9 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
 
-vi.mock("@/features/challenges/presentation/join-challenge-modal", () => ({
+vi.mock("./enrollment-modal", () => ({
+  EnrollmentModal: ({ isOpen, challengeTitle }: { isOpen: boolean; challengeTitle: string }) =>
+    isOpen ? createElement("div", { "data-testid": "join-challenge-modal" }, `Modal: ${challengeTitle}`) : null,
   JoinChallengeModal: ({ isOpen, challengeTitle }: { isOpen: boolean; challengeTitle: string }) =>
     isOpen ? createElement("div", { "data-testid": "join-challenge-modal" }, `Modal: ${challengeTitle}`) : null,
 }));

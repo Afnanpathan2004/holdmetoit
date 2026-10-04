@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { cn } from "@/lib/utils";
 
-describe("scaffold", () => {
+describe("utils: cn", () => {
   it("merges tailwind class names via cn()", () => {
     expect(cn("px-2", "px-4", "text-cafe-parchment")).toBe(
       "px-4 text-cafe-parchment",

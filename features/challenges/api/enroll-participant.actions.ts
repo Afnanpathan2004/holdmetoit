@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { requireSessionUser } from "@/features/auth/api/require-session";
 import { enrollParticipantInChallenge } from "@/features/challenges/data/participant.repository";
-import { validateWeeklyTargetSeconds } from "@/features/declarations/domain/weekly-goals.validation";
+import { validateWeeklyTargetSeconds } from "@/features/challenges/domain/target-hours.validation";
 import { composeDurationSeconds } from "@/features/study-logs/domain/daily-log.validation";
 
 const enrollParticipantSchema = z.object({

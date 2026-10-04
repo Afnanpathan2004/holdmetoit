@@ -9,12 +9,15 @@ import {
   kickoffChallenge,
   lockChallengeResults,
 } from "@/features/challenges/data/challenge-admin.repository";
-import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
-import { canEditDeclarations, canLogStudyTime } from "@/features/declarations/domain/declaration-lock";
+import {
+  calculateChallengeStatus,
+  canEditDeclarations,
+  canLogStudyTime,
+} from "@/features/challenges/domain/challenge-lifecycle";
 import {
   validateWeeklyGoalDescriptions,
   validateWeeklyTargetSeconds,
-} from "@/features/declarations/domain/weekly-goals.validation";
+} from "@/features/challenges/domain/target-hours.validation";
 import { buildScoreboardViewModel, type RawChallengePayload } from "@/features/leaderboard/data/leaderboard-data";
 import {
   calculateRemainingDeficit,

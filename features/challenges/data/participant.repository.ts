@@ -152,3 +152,14 @@ export async function enrollParticipantInChallenge(params: {
   });
 }
 
+export async function updateParticipantTargetSeconds(
+  participantId: string,
+  targetSeconds: number,
+) {
+  return prisma.challengeParticipant.update({
+    where: { id: participantId },
+    data: { targetSeconds },
+  });
+}
+
+
