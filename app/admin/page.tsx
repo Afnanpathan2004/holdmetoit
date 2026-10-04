@@ -18,40 +18,40 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      {/* 1. Top Navigation & Action Controls (Admin console page 87:1796) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* 1. Back Navigation */}
+      <div>
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#d1d1d1] hover:text-[#ffffff] transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-white underline underline-offset-4 hover:text-[#d1d1d1] transition-colors"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          <span>Back</span>
+          <span>← Back</span>
         </Link>
-
-        <div className="flex items-center gap-3">
-          <Button
-            asChild
-            className="h-10 px-5 rounded-full bg-[#1c1c1c] hover:bg-[#292929] border border-[#333333] text-[#ffffff] text-xs font-semibold shadow-sm"
-          >
-            <Link href="/admin/challenges/new" className="flex items-center gap-2">
-              <Plus className="h-3.5 w-3.5 stroke-[3]" />
-              <span>Create Challenge</span>
-            </Link>
-          </Button>
-
-          <button
-            type="button"
-            className="h-10 px-4 rounded-full bg-[#1c1c1c] hover:bg-[#292929] border border-[#333333] text-[#ffffff] text-xs font-medium flex items-center gap-2 transition-colors"
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-[#ff4d4d]" />
-            <span>Change Accent Color</span>
-          </button>
-        </div>
       </div>
 
-      {/* 2. Events Section Header */}
-      <div>
-        <h2 className="text-2xl font-extrabold text-[#ffffff] tracking-tight">Events</h2>
+      {/* 2. Action Controls (Create Challenge & Change Accent Color) */}
+      <div className="flex flex-wrap items-center gap-6 sm:gap-8">
+        <Link
+          href="/admin/challenges/new"
+          className="flex h-[74px] w-full sm:w-[253px] items-center justify-center gap-3 rounded-[20px] bg-[#1d1d1d] hover:bg-[#262626] border border-[#2e2e2e] text-white text-[15px] font-medium transition-all shadow-sm"
+        >
+          <Plus className="h-4 w-4 stroke-[2.5]" />
+          <span>Create Challenge</span>
+        </Link>
+
+        <button
+          type="button"
+          className="flex h-[74px] w-full sm:w-[253px] items-center justify-center gap-3 rounded-[20px] bg-[#1d1d1d] hover:bg-[#262626] border border-[#2e2e2e] text-white text-[15px] font-medium transition-all shadow-sm"
+        >
+          <span className="h-4 w-4 rounded-full bg-[#ff0000] shrink-0" />
+          <span>Change Accent Color</span>
+        </button>
+      </div>
+
+      {/* 3. Events Section Header */}
+      <div className="pt-2">
+        <h2 className="inline-block text-2xl font-extrabold text-[#ffffff] tracking-tight border-b-2 border-white pb-1.5">
+          Events
+        </h2>
       </div>
 
       {/* 3. 3-Column Card Grid (Single Challenge Component 114:765) */}

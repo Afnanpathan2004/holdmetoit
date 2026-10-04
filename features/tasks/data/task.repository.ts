@@ -22,73 +22,98 @@ export async function getUserCategorizedTasks(
     orderBy: { createdAt: "asc" },
   });
 
-  // Seed default category if user has no categories yet
-  if (categories.length === 0) {
-    const defaultCat = await prisma.category.create({
+  // Ensure default categories exist for both DAILY and WEEKLY
+  const hasDaily = categories.some((c) => c.taskType === "DAILY");
+  const hasWeekly = categories.some((c) => c.taskType === "WEEKLY");
+
+  if (!hasDaily) {
+    const defaultDaily = await prisma.category.create({
       data: {
         userId,
         name: DEFAULT_CATEGORY_NAME,
+        taskType: "DAILY",
       },
       include: {
         tasks: true,
       },
     });
-    categories = [defaultCat];
+    categories.push(defaultDaily);
+  }
+
+  if (!hasWeekly) {
+    const defaultWeekly = await prisma.category.create({
+      data: {
+        userId,
+        name: DEFAULT_CATEGORY_NAME,
+        taskType: "WEEKLY",
+      },
+      include: {
+        tasks: true,
+      },
+    });
+    categories.push(defaultWeekly);
   }
 
   const categoryItems: CategoryItem[] = categories.map((c) => ({
     id: c.id,
     userId: c.userId,
     name: c.name,
+    taskType: c.taskType,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
   }));
 
-  const dailyCategories: CategoryGroup[] = categories.map((c) => {
-    const dailyTasks: TaskItem[] = c.tasks
-      .filter((t) => t.taskType === "DAILY")
-      .map((t) => ({
-        id: t.id,
-        userId: t.userId,
-        categoryId: t.categoryId,
-        title: t.title,
+  const dailyCategories: CategoryGroup[] = categories
+    .filter((c) => c.taskType === "DAILY")
+    .map((c) => {
+      const dailyTasks: TaskItem[] = c.tasks
+        .filter((t) => t.taskType === "DAILY")
+        .map((t) => ({
+          id: t.id,
+          userId: t.userId,
+          categoryId: t.categoryId,
+          title: t.title,
+          taskType: "DAILY" as const,
+          isComplete: t.isComplete,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+          completedAt: t.completedAt,
+        }));
+
+      return {
+        id: c.id,
+        name: c.name,
         taskType: "DAILY" as const,
-        isComplete: t.isComplete,
-        createdAt: t.createdAt,
-        updatedAt: t.updatedAt,
-        completedAt: t.completedAt,
-      }));
+        isCollapsed: false,
+        tasks: dailyTasks,
+      };
+    });
 
-    return {
-      id: c.id,
-      name: c.name,
-      isCollapsed: false,
-      tasks: dailyTasks,
-    };
-  });
+  const weeklyCategories: CategoryGroup[] = categories
+    .filter((c) => c.taskType === "WEEKLY")
+    .map((c) => {
+      const weeklyTasks: TaskItem[] = c.tasks
+        .filter((t) => t.taskType === "WEEKLY")
+        .map((t) => ({
+          id: t.id,
+          userId: t.userId,
+          categoryId: t.categoryId,
+          title: t.title,
+          taskType: "WEEKLY" as const,
+          isComplete: t.isComplete,
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+          completedAt: t.completedAt,
+        }));
 
-  const weeklyCategories: CategoryGroup[] = categories.map((c) => {
-    const weeklyTasks: TaskItem[] = c.tasks
-      .filter((t) => t.taskType === "WEEKLY")
-      .map((t) => ({
-        id: t.id,
-        userId: t.userId,
-        categoryId: t.categoryId,
-        title: t.title,
+      return {
+        id: c.id,
+        name: c.name,
         taskType: "WEEKLY" as const,
-        isComplete: t.isComplete,
-        createdAt: t.createdAt,
-        updatedAt: t.updatedAt,
-        completedAt: t.completedAt,
-      }));
-
-    return {
-      id: c.id,
-      name: c.name,
-      isCollapsed: false,
-      tasks: weeklyTasks,
-    };
-  });
+        isCollapsed: false,
+        tasks: weeklyTasks,
+      };
+    });
 
   const allTasks = categories.flatMap((c) => c.tasks);
   const dailyAll = allTasks.filter((t) => t.taskType === "DAILY");
@@ -119,6 +144,7 @@ export async function createTask(params: {
     const existing = await prisma.category.findFirst({
       where: {
         userId: params.userId,
+        taskType: params.taskType,
         name: { equals: trimmedName, mode: "insensitive" },
       },
     });
@@ -130,6 +156,7 @@ export async function createTask(params: {
         data: {
           userId: params.userId,
           name: trimmedName,
+          taskType: params.taskType,
         },
       });
       resolvedCategoryId = created.id;
@@ -138,7 +165,10 @@ export async function createTask(params: {
 
   if (!resolvedCategoryId) {
     const fallback = await prisma.category.findFirst({
-      where: { userId: params.userId },
+      where: {
+        userId: params.userId,
+        taskType: params.taskType,
+      },
       orderBy: { createdAt: "asc" },
     });
     if (fallback) {
@@ -148,6 +178,7 @@ export async function createTask(params: {
         data: {
           userId: params.userId,
           name: DEFAULT_CATEGORY_NAME,
+          taskType: params.taskType,
         },
       });
       resolvedCategoryId = created.id;
@@ -219,11 +250,14 @@ export async function deleteTask(params: {
 export async function createCategory(params: {
   userId: string;
   name: string;
+  taskType?: TaskType;
 }) {
   const trimmedName = params.name.trim();
+  const taskType = params.taskType ?? "DAILY";
   const existing = await prisma.category.findFirst({
     where: {
       userId: params.userId,
+      taskType,
       name: { equals: trimmedName, mode: "insensitive" },
     },
   });
@@ -236,6 +270,105 @@ export async function createCategory(params: {
     data: {
       userId: params.userId,
       name: trimmedName,
+      taskType,
     },
+  });
+}
+
+export async function updateTask(params: {
+  taskId: string;
+  userId: string;
+  title: string;
+}) {
+  const existing = await prisma.task.findFirst({
+    where: {
+      id: params.taskId,
+      userId: params.userId,
+    },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  return prisma.task.update({
+    where: { id: params.taskId },
+    data: {
+      title: params.title.trim(),
+    },
+    include: {
+      category: true,
+    },
+  });
+}
+
+export async function updateCategory(params: {
+  categoryId: string;
+  userId: string;
+  name: string;
+}) {
+  const existing = await prisma.category.findFirst({
+    where: {
+      id: params.categoryId,
+      userId: params.userId,
+    },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const trimmedName = params.name.trim();
+
+  // If name is unchanged, return existing
+  if (existing.name.toLowerCase() === trimmedName.toLowerCase()) {
+    if (existing.name !== trimmedName) {
+      return prisma.category.update({
+        where: { id: params.categoryId },
+        data: { name: trimmedName },
+      });
+    }
+    return existing;
+  }
+
+  // Check if target name is already used by another category of this user in the same taskType
+  const duplicate = await prisma.category.findFirst({
+    where: {
+      userId: params.userId,
+      taskType: existing.taskType,
+      name: { equals: trimmedName, mode: "insensitive" },
+      id: { not: params.categoryId },
+    },
+  });
+
+  if (duplicate) {
+    throw new Error(`Category "${trimmedName}" already exists.`);
+  }
+
+  return prisma.category.update({
+    where: { id: params.categoryId },
+    data: {
+      name: trimmedName,
+    },
+  });
+}
+
+export async function deleteCategory(params: {
+  categoryId: string;
+  userId: string;
+}) {
+  const existing = await prisma.category.findFirst({
+    where: {
+      id: params.categoryId,
+      userId: params.userId,
+    },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  return prisma.category.delete({
+    where: { id: params.categoryId },
   });
 }

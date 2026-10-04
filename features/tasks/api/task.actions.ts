@@ -5,18 +5,27 @@ import { AuthError, requireSessionUser } from "@/features/auth/api/require-sessi
 import {
   createCategorySchema,
   createTaskSchema,
+  deleteCategorySchema,
   deleteTaskSchema,
   toggleTaskSchema,
+  updateCategorySchema,
+  updateTaskSchema,
   type CreateCategoryInput,
   type CreateTaskInput,
+  type DeleteCategoryInput,
   type DeleteTaskInput,
   type ToggleTaskInput,
+  type UpdateCategoryInput,
+  type UpdateTaskInput,
 } from "@/features/tasks/domain/task.validation";
 import {
   createCategory,
   createTask,
+  deleteCategory,
   deleteTask,
   toggleTask,
+  updateCategory,
+  updateTask,
 } from "@/features/tasks/data/task.repository";
 
 export interface TaskActionResult<T = unknown> {
@@ -169,6 +178,7 @@ export async function createCategoryAction(
     const category = await createCategory({
       userId: user.id,
       name: parsed.data.name,
+      taskType: parsed.data.taskType,
     });
 
     revalidatePath("/");
@@ -182,6 +192,144 @@ export async function createCategoryAction(
       ok: false,
       code: "PERSISTENCE_ERROR",
       message: "Could not create category.",
+    };
+  }
+}
+
+export async function updateTaskAction(
+  input: UpdateTaskInput,
+): Promise<TaskActionResult> {
+  try {
+    const user = await requireSessionUser();
+    const parsed = updateTaskSchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: "INVALID_INPUT",
+        message: parsed.error.issues[0]?.message || "Invalid task input.",
+      };
+    }
+
+    const updated = await updateTask({
+      taskId: parsed.data.taskId,
+      userId: user.id,
+      title: parsed.data.title,
+    });
+
+    if (!updated) {
+      return {
+        ok: false,
+        code: "NOT_FOUND",
+        message: "Task not found or access denied.",
+      };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    return { ok: true, data: updated };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { ok: false, code: "UNAUTHORIZED", message: error.message };
+    }
+    return {
+      ok: false,
+      code: "PERSISTENCE_ERROR",
+      message: "Could not update task.",
+    };
+  }
+}
+
+export async function updateCategoryAction(
+  input: UpdateCategoryInput,
+): Promise<TaskActionResult> {
+  try {
+    const user = await requireSessionUser();
+    const parsed = updateCategorySchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: "INVALID_INPUT",
+        message: parsed.error.issues[0]?.message || "Invalid category input.",
+      };
+    }
+
+    const updated = await updateCategory({
+      categoryId: parsed.data.categoryId,
+      userId: user.id,
+      name: parsed.data.name,
+    });
+
+    if (!updated) {
+      return {
+        ok: false,
+        code: "NOT_FOUND",
+        message: "Category not found or access denied.",
+      };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    return { ok: true, data: updated };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { ok: false, code: "UNAUTHORIZED", message: error.message };
+    }
+    if (error instanceof Error && error.message.includes("already exists")) {
+      return {
+        ok: false,
+        code: "CONFLICT",
+        message: error.message,
+      };
+    }
+    return {
+      ok: false,
+      code: "PERSISTENCE_ERROR",
+      message: "Could not update category.",
+    };
+  }
+}
+
+export async function deleteCategoryAction(
+  input: DeleteCategoryInput,
+): Promise<TaskActionResult> {
+  try {
+    const user = await requireSessionUser();
+    const parsed = deleteCategorySchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: "INVALID_INPUT",
+        message: parsed.error.issues[0]?.message || "Invalid category ID.",
+      };
+    }
+
+    const deleted = await deleteCategory({
+      categoryId: parsed.data.categoryId,
+      userId: user.id,
+    });
+
+    if (!deleted) {
+      return {
+        ok: false,
+        code: "NOT_FOUND",
+        message: "Category not found or access denied.",
+      };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { ok: false, code: "UNAUTHORIZED", message: error.message };
+    }
+    return {
+      ok: false,
+      code: "PERSISTENCE_ERROR",
+      message: "Could not delete category.",
     };
   }
 }

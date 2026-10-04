@@ -11,10 +11,12 @@ export type BannerVariant =
   | "ENROLL_SOLO"
   | "ENROLL_GROUP"
   | "ENROLL_DUO"
-  | "ENROLLED_UPCOMING";
+  | "ENROLLED_UPCOMING"
+  | "NONE";
 
 export interface BannerEvaluationInput {
   isEnrolled: boolean;
+  hasChallenge?: boolean;
   challengeStatus?: "UPCOMING" | "ACTIVE" | "COMPLETED" | null;
   challengeFormat?: "TEAM_VS_TEAM" | "DUOS" | "SOLOS" | null;
   todayLoggedSeconds: number;
@@ -26,11 +28,17 @@ export interface BannerEvaluationInput {
  * challenge lifecycle status, and daily logging recency.
  */
 export function determineBannerVariant(input: BannerEvaluationInput): BannerVariant {
-  // 1. Not enrolled in a challenge: Prompt enrollment based on format
+  // If explicitly flagged as no challenge, render nothing
+  if (input.hasChallenge === false) {
+    return "NONE";
+  }
+
+  // 1. Not enrolled in a challenge: Prompt enrollment based on format only if an event exists
   if (!input.isEnrolled) {
     if (input.challengeFormat === "SOLOS") return "ENROLL_SOLO";
     if (input.challengeFormat === "DUOS") return "ENROLL_DUO";
-    return "ENROLL_GROUP";
+    if (input.challengeFormat === "TEAM_VS_TEAM") return "ENROLL_GROUP";
+    return "NONE";
   }
 
   // 2. Challenge has ended: Display outcome / standings placement

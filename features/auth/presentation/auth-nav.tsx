@@ -4,6 +4,7 @@ import { LogOut, Shield } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { loginWithDiscordAction, logoutAction } from "@/features/auth/api/auth.actions";
+import { hasAdminPrivileges, isDevRole } from "@/features/auth/domain/auth-roles";
 
 export function DiscordIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -95,7 +96,8 @@ export function UserNav({ user, redirectTo }: UserNavProps) {
 
   const displayName = user.displayName || user.name || user.username || "Companion";
   const initial = displayName.charAt(0).toUpperCase();
-  const isAdmin = user.role === "ADMIN";
+  const isAdmin = hasAdminPrivileges(user.role);
+  const isDev = isDevRole(user.role);
 
   return (
     <div className="flex items-center gap-2 sm:gap-3">
@@ -129,6 +131,16 @@ export function UserNav({ user, redirectTo }: UserNavProps) {
         <span className="max-w-[100px] sm:max-w-[130px] truncate font-medium text-[#f4f3f6]">
           {displayName}
         </span>
+
+        {isDev && (
+          <span
+            data-testid="dev-role-badge"
+            className="rounded-full bg-[#e08a32]/20 border border-[#e08a32]/50 text-[#e08a32] px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider select-none shrink-0"
+            title="Developer Role"
+          >
+            DEV
+          </span>
+        )}
       </div>
 
       <SignOutButton />

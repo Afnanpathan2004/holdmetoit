@@ -1,5 +1,8 @@
 import { auth } from "@/core/auth";
-import { prisma } from "@/core/db";
+import {
+  hasAdminPrivileges,
+  type UserRoleType,
+} from "@/features/auth/domain/auth-roles";
 
 export class AdminAccessError extends Error {
   readonly code = "FORBIDDEN_NOT_ADMIN";
@@ -13,20 +16,26 @@ export interface AdminSessionUser {
   id: string;
   username: string;
   displayName: string;
-  role: "ADMIN" | "PARTICIPANT";
+  role: UserRoleType;
 }
 
 export async function requireAdminUser(): Promise<AdminSessionUser> {
   const session = await auth();
 
   if (session?.user?.id) {
-    if (session.user.role === "ADMIN") {
+    if (hasAdminPrivileges(session.user.role)) {
+      const isDev = session.user.role === "DEV";
       return {
         id: session.user.id,
-        username: session.user.displayName ?? session.user.name ?? "HostAdmin",
+        username:
+          session.user.displayName ??
+          session.user.name ??
+          (isDev ? "Developer" : "HostAdmin"),
         displayName:
-          session.user.displayName ?? session.user.name ?? "Host Admin",
-        role: "ADMIN",
+          session.user.displayName ??
+          session.user.name ??
+          (isDev ? "Developer" : "Host Admin"),
+        role: session.user.role as UserRoleType,
       };
     }
   }

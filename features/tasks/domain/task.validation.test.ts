@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   createCategorySchema,
   createTaskSchema,
+  deleteCategorySchema,
   deleteTaskSchema,
   toggleTaskSchema,
+  updateCategorySchema,
+  updateTaskSchema,
 } from "./task.validation";
 
 describe("task.validation", () => {
@@ -88,11 +91,25 @@ describe("task.validation", () => {
   });
 
   describe("createCategorySchema", () => {
-    it("accepts valid category name", () => {
+    it("accepts valid category name and defaults taskType to DAILY", () => {
       const result = createCategorySchema.safeParse({
         name: "Mathematics",
       });
       expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.taskType).toBe("DAILY");
+      }
+    });
+
+    it("accepts explicit WEEKLY taskType", () => {
+      const result = createCategorySchema.safeParse({
+        name: "Weekly Goals",
+        taskType: "WEEKLY",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.taskType).toBe("WEEKLY");
+      }
     });
 
     it("rejects empty category name", () => {
@@ -100,6 +117,59 @@ describe("task.validation", () => {
         name: "   ",
       });
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe("updateTaskSchema", () => {
+    it("accepts valid task update", () => {
+      const result = updateTaskSchema.safeParse({
+        taskId: "task_1",
+        title: "Updated task title",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects empty taskId or empty title", () => {
+      expect(
+        updateTaskSchema.safeParse({ taskId: "", title: "Valid title" }).success,
+      ).toBe(false);
+      expect(
+        updateTaskSchema.safeParse({ taskId: "task_1", title: "   " }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe("updateCategorySchema", () => {
+    it("accepts valid category rename", () => {
+      const result = updateCategorySchema.safeParse({
+        categoryId: "cat_1",
+        name: "Physics",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects empty categoryId or empty name", () => {
+      expect(
+        updateCategorySchema.safeParse({ categoryId: "", name: "Valid" }).success,
+      ).toBe(false);
+      expect(
+        updateCategorySchema.safeParse({ categoryId: "cat_1", name: "   " }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe("deleteCategorySchema", () => {
+    it("accepts valid categoryId", () => {
+      const result = deleteCategorySchema.safeParse({
+        categoryId: "cat_1",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects empty categoryId", () => {
+      expect(deleteCategorySchema.safeParse({ categoryId: "" }).success).toBe(
+        false,
+      );
     });
   });
 });

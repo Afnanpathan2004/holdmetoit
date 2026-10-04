@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/state/empty-state";
 import { ErrorState } from "@/components/state/error-state";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/core/auth";
+import { hasAdminPrivileges } from "@/features/auth/domain/auth-roles";
 import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-data";
 import { ChallengeView } from "@/features/challenges/presentation/challenge-view";
 
@@ -21,7 +22,7 @@ export default async function ChallengePage({
   searchParams,
 }: ChallengePageProps) {
   const session = await auth();
-  const isAdmin = session?.user?.role === "ADMIN";
+  const isAdmin = hasAdminPrivileges(session?.user?.role);
 
   try {
     const challenge = await getChallengeScoreboard(

@@ -11,20 +11,28 @@ export interface DiscordGuildMemberResponse {
   };
 }
 
+import { parseDiscordSnowflakeList } from "@/features/auth/domain/auth-roles";
+
 export function getConfiguredAdminRoleIds(): string[] {
   const raw = process.env.DISCORD_ADMIN_ROLE_IDS ?? "";
-  return raw
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
+  return parseDiscordSnowflakeList(raw);
 }
 
-export function getConfiguredAdminUserIds(): string[] {
-  const raw = process.env.DISCORD_ADMIN_IDS ?? "";
-  return raw
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
+export function getConfiguredDevDiscordIds(): string[] {
+  const raw = process.env.DEV_DISCORD_IDS ?? process.env.DISCORD_DEV_IDS ?? "";
+  return parseDiscordSnowflakeList(raw);
+}
+
+/**
+ * Evaluates whether a Discord user qualifies for the DEV role.
+ * Criteria: User's Discord snowflake is in DEV_DISCORD_IDS.
+ */
+export function isDiscordDev(discordUserId: string): boolean {
+  if (!discordUserId) {
+    return false;
+  }
+  const devIds = getConfiguredDevDiscordIds();
+  return devIds.includes(discordUserId);
 }
 
 /**
@@ -62,22 +70,13 @@ export async function fetchMemberRoles(discordUserId: string): Promise<string[]>
 
 /**
  * Evaluates whether a Discord user qualifies for the ADMIN (Host) role.
- * Criteria:
- * 1. User's Discord snowflake is in DISCORD_ADMIN_IDS (explicit whitelist), OR
- * 2. User possesses one or more roles listed in DISCORD_ADMIN_ROLE_IDS in the server.
+ * Criteria: User possesses one or more roles listed in DISCORD_ADMIN_ROLE_IDS in the server.
  */
 export async function isDiscordAdmin(discordUserId: string): Promise<boolean> {
   if (!discordUserId) {
     return false;
   }
 
-  // 1. Check explicit Discord User ID whitelist
-  const adminUserIds = getConfiguredAdminUserIds();
-  if (adminUserIds.includes(discordUserId)) {
-    return true;
-  }
-
-  // 2. Check guild member roles
   const adminRoleIds = getConfiguredAdminRoleIds();
   if (adminRoleIds.length === 0) {
     return false;

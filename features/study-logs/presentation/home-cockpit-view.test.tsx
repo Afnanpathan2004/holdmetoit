@@ -49,11 +49,12 @@ describe("HomeCockpitView", () => {
       canLogStudyTime: true,
       isReadOnly: false,
       userTasks: {
-        categories: [{ id: "cat-1", userId: "user-1", name: "Deep Work", createdAt: new Date(), updatedAt: new Date() }],
+        categories: [{ id: "cat-1", userId: "user-1", name: "Deep Work", taskType: "DAILY", createdAt: new Date(), updatedAt: new Date() }],
         dailyCategories: [
           {
             id: "cat-1",
             name: "Deep Work",
+            taskType: "DAILY",
             isCollapsed: false,
             tasks: [
               {
@@ -72,8 +73,9 @@ describe("HomeCockpitView", () => {
         ],
         weeklyCategories: [
           {
-            id: "cat-1",
-            name: "Deep Work",
+            id: "cat-2",
+            name: "Sprint Goals",
+            taskType: "WEEKLY",
             isCollapsed: false,
             tasks: [],
           },
@@ -247,6 +249,24 @@ describe("HomeCockpitView", () => {
         displayName: "Guest",
       }),
     );
+    expect(html).toContain("Daily Todos");
+    expect(html).toContain("Weekly Todos");
+  });
+
+  it("does not render any cockpit banner when logged in but there is no event in the app", () => {
+    const html = renderToStaticMarkup(
+      createElement(HomeCockpitView, {
+        user: { id: "user-1", name: "Afnan", displayName: "Afnan" },
+        cockpit: null,
+        upcomingChallenge: null,
+        displayName: "Afnan",
+      }),
+    );
+    expect(html).not.toContain("Enroll in group battle");
+    expect(html).not.toContain("Enroll in solo battle");
+    expect(html).not.toContain("Enroll in duo battle");
+    expect(html).not.toContain("Wow, you studied");
+    expect(html).not.toContain("You haven't logged today's hours");
     expect(html).toContain("Daily Todos");
     expect(html).toContain("Weekly Todos");
   });

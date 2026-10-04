@@ -5,6 +5,8 @@ import * as requireSessionModule from "@/features/auth/api/require-session";
 import * as requireParticipantModule from "@/features/auth/api/require-participant";
 import * as dailyStudyLogRepo from "@/features/study-logs/data/daily-study-log.repository";
 
+import { revalidatePath } from "next/cache";
+
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
@@ -57,6 +59,9 @@ describe("logStudyTimeAction", () => {
       logDate: "2026-09-06",
       durationSeconds: 16_200,
     });
+    expect(revalidatePath).toHaveBeenCalledWith("/");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePath).toHaveBeenCalledWith("/challenge/chal_1");
   });
 
   it("accepts exactly 24:00:00 boundary", async () => {

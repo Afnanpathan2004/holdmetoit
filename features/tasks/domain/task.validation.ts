@@ -38,9 +38,36 @@ export const createCategorySchema = z.object({
     .trim()
     .min(1, "Category name cannot be empty.")
     .max(100, "Category name cannot exceed 100 characters."),
+  taskType: taskTypeSchema.default("DAILY"),
+});
+
+export const updateTaskSchema = z.object({
+  taskId: z.string().trim().min(1, "Task ID is required."),
+  title: z
+    .string()
+    .trim()
+    .min(1, "Task title cannot be empty.")
+    .max(255, "Task title cannot exceed 255 characters."),
+});
+
+export const updateCategorySchema = z.object({
+  categoryId: z.string().trim().min(1, "Category ID is required."),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Category name cannot be empty.")
+    .max(100, "Category name cannot exceed 100 characters."),
+  taskType: taskTypeSchema.optional(),
+});
+
+export const deleteCategorySchema = z.object({
+  categoryId: z.string().trim().min(1, "Category ID is required."),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type ToggleTaskInput = z.infer<typeof toggleTaskSchema>;
 export type DeleteTaskInput = z.infer<typeof deleteTaskSchema>;
-export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
+export type CreateCategoryInput = z.input<typeof createCategorySchema>;
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
+export type DeleteCategoryInput = z.infer<typeof deleteCategorySchema>;

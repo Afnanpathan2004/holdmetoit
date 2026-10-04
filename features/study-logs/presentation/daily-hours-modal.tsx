@@ -1,18 +1,26 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { X, Clock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { logStudyTimeAction } from "@/features/study-logs/api/log-study-time.actions";
+import {
+  decomposeSecondsToParts,
+} from "@/features/study-logs/domain/duration";
 
-interface DailyHoursModalProps {
+export interface DailyHoursModalProps {
   challengeId: string;
   isOpen: boolean;
   onClose: () => void;
   todayDate: string;
   yesterdayDate?: string;
+  isYesterdayMissed?: boolean;
   initialDate?: string;
+  todayLoggedSeconds?: number;
+  yesterdayLoggedSeconds?: number;
+  existingLogs?: Record<string, number>;
   initialHours?: number;
   initialMinutes?: number;
   initialSeconds?: number;
@@ -25,33 +33,115 @@ export function DailyHoursModal({
   onClose,
   todayDate,
   yesterdayDate,
+  isYesterdayMissed = false,
   initialDate,
+  todayLoggedSeconds = 0,
+  yesterdayLoggedSeconds = 0,
+  existingLogs,
   initialHours = 0,
   initialMinutes = 0,
   initialSeconds = 0,
   onSuccess,
 }: DailyHoursModalProps) {
-  const [selectedDate, setSelectedDate] = useState(initialDate || todayDate);
-  const [hours, setHours] = useState(initialHours > 0 ? String(initialHours) : "");
-  const [minutes, setMinutes] = useState(initialMinutes > 0 ? String(initialMinutes) : "");
-  const [seconds, setSeconds] = useState(initialSeconds > 0 ? String(initialSeconds) : "");
+  const router = useRouter();
+  const showYesterdayOption = Boolean(isYesterdayMissed && yesterdayDate);
+  const initialDateToUse: string =
+    showYesterdayOption && yesterdayDate && initialDate === yesterdayDate
+      ? yesterdayDate
+      : todayDate;
+
+  const getExistingSecondsForDate = (date: string): number => {
+    if (existingLogs && date in existingLogs) {
+      return existingLogs[date];
+    }
+    if (date === todayDate) return todayLoggedSeconds ?? 0;
+    if (date === yesterdayDate) return yesterdayLoggedSeconds ?? 0;
+    return 0;
+  };
+
+  const getInitialInputValues = (date: string) => {
+    if (initialHours > 0 || initialMinutes > 0 || initialSeconds > 0) {
+      return {
+        hours: initialHours > 0 ? String(initialHours) : "",
+        minutes: initialMinutes > 0 ? String(initialMinutes) : "",
+        seconds: initialSeconds > 0 ? String(initialSeconds) : "",
+      };
+    }
+    const existing = getExistingSecondsForDate(date);
+    if (existing > 0) {
+      const parts = decomposeSecondsToParts(existing);
+      return {
+        hours: String(parts.hours),
+        minutes: String(parts.minutes),
+        seconds: String(parts.seconds),
+      };
+    }
+    return { hours: "", minutes: "", seconds: "" };
+  };
+
+  const initialInputs = getInitialInputValues(initialDateToUse);
+  const [selectedDate, setSelectedDate] = useState(initialDateToUse);
+  const [hours, setHours] = useState(initialInputs.hours);
+  const [minutes, setMinutes] = useState(initialInputs.minutes);
+  const [seconds, setSeconds] = useState(initialInputs.seconds);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const populateInputsForDate = (date: string) => {
+    const existing = getExistingSecondsForDate(date);
+    if (existing > 0) {
+      const parts = decomposeSecondsToParts(existing);
+      setHours(String(parts.hours));
+      setMinutes(String(parts.minutes));
+      setSeconds(String(parts.seconds));
+    } else {
+      setHours("");
+      setMinutes("");
+      setSeconds("");
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
-      setSelectedDate(initialDate || todayDate);
-      setHours(initialHours > 0 ? String(initialHours) : "");
-      setMinutes(initialMinutes > 0 ? String(initialMinutes) : "");
-      setSeconds(initialSeconds > 0 ? String(initialSeconds) : "");
+      const dateToUse: string =
+        showYesterdayOption && yesterdayDate && initialDate === yesterdayDate
+          ? yesterdayDate
+          : todayDate;
+      setSelectedDate(dateToUse);
+      if (initialHours > 0 || initialMinutes > 0 || initialSeconds > 0) {
+        setHours(initialHours > 0 ? String(initialHours) : "");
+        setMinutes(initialMinutes > 0 ? String(initialMinutes) : "");
+        setSeconds(initialSeconds > 0 ? String(initialSeconds) : "");
+      } else {
+        populateInputsForDate(dateToUse);
+      }
       setFeedback(null);
     }
-  }, [isOpen, initialDate, todayDate, initialHours, initialMinutes, initialSeconds]);
+  }, [
+    isOpen,
+    initialDate,
+    todayDate,
+    yesterdayDate,
+    showYesterdayOption,
+    todayLoggedSeconds,
+    yesterdayLoggedSeconds,
+    initialHours,
+    initialMinutes,
+    initialSeconds,
+  ]);
 
   if (!isOpen) return null;
 
   const isToday = selectedDate === todayDate;
   const isYesterday = yesterdayDate && selectedDate === yesterdayDate;
+  const currentLoggedSeconds = getExistingSecondsForDate(selectedDate);
+  const isUpdating = currentLoggedSeconds > 0;
+
+  const handleDateChange = (newDate: string) => {
+    setSelectedDate(newDate);
+    populateInputsForDate(newDate);
+    setFeedback(null);
+  };
 
   const handleLog = (h: number, m: number, s: number) => {
     setFeedback(null);
@@ -65,6 +155,7 @@ export function DailyHoursModal({
       });
 
       if (result.ok) {
+        router.refresh();
         onSuccess?.();
         onClose();
       } else {
@@ -80,7 +171,9 @@ export function DailyHoursModal({
     const s = parseInt(seconds || "0", 10);
 
     if (isNaN(h) || isNaN(m) || isNaN(s)) {
-      setFeedback("Please enter valid positive numbers for hours, minutes, and seconds.");
+      setFeedback(
+        "Please enter valid positive numbers for hours, minutes, and seconds.",
+      );
       return;
     }
 
@@ -96,7 +189,9 @@ export function DailyHoursModal({
       <div className="w-full max-w-md rounded-2xl border border-[#434343] bg-[#292929] p-6 shadow-2xl space-y-5">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-[#ffffff]">
-            {isYesterday ? "How much did you study yesterday?" : "How much did you study today?"}
+            {isYesterday
+              ? "How much did you study yesterday?"
+              : "How much did you study today?"}
           </h3>
           <button
             type="button"
@@ -107,11 +202,11 @@ export function DailyHoursModal({
           </button>
         </div>
 
-        {yesterdayDate && (
+        {showYesterdayOption && (
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setSelectedDate(todayDate)}
+              onClick={() => handleDateChange(todayDate)}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
                 isToday
                   ? "bg-[#ffffff] text-[#0d0d0d]"
@@ -122,7 +217,7 @@ export function DailyHoursModal({
             </button>
             <button
               type="button"
-              onClick={() => setSelectedDate(yesterdayDate)}
+              onClick={() => handleDateChange(yesterdayDate!)}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
                 isYesterday
                   ? "bg-[#ffffff] text-[#0d0d0d]"
@@ -137,7 +232,9 @@ export function DailyHoursModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">Hours</label>
+              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">
+                Hours
+              </label>
               <Input
                 type="number"
                 min="0"
@@ -149,7 +246,9 @@ export function DailyHoursModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">Minutes</label>
+              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">
+                Minutes
+              </label>
               <Input
                 type="number"
                 min="0"
@@ -161,7 +260,9 @@ export function DailyHoursModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">Seconds</label>
+              <label className="block text-xs font-medium text-[#d1d1d1] mb-1">
+                Seconds
+              </label>
               <Input
                 type="number"
                 min="0"
@@ -206,7 +307,7 @@ export function DailyHoursModal({
                 disabled={isPending}
                 className="h-10 px-5 rounded-xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold"
               >
-                {isPending ? "Logging..." : "Submit"}
+                {isPending ? "Logging..." : isUpdating ? "Update Hours" : "Submit"}
               </Button>
             </div>
           </div>
