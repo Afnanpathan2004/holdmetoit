@@ -262,7 +262,6 @@ export async function updateChallengeAction(
   input: z.infer<typeof updateChallengeSchema>,
 ): Promise<AdminActionResult> {
   try {
-    const admin = await requireAdminUser();
     const parsed = updateChallengeSchema.safeParse(input);
 
     if (!parsed.success) {
@@ -285,7 +284,11 @@ export async function updateChallengeAction(
       };
     }
 
-    const previousImages = await findChallengeImageUrls(parsed.data.challengeId);
+    const [admin, previousImages] = await Promise.all([
+      requireAdminUser(),
+      findChallengeImageUrls(parsed.data.challengeId),
+    ]);
+
     if (!previousImages) {
       return { ok: false, code: "NOT_FOUND", message: "Challenge not found." };
     }

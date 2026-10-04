@@ -16,10 +16,11 @@ interface ManualLeaderboardPageProps {
 export default async function ManualLeaderboardPage({
   params,
 }: ManualLeaderboardPageProps) {
-  const session = await auth();
-
   try {
-    const data = await getManualLeaderboardData(params.id);
+    const [session, data] = await Promise.all([
+      auth(),
+      getManualLeaderboardData(params.id),
+    ]);
 
     if (!data) {
       return (

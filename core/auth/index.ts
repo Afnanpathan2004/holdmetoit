@@ -1,3 +1,4 @@
+import { cache } from "react";
 import NextAuth from "next-auth";
 import Discord from "next-auth/providers/discord";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -8,7 +9,7 @@ import {
   syncUserRoleFromDiscord,
 } from "@/features/auth/data/user.repository";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuthResult = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     Discord({
@@ -61,3 +62,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+export const handlers = nextAuthResult.handlers;
+export const signIn = nextAuthResult.signIn;
+export const signOut = nextAuthResult.signOut;
+export const auth = cache(nextAuthResult.auth);
