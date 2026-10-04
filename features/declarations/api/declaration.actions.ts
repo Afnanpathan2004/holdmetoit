@@ -17,6 +17,7 @@ import {
   validateWeeklyTargetSeconds,
 } from "@/features/declarations/domain/weekly-goals.validation";
 import { parseDurationToSeconds } from "@/features/study-logs/domain/duration";
+import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 import type { ActionResult } from "@/features/study-logs/api/log-study-time.action";
 
 const saveDeclarationsSchema = z.object({
@@ -45,7 +46,8 @@ export async function saveDeclarationsAction(
       parsed.data.challengeId,
     );
 
-    if (!canEditDeclarations(participant.challenge.status)) {
+    const status = calculateChallengeStatus(participant.challenge);
+    if (!canEditDeclarations(status)) {
       return {
         ok: false,
         code: "DECLARATIONS_LOCKED",
@@ -134,7 +136,8 @@ export async function toggleWeeklyGoalAction(
       parsed.data.challengeId,
     );
 
-    if (participant.challenge.status !== "ACTIVE") {
+    const status = calculateChallengeStatus(participant.challenge);
+    if (status !== "ACTIVE") {
       return {
         ok: false,
         code: "GOALS_LOCKED",

@@ -124,7 +124,7 @@ graph TD
 
 > [!IMPORTANT]  
 > **EXACT NEXT STEP FOR THE INCOMING AGENT:**  
-> Perform manual browser verification of the dual independent image uploads (event header & punishment PFP) across 360px+ mobile viewports. Confirm bucket public read permissions and proceed with Phase 1 feature evolution: Automated Yeolpumta (YPT) study log ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`).
+> Verify the newly implemented categorizable todo list in the dashboard/cockpit across 360px+ mobile viewports. Validate optimistic task completion toggles, new category creation, and task deletion. Confirm that tasks remain user-scoped and fully independent of challenge enrollment, then proceed with Phase 1 feature evolution: Automated Yeolpumta (YPT) study log ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`).
 
 ---
 
@@ -132,7 +132,7 @@ graph TD
 
 In accordance with **`AGENTS.md` Rule §9.3**:
 1. **No Outdated Baggage:** Obsolete notes and work-in-progress drafts are actively pruned.
-2. **Prune Stale Details:** All 22 Phase 0 feature rows transitioned to `DONE`.
+2. **Prune Stale Details:** All Phase 0 feature rows transitioned to `DONE`.
 3. **Session Log Retention:** Retains only the last 5 active engineering sessions below; earlier sessions are summarized.
 
 ---
@@ -141,41 +141,7 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 
 ### Previous Sessions (Summarized)
 - **Sessions 1–19 (2026-09-06 – 2026-10-04):** Core MVP architecture, cozy & obsidian theme tokens, pure domain math engine, Discord OAuth, participant cockpit, head-to-head live scoreboards, admin challenge ops, and E2E J1–J6 certification.
-- **Sessions 20–21 (2026-10-04):** Manage tab in ChallengeView with event deletion & participant reassignment (`features/challenges/presentation/challenge-manage-tab.tsx`), Supabase Storage integration for punishment PFP uploads.
-
-### Session 22 — 2026-10-04
-- **Changes:** Connected the hero to saved artwork instead of a hardcoded image. Derived `heroImageUrl` from `eventBannerUrl`.
-- **States:** Loading skeleton, neutral empty/error background and retry button. URL-keyed image subtree resets load/error state when Manage saves a replacement.
-- **Gates:** `npm run typecheck`, `npm run test` (33 files / 224 tests), and `npm run build` passed.
-
-### Session 23 — 2026-10-04
-- **Changes:** Admin cards use saved artwork instead of hardcoded battle artwork (`app/admin/page.tsx`). Switched source to `eventBannerUrl`. `ChallengeCardImage` retains loading skeleton, neutral missing/error background and retry; URL-keyed instances reset on replacement.
-- **Tests:** Added six admin-page rendering/image-state regressions. `npm run typecheck`, `npm run test` (34 files / 230 tests), and `npm run build` passed.
-
-### Session 24 — 2026-10-04
-- **Changes:** Dual independent uploads: Event Header Image (5:1 preview) and Assigned Punishment PFP (circular preview) in Create wizard and Manage tab. PNG/JPEG/WebP only, max 3 MB each.
-- **Storage/Data:** Added nullable `Challenge.eventBannerUrl`. Reference-checked cleanup helper prevents orphaned assets or premature deletion of shared files. Added baseline and incremental migration SQL.
-- **Gates:** `npm run typecheck` passed; `npm run test` passed 37 files / 390 tests. `npm run build` passed.
-
-### Session 25 — 2026-10-04
-- **Agent Role:** Data & Identity / Performance Optimization Agent
-- **Changes Completed (Query Optimization & Migration Deployment):**
-  - **Removed Redundant Queries:**
-    - Deleted unused `prisma.challenge.findMany()` in `getChallengeScoreboard` ([leaderboard-data.ts](file:///home/afnan/Projects/holdmetoit/features/leaderboard/data/leaderboard-data.ts#L501)), preventing full table scan on every challenge view.
-    - Wrapped NextAuth `auth()` in React's `cache()` ([core/auth/index.ts](file:///home/afnan/Projects/holdmetoit/core/auth/index.ts)) so layouts and pages share a single session lookup per request without duplicate database queries.
-    - Parallelized independent queries using `Promise.all`:
-      - [app/challenge/[id]/manual/page.tsx](file:///home/afnan/Projects/holdmetoit/app/challenge/[id]/manual/page.tsx): `auth()` and `getManualLeaderboardData(params.id)`.
-      - [features/challenges/data/participant.repository.ts](file:///home/afnan/Projects/holdmetoit/features/challenges/data/participant.repository.ts): `challenge`, `existing`, and `team` queries in `enrollParticipantInChallenge`.
-      - [features/challenges/data/challenge-admin.repository.ts](file:///home/afnan/Projects/holdmetoit/features/challenges/data/challenge-admin.repository.ts): `challenge`, `existing`, and `team` queries in `adminEnrollParticipant`.
-      - [features/challenges/api/challenge-admin.actions.ts](file:///home/afnan/Projects/holdmetoit/features/challenges/api/challenge-admin.actions.ts): `requireAdminUser()` and `findChallengeImageUrls(challengeId)` in `updateChallengeAction`.
-  - **Applied Pending Migration (per `prisma/migrations/README.md`):**
-    - Resolved baseline against existing `db push` database: `npx prisma migrate resolve --applied 20261003000000_baseline --schema prisma/schema.prisma`.
-    - Deployed incremental migration: `npx prisma migrate deploy --schema prisma/schema.prisma` (`20261004000000_add_event_banner_url` successfully applied and backfilled).
-    - Verified `Challenge.eventBannerUrl` exists in database and `npx prisma migrate status` reports "Database schema is up to date!".
-  - **Quality Gates:**
-    - `npm run test` exits 0 (37 files, 390 tests green).
-    - `npm run typecheck` exits 0 (zero TypeScript errors).
-    - `npm run build` succeeds cleanly with all routes compiled.
+- **Sessions 20–25 (2026-10-04):** Manage tab in ChallengeView with event deletion & participant reassignment, Supabase Storage integration for dual image uploads (header banner and punishment PFP), query optimization (caching NextAuth `auth()`, parallelizing queries with `Promise.all`), and database migration deployments.
 
 ### Session 26 — 2026-10-04
 - **Agent Role:** Participant UI & Identity / Roster Ops Agent
@@ -217,6 +183,7 @@ In accordance with **`AGENTS.md` Rule §9.3**:
       - **Variants 5, 6, 7 (Battles):** Dark purple (`#251744`, border `#3e2475/40`), *"Enroll in {solo/group/duo} battle this week"*, `View` outline pill + `Enroll` white pill.
     - Removed the redundant non-enrolled enrollment alert banner from `features/leaderboard/presentation/challenge-view.tsx` to streamline the challenge page layout (enrollment is handled cleanly via the hero banner and cockpit).
     - Guarded home cockpit banner and modal visibility with `isLoggedIn`: unauthenticated visitors will no longer see the battle enrollment card on the home dashboard.
+
 ### Session 28 — 2026-10-04
 - **Agent Role:** Participant UI & Challenge Ops Agent
 - **Changes Completed (Challenge Hero Banner Redesign & In-Place Modal):**
@@ -242,12 +209,74 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run typecheck` exits 0 (zero TypeScript errors).
     - `npm run build` succeeds cleanly with all routes compiled.
 
+### Session 29 — 2026-10-04
+- **Agent Role:** Scoring & Engine Agent / Data & Identity Agent
+- **Changes Completed (Dynamic Lifecycle Status & Countdown Date Comparison):**
+  - **Database Migration (`prisma/migrations/20261004020000_remove_challenge_status/`):**
+    - Dropped `status` column and `Challenge_status_idx` index from `Challenge` table; dropped PostgreSQL `ChallengeStatus` enum.
+    - Updated `prisma/schema.prisma` and re-generated Prisma Client (v6.19.3).
+    - Cleaned `prisma/seed.ts` to omit static `status` writes.
+  - **Pure Domain Dynamic Lifecycle Engine (`features/challenges/domain/challenge-lifecycle.ts` / Law L7):**
+    - Implemented `calculateChallengeStatus(challenge, now)`: dynamically computes `"UPCOMING" | "ACTIVE" | "COMPLETED"` based on pure timestamp comparison:
+      - `now < startAt` $\rightarrow$ `"UPCOMING"`
+      - `now >= endAt` $\rightarrow$ `"COMPLETED"`
+      - Otherwise $\rightarrow$ `"ACTIVE"`
+    - Added unit tests in `challenge-lifecycle.test.ts` covering all boundary conditions.
+  - **Countdown Comparison Fix & Scoreboard ViewModel (`features/leaderboard/data/leaderboard-data.ts`):**
+    - Fixed countdown calculation: When `status === "UPCOMING"`, compares `now` against `challenge.startAt` (resolving the bug where an event starting tomorrow showed *"8 Days Left"* based on `endAt` instead of *"1 Day Left"*).
+    - Added elapsed day clamping (`0` while upcoming) and formatted `timeRemainingHuman` for upcoming (`"Starts in Xd Yh Zm"` / `"Starts today"`).
+    - Made `status` optional on `RawChallengePayload` and computed dynamically in `buildScoreboardViewModel`.
+  - **Hero Banner Presentation (`features/leaderboard/presentation/challenge-hero-banner.tsx`):**
+    - Updated countdown pill text formatting:
+      - `"1 Day Left"` (singular grammar for 1 day remaining).
+      - `"Starts Today"` (when 0 days left before kickoff).
+      - `"X Days Left"` (plural for 2+ days).
+      - `"Completed"` (when event has concluded).
+  - **Data Repositories & Action Handlers:**
+    - `features/challenges/data/challenge.repository.ts`: Rewrote `findLatestAvailableChallenge` to query upcoming via `startAt: { gt: now }` and active via `startAt: { lte: now }, endAt: { gt: now }`.
+    - `features/challenges/data/participant.repository.ts`: Rewrote `findParticipantForUser` to query by time intervals and `enrollParticipantInChallenge` to check `calculateChallengeStatus(challenge) === "COMPLETED"`.
+    - `features/challenges/data/challenge-admin.repository.ts`: Removed `status` from creation; `kickoffChallenge` updates `startAt: now`; `lockChallengeResults` updates `endAt: now`; `listAllChallengesForAdmin` computes dynamic status on output.
+    - `features/study-logs/data/cockpit-data.ts`, `declaration.actions.ts`, and `log-study-time.action.ts`: Converted all lifecycle gating to `calculateChallengeStatus(participant.challenge)`.
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (0 TypeScript errors).
+    - `npm run test` exits 0 (38 test files, 425/425 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
+### Session 30 — 2026-10-04
+- **Agent Role:** Participant UI & Scoring / Data & Identity Agent
+- **Changes Completed (Categorizable Todo List Architecture Migration & Decoupling):**
+  - **Database Migration (`prisma/migrations/20261004030000_categorizable_todos/`):**
+    - Added `TaskType` enum (`DAILY`, `WEEKLY`).
+    - Created `categories` table (`Category` model) with `userId` FK, `name`, `createdAt`, `updatedAt`, and `@@unique([userId, name])`.
+    - Created `tasks` table (`Task` model) with `userId` FK, `categoryId` FK, `title`, `taskType`, `isComplete`, `completedAt`, `createdAt`, `updatedAt`.
+    - Decoupled todo lists completely from challenge participation: removed legacy `WeeklyGoal` model and removed `weeklyGoals` from `ChallengeParticipant`.
+  - **Pure Domain Engine (`features/tasks/domain/` / Law L7):**
+    - Created domain entities in `task.types.ts` (`TaskItem`, `CategoryItem`, `CategoryGroup`, `UserCategorizedTasks`).
+    - Built strict Zod schemas in `task.validation.ts` (`createTaskSchema`, `toggleTaskSchema`, `deleteTaskSchema`, `createCategorySchema`).
+    - Added 11 unit tests in `task.validation.test.ts`.
+  - **Data Repositories & Server Actions (`features/tasks/data/`, `features/tasks/api/`):**
+    - Implemented `task.repository.ts` with `getUserCategorizedTasks` (auto-seeds default `"Category 1"` on first load), `createTask`, `toggleTask`, `deleteTask`, and `createCategory`.
+    - Added 8 unit tests in `task.repository.test.ts`.
+    - Implemented Next.js Server Actions in `task.actions.ts` (`createTaskAction`, `toggleTaskAction`, `deleteTaskAction`, `createCategoryAction`) with session validation (`requireSessionUser`) and path revalidation.
+    - Added 7 unit tests in `task.actions.test.ts`.
+  - **Presentation & Cockpit Integration (`features/study-logs/presentation/home-cockpit-view.tsx`):**
+    - Decoupled todo list from challenge enrollment: user-scoped tasks load for any logged-in user on the dashboard.
+    - Added category accordion/group views for both Daily and Weekly todos.
+    - Optimistic task completion toggles with instant visual strikethrough.
+    - Task deletion with hover trash icon button.
+    - "Add Daily Todo" and "Add Weekly Todo" modal with dynamic category selector or instant new category creation.
+    - Dynamic completion badge (`{completed}/{total} Completed`).
+  - **Pruning & Legacy Cleanup:**
+    - Cleaned up legacy weekly goals references across repositories and tests.
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run test` exits 0 (41 test files, 450/450 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Manual Verification:** Open `/challenge/:id` in browser:
-   - As an unauthenticated spectator: verify clicking "Enroll Now" redirects to Discord OAuth with callback URL to `/challenge/:id`.
-   - As an authenticated unenrolled user: verify clicking "Enroll Now" opens `JoinChallengeModal` directly on the challenge page without navigating to `/`.
-   - Submit hours and leave days: verify modal closes and challenge page updates to show the enrolled state ("Quick Log").
+1. **Local Visual Inspection:** Run `npm run dev` and test the categorizable todo list on `/` (daily & weekly tasks, adding categories, toggling completion, deleting tasks).
 2. **Phase 1 Evolution:** Proceed with automated Yeolpumta (YPT) ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`) per `ROADMAP.md`.
+

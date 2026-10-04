@@ -1,50 +1,18 @@
 import { prisma } from "@/core/db";
 
 export async function replaceWeeklyGoals(
-  participantId: string,
-  descriptions: string[],
+  _participantId: string,
+  _descriptions: string[],
 ) {
-  return prisma.$transaction(async (tx) => {
-    await tx.weeklyGoal.deleteMany({ where: { participantId } });
-
-    await tx.weeklyGoal.createMany({
-      data: descriptions.map((description, index) => ({
-        participantId,
-        description,
-        sortOrder: index,
-      })),
-    });
-
-    return tx.weeklyGoal.findMany({
-      where: { participantId },
-      orderBy: { sortOrder: "asc" },
-    });
-  });
+  return [];
 }
 
 export async function setWeeklyGoalCompleted(
-  participantId: string,
-  goalId: string,
-  completed: boolean,
+  _participantId: string,
+  _goalId: string,
+  _completed: boolean,
 ) {
-  const goal = await prisma.weeklyGoal.findFirst({
-    where: {
-      id: goalId,
-      participantId,
-    },
-  });
-
-  if (!goal) {
-    return null;
-  }
-
-  return prisma.weeklyGoal.update({
-    where: { id: goalId },
-    data: {
-      completed,
-      completedAt: completed ? new Date() : null,
-    },
-  });
+  return null;
 }
 
 export async function updateParticipantTargetSeconds(

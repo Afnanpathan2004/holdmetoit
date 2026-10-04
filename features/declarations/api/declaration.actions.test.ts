@@ -43,7 +43,10 @@ describe("declaration.actions", () => {
 
       vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
         id: "part_1",
-        challenge: { status: "UPCOMING" },
+        challenge: {
+          startAt: new Date(Date.now() + 86400000),
+          endAt: new Date(Date.now() + 7 * 86400000),
+        },
       } as never);
 
       const result = await saveDeclarationsAction({
@@ -70,7 +73,10 @@ describe("declaration.actions", () => {
 
       vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
         id: "part_1",
-        challenge: { status: "ACTIVE" },
+        challenge: {
+          startAt: new Date(Date.now() - 3600000),
+          endAt: new Date(Date.now() + 7 * 86400000),
+        },
       } as never);
 
       const result = await saveDeclarationsAction({
@@ -94,7 +100,10 @@ describe("declaration.actions", () => {
 
       vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
         id: "part_1",
-        challenge: { status: "COMPLETED" },
+        challenge: {
+          startAt: new Date(Date.now() - 7 * 86400000),
+          endAt: new Date(Date.now() - 3600000),
+        },
       } as never);
 
       const result = await saveDeclarationsAction({
@@ -116,7 +125,10 @@ describe("declaration.actions", () => {
 
       vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
         id: "part_1",
-        challenge: { status: "UPCOMING" },
+        challenge: {
+          startAt: new Date(Date.now() + 86400000),
+          endAt: new Date(Date.now() + 7 * 86400000),
+        },
       } as never);
 
       const result = await saveDeclarationsAction({
@@ -141,7 +153,10 @@ describe("declaration.actions", () => {
 
       vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
         id: "part_1",
-        challenge: { status: "ACTIVE" },
+        challenge: {
+          startAt: new Date(Date.now() - 3600000),
+          endAt: new Date(Date.now() + 7 * 86400000),
+        },
       } as never);
 
       vi.mocked(weeklyGoalRepo.setWeeklyGoalCompleted).mockResolvedValue({
@@ -170,7 +185,10 @@ describe("declaration.actions", () => {
 
       vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
         id: "part_1",
-        challenge: { status: "UPCOMING" },
+        challenge: {
+          startAt: new Date(Date.now() + 86400000),
+          endAt: new Date(Date.now() + 7 * 86400000),
+        },
       } as never);
 
       const result = await toggleWeeklyGoalAction({
@@ -193,7 +211,10 @@ describe("declaration.actions", () => {
 
       vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
         id: "part_1",
-        challenge: { status: "ACTIVE" },
+        challenge: {
+          startAt: new Date(Date.now() - 3600000),
+          endAt: new Date(Date.now() + 7 * 86400000),
+        },
       } as never);
 
       vi.mocked(weeklyGoalRepo.setWeeklyGoalCompleted).mockResolvedValue(null);

@@ -39,6 +39,8 @@ model User {
   pardonsIssued  PunishmentRecord[] @relation("PardonAdmin")
   teamMemberships    TeamMember[]
   leaderboardEntries LeaderboardEntry[]
+  categories         Category[]
+  tasks              Task[]
 }
 
 model Account {
@@ -88,7 +90,6 @@ model Challenge {
   id               String          @id @default(cuid())
   title            String
   format           ChallengeFormat
-  status           ChallengeStatus @default(UPCOMING)
   startAt          DateTime
   endAt            DateTime
   eventBannerUrl   String?
@@ -106,7 +107,6 @@ model Challenge {
   punishments      PunishmentRecord[]
   leaderboardEntries LeaderboardEntry[]
 
-  @@index([status])
   @@index([hostId])
 }
 
@@ -145,7 +145,6 @@ model ChallengeParticipant {
   team      Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   dailyStudyLogs   DailyStudyLog[]
-  weeklyGoals      WeeklyGoal[]
   punishmentRecord PunishmentRecord?
 
   @@unique([challengeId, userId])
@@ -179,20 +178,42 @@ model DailyStudyLog {
   @@index([logDate])
 }
 
-model WeeklyGoal {
-  id            String  @id @default(cuid())
-  participantId String
-  description   String
-  completed     Boolean @default(false)
-  sortOrder     Int     @default(0)
+// ---------------------------------------------------------------------------
+// Categorizable Todo List (User-scoped daily and weekly tasks)
+// ---------------------------------------------------------------------------
 
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model Category {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String   @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  participant ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
 
-  @@index([participantId])
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("categories")
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  userId      String
+  categoryId  String
+  title       String    @db.VarChar(255)
+  taskType    TaskType  @map("task_type")
+  isComplete  Boolean   @default(false) @map("is_complete")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId, taskType])
+  @@index([categoryId])
+  @@map("tasks")
 }
 
 // ---------------------------------------------------------------------------
@@ -274,15 +295,15 @@ enum ChallengeFormat {
   SOLOS
 }
 
-enum ChallengeStatus {
-  UPCOMING
-  ACTIVE
-  COMPLETED
-}
-
 enum ParticipantStatus {
   NORMAL
   DEFICIT
   EXCUSED
   PUNISHED
 }
+
+enum TaskType {
+  DAILY
+  WEEKLY
+}
+

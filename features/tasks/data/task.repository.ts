@@ -1,0 +1,241 @@
+import { prisma } from "@/core/db";
+import type { TaskType } from "@prisma/client";
+import type {
+  CategoryGroup,
+  CategoryItem,
+  TaskItem,
+  UserCategorizedTasks,
+} from "@/features/tasks/domain/task.types";
+
+export const DEFAULT_CATEGORY_NAME = "Category 1";
+
+export async function getUserCategorizedTasks(
+  userId: string,
+): Promise<UserCategorizedTasks> {
+  let categories = await prisma.category.findMany({
+    where: { userId },
+    include: {
+      tasks: {
+        orderBy: { createdAt: "asc" },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // Seed default category if user has no categories yet
+  if (categories.length === 0) {
+    const defaultCat = await prisma.category.create({
+      data: {
+        userId,
+        name: DEFAULT_CATEGORY_NAME,
+      },
+      include: {
+        tasks: true,
+      },
+    });
+    categories = [defaultCat];
+  }
+
+  const categoryItems: CategoryItem[] = categories.map((c) => ({
+    id: c.id,
+    userId: c.userId,
+    name: c.name,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+  }));
+
+  const dailyCategories: CategoryGroup[] = categories.map((c) => {
+    const dailyTasks: TaskItem[] = c.tasks
+      .filter((t) => t.taskType === "DAILY")
+      .map((t) => ({
+        id: t.id,
+        userId: t.userId,
+        categoryId: t.categoryId,
+        title: t.title,
+        taskType: "DAILY" as const,
+        isComplete: t.isComplete,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        completedAt: t.completedAt,
+      }));
+
+    return {
+      id: c.id,
+      name: c.name,
+      isCollapsed: false,
+      tasks: dailyTasks,
+    };
+  });
+
+  const weeklyCategories: CategoryGroup[] = categories.map((c) => {
+    const weeklyTasks: TaskItem[] = c.tasks
+      .filter((t) => t.taskType === "WEEKLY")
+      .map((t) => ({
+        id: t.id,
+        userId: t.userId,
+        categoryId: t.categoryId,
+        title: t.title,
+        taskType: "WEEKLY" as const,
+        isComplete: t.isComplete,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        completedAt: t.completedAt,
+      }));
+
+    return {
+      id: c.id,
+      name: c.name,
+      isCollapsed: false,
+      tasks: weeklyTasks,
+    };
+  });
+
+  const allTasks = categories.flatMap((c) => c.tasks);
+  const dailyAll = allTasks.filter((t) => t.taskType === "DAILY");
+  const weeklyAll = allTasks.filter((t) => t.taskType === "WEEKLY");
+
+  return {
+    categories: categoryItems,
+    dailyCategories,
+    weeklyCategories,
+    totalDailyTasks: dailyAll.length,
+    completedDailyTasks: dailyAll.filter((t) => t.isComplete).length,
+    totalWeeklyTasks: weeklyAll.length,
+    completedWeeklyTasks: weeklyAll.filter((t) => t.isComplete).length,
+  };
+}
+
+export async function createTask(params: {
+  userId: string;
+  title: string;
+  taskType: TaskType;
+  categoryId?: string;
+  newCategoryName?: string;
+}) {
+  let resolvedCategoryId = params.categoryId;
+
+  if (params.newCategoryName && params.newCategoryName.trim()) {
+    const trimmedName = params.newCategoryName.trim();
+    const existing = await prisma.category.findFirst({
+      where: {
+        userId: params.userId,
+        name: { equals: trimmedName, mode: "insensitive" },
+      },
+    });
+
+    if (existing) {
+      resolvedCategoryId = existing.id;
+    } else {
+      const created = await prisma.category.create({
+        data: {
+          userId: params.userId,
+          name: trimmedName,
+        },
+      });
+      resolvedCategoryId = created.id;
+    }
+  }
+
+  if (!resolvedCategoryId) {
+    const fallback = await prisma.category.findFirst({
+      where: { userId: params.userId },
+      orderBy: { createdAt: "asc" },
+    });
+    if (fallback) {
+      resolvedCategoryId = fallback.id;
+    } else {
+      const created = await prisma.category.create({
+        data: {
+          userId: params.userId,
+          name: DEFAULT_CATEGORY_NAME,
+        },
+      });
+      resolvedCategoryId = created.id;
+    }
+  }
+
+  return prisma.task.create({
+    data: {
+      userId: params.userId,
+      categoryId: resolvedCategoryId,
+      title: params.title.trim(),
+      taskType: params.taskType,
+      isComplete: false,
+    },
+    include: {
+      category: true,
+    },
+  });
+}
+
+export async function toggleTask(params: {
+  taskId: string;
+  userId: string;
+  isComplete: boolean;
+}) {
+  const existing = await prisma.task.findFirst({
+    where: {
+      id: params.taskId,
+      userId: params.userId,
+    },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  return prisma.task.update({
+    where: { id: params.taskId },
+    data: {
+      isComplete: params.isComplete,
+      completedAt: params.isComplete ? new Date() : null,
+    },
+    include: {
+      category: true,
+    },
+  });
+}
+
+export async function deleteTask(params: {
+  taskId: string;
+  userId: string;
+}) {
+  const existing = await prisma.task.findFirst({
+    where: {
+      id: params.taskId,
+      userId: params.userId,
+    },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  return prisma.task.delete({
+    where: { id: params.taskId },
+  });
+}
+
+export async function createCategory(params: {
+  userId: string;
+  name: string;
+}) {
+  const trimmedName = params.name.trim();
+  const existing = await prisma.category.findFirst({
+    where: {
+      userId: params.userId,
+      name: { equals: trimmedName, mode: "insensitive" },
+    },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  return prisma.category.create({
+    data: {
+      userId: params.userId,
+      name: trimmedName,
+    },
+  });
+}

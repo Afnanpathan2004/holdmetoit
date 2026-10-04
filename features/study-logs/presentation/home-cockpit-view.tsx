@@ -2,11 +2,15 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Check, X, Calendar, Trophy } from "lucide-react";
+import { ChevronDown, ChevronUp, Check, X, Calendar, Trophy, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DailyHoursModal } from "./daily-hours-modal";
-import { toggleWeeklyGoalAction } from "@/features/declarations/api/declaration.actions";
+import {
+  createTaskAction,
+  deleteTaskAction,
+  toggleTaskAction,
+} from "@/features/tasks/api/task.actions";
 import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
 import {
   determineBannerVariant,
@@ -14,7 +18,8 @@ import {
   formatStudiedTodayHours,
 } from "@/features/study-logs/domain/cockpit-banner";
 import { JoinChallengeModal } from "@/features/challenges/presentation/join-challenge-modal";
-import type { CockpitGoal, CockpitViewModel } from "@/features/study-logs/data/cockpit-data";
+import type { CockpitViewModel } from "@/features/study-logs/data/cockpit-data";
+import type { UserCategorizedTasks } from "@/features/tasks/domain/task.types";
 
 interface TaskItem {
   id: string;
@@ -23,6 +28,7 @@ interface TaskItem {
 }
 
 interface CategoryGroup {
+  id?: string;
   name: string;
   isCollapsed: boolean;
   tasks: TaskItem[];
@@ -40,7 +46,6 @@ interface HomeCockpitViewProps {
     username?: string | null;
     image?: string | null;
   } | null;
-  initialGoals?: CockpitGoal[];
   cockpit?: CockpitViewModel | null;
   upcomingChallenge?: {
     id: string;
@@ -53,6 +58,7 @@ interface HomeCockpitViewProps {
       iconEmoji: string | null;
     }>;
   } | null;
+  userTasks?: UserCategorizedTasks | null;
 }
 
 export function HomeCockpitView({
@@ -61,9 +67,9 @@ export function HomeCockpitView({
   todayLoggedSeconds = 0,
   todayLoggedClock = "00:00:00",
   user,
-  initialGoals,
   cockpit,
   upcomingChallenge,
+  userTasks,
 }: HomeCockpitViewProps) {
   const [isPending, startTransition] = useTransition();
   const [isHoursModalOpen, setIsHoursModalOpen] = useState(false);
@@ -80,7 +86,6 @@ export function HomeCockpitView({
     setIsHoursModalOpen(true);
   };
 
-  const effectiveGoals = cockpit?.goals ?? initialGoals;
   const activeChallengeId = cockpit?.challengeId ?? challengeId;
   const effectiveDisplayName =
     cockpit?.participant.displayName ||
@@ -97,46 +102,60 @@ export function HomeCockpitView({
   const effectiveTargetClock = cockpit?.targetClock ?? "00:00:00";
   const effectiveTotalLoggedSeconds = cockpit?.totalLoggedSeconds ?? 0;
   const effectiveTotalLoggedClock = cockpit?.totalLoggedClock ?? "00:00:00";
-  const canToggleGoals = cockpit ? cockpit.canToggleGoals : true;
 
-  const [dailyCategories, setDailyCategories] = useState<CategoryGroup[]>([
-    {
-      name: "Category 1",
-      isCollapsed: true,
-      tasks: [
-        { id: "d1_1", text: "Read research paper summary", completed: true },
-      ],
-    },
-    {
-      name: "Category 2",
-      isCollapsed: false,
-      tasks: [
-        { id: "d2_1", text: "Task 1", completed: true },
-        { id: "d2_2", text: "Task 2", completed: false },
-      ],
-    },
-    {
-      name: "Category 3",
-      isCollapsed: true,
-      tasks: [
-        { id: "d3_1", text: "Evening flashcards review", completed: false },
-      ],
-    },
-  ]);
+  const effectiveUserTasks = userTasks ?? cockpit?.userTasks;
+
+  const [dailyCategories, setDailyCategories] = useState<CategoryGroup[]>(() => {
+    if (effectiveUserTasks?.dailyCategories && effectiveUserTasks.dailyCategories.length > 0) {
+      return effectiveUserTasks.dailyCategories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        isCollapsed: false,
+        tasks: c.tasks.map((t) => ({
+          id: t.id,
+          text: t.title,
+          completed: t.isComplete,
+        })),
+      }));
+    }
+    return [
+      {
+        name: "Category 1",
+        isCollapsed: true,
+        tasks: [
+          { id: "d1_1", text: "Read research paper summary", completed: true },
+        ],
+      },
+      {
+        name: "Category 2",
+        isCollapsed: false,
+        tasks: [
+          { id: "d2_1", text: "Task 1", completed: true },
+          { id: "d2_2", text: "Task 2", completed: false },
+        ],
+      },
+      {
+        name: "Category 3",
+        isCollapsed: true,
+        tasks: [
+          { id: "d3_1", text: "Evening flashcards review", completed: false },
+        ],
+      },
+    ];
+  });
 
   const [weeklyCategories, setWeeklyCategories] = useState<CategoryGroup[]>(() => {
-    if (effectiveGoals && effectiveGoals.length > 0) {
-      return [
-        {
-          name: "Weekly Intentions",
-          isCollapsed: false,
-          tasks: effectiveGoals.map((g) => ({
-            id: g.id,
-            text: g.description,
-            completed: g.completed,
-          })),
-        },
-      ];
+    if (effectiveUserTasks?.weeklyCategories && effectiveUserTasks.weeklyCategories.length > 0) {
+      return effectiveUserTasks.weeklyCategories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        isCollapsed: false,
+        tasks: c.tasks.map((t) => ({
+          id: t.id,
+          text: t.title,
+          completed: t.isComplete,
+        })),
+      }));
     }
     return [
       {
@@ -164,6 +183,19 @@ export function HomeCockpitView({
     ];
   });
 
+  const categoryOptions = Array.from(
+    new Set([
+      ...(effectiveUserTasks?.categories.map((c) => c.name) ?? []),
+      ...dailyCategories.map((c) => c.name),
+      ...weeklyCategories.map((c) => c.name),
+      "Category 1",
+    ]),
+  );
+
+  const categoryNameToId = new Map(
+    effectiveUserTasks?.categories.map((c) => [c.name, c.id]) ?? [],
+  );
+
   const toggleDailyCollapse = (index: number) => {
     setDailyCategories((prev) =>
       prev.map((cat, i) =>
@@ -181,23 +213,34 @@ export function HomeCockpitView({
   };
 
   const toggleDailyTask = (catIndex: number, taskId: string) => {
+    const targetTask = dailyCategories[catIndex]?.tasks.find((t) => t.id === taskId);
+    if (!targetTask) return;
+    const nextCompleted = !targetTask.completed;
+
     setDailyCategories((prev) =>
       prev.map((cat, i) =>
         i === catIndex
           ? {
               ...cat,
               tasks: cat.tasks.map((t) =>
-                t.id === taskId ? { ...t, completed: !t.completed } : t
+                t.id === taskId ? { ...t, completed: nextCompleted } : t
               ),
             }
           : cat
       )
     );
+
+    if (isLoggedIn) {
+      startTransition(async () => {
+        await toggleTaskAction({ taskId, isComplete: nextCompleted });
+      });
+    }
   };
 
   const toggleWeeklyTask = (catIndex: number, taskId: string) => {
     const targetTask = weeklyCategories[catIndex]?.tasks.find((t) => t.id === taskId);
     if (!targetTask) return;
+    const nextCompleted = !targetTask.completed;
 
     setWeeklyCategories((prev) =>
       prev.map((cat, i) =>
@@ -205,20 +248,48 @@ export function HomeCockpitView({
           ? {
               ...cat,
               tasks: cat.tasks.map((t) =>
-                t.id === taskId ? { ...t, completed: !t.completed } : t
+                t.id === taskId ? { ...t, completed: nextCompleted } : t
               ),
             }
           : cat
       )
     );
 
-    if (cockpit?.challengeId && canToggleGoals) {
+    if (isLoggedIn) {
       startTransition(async () => {
-        await toggleWeeklyGoalAction({
-          challengeId: activeChallengeId,
-          goalId: taskId,
-          completed: !targetTask.completed,
-        });
+        await toggleTaskAction({ taskId, isComplete: nextCompleted });
+      });
+    }
+  };
+
+  const handleDeleteTask = (catIndex: number, taskId: string, taskType: "daily" | "weekly") => {
+    if (taskType === "daily") {
+      setDailyCategories((prev) =>
+        prev.map((cat, i) =>
+          i === catIndex
+            ? {
+                ...cat,
+                tasks: cat.tasks.filter((t) => t.id !== taskId),
+              }
+            : cat
+        )
+      );
+    } else {
+      setWeeklyCategories((prev) =>
+        prev.map((cat, i) =>
+          i === catIndex
+            ? {
+                ...cat,
+                tasks: cat.tasks.filter((t) => t.id !== taskId),
+              }
+            : cat
+        )
+      );
+    }
+
+    if (isLoggedIn) {
+      startTransition(async () => {
+        await deleteTaskAction({ taskId });
       });
     }
   };
@@ -245,10 +316,9 @@ export function HomeCockpitView({
     e.preventDefault();
     if (!newTodoText.trim()) return;
 
-    const targetCategoryName =
-      isCreatingCategory && customCategory.trim()
-        ? customCategory.trim()
-        : selectedCategory;
+    const isNew = isCreatingCategory && customCategory.trim();
+    const targetCategoryName = isNew ? customCategory.trim() : selectedCategory;
+    const taskType = addModalType === "daily" ? "DAILY" : "WEEKLY";
 
     const newTask: TaskItem = {
       id: `task_${Date.now()}`,
@@ -287,6 +357,17 @@ export function HomeCockpitView({
             { name: targetCategoryName, isCollapsed: false, tasks: [newTask] },
           ];
         }
+      });
+    }
+
+    if (isLoggedIn) {
+      startTransition(async () => {
+        await createTaskAction({
+          title: newTodoText.trim(),
+          taskType,
+          newCategoryName: isNew ? customCategory.trim() : undefined,
+          categoryId: !isNew ? categoryNameToId.get(selectedCategory) : undefined,
+        });
       });
     }
 
@@ -653,7 +734,7 @@ export function HomeCockpitView({
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-[#ffffff]">Daily Todos</h3>
               <span className="text-xs font-semibold text-[#d2d2d2]">
-                {completedDailyTasks}/6 Completed
+                {completedDailyTasks}/{totalDailyTasks} Completed
               </span>
             </div>
 
@@ -678,34 +759,55 @@ export function HomeCockpitView({
 
                   {!cat.isCollapsed && (
                     <div className="px-4 pb-3 pt-1 space-y-2.5 border-t border-[#383838]">
-                      {cat.tasks.map((task) => (
-                        <div
-                          key={task.id}
-                          onClick={() => toggleDailyTask(catIdx, task.id)}
-                          className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-[#383838] cursor-pointer transition-colors group"
-                        >
+                      {cat.tasks.length === 0 ? (
+                        <p className="text-xs text-[#868686] py-1">No daily tasks in this category.</p>
+                      ) : (
+                        cat.tasks.map((task) => (
                           <div
-                            className={`h-5 w-5 rounded flex items-center justify-center border transition-all ${
-                              task.completed
-                                ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
-                                : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
-                            }`}
+                            key={task.id}
+                            className="flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-[#383838] transition-colors group"
                           >
-                            {task.completed && (
-                              <Check className="h-3.5 w-3.5 stroke-[3]" />
+                            <div
+                              onClick={() => toggleDailyTask(catIdx, task.id)}
+                              className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                            >
+                              <div
+                                className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 ${
+                                  task.completed
+                                    ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
+                                    : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
+                                }`}
+                              >
+                                {task.completed && (
+                                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                )}
+                              </div>
+                              <span
+                                className={`text-sm truncate ${
+                                  task.completed
+                                    ? "text-[#868686] line-through"
+                                    : "text-[#ffffff]"
+                                }`}
+                              >
+                                {task.text}
+                              </span>
+                            </div>
+                            {isLoggedIn && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTask(catIdx, task.id, "daily");
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-[#868686] hover:text-red-400 transition-opacity"
+                                title="Delete task"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             )}
                           </div>
-                          <span
-                            className={`text-sm ${
-                              task.completed
-                                ? "text-[#868686] line-through"
-                                : "text-[#ffffff]"
-                            }`}
-                          >
-                            {task.text}
-                          </span>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
@@ -729,7 +831,7 @@ export function HomeCockpitView({
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-[#ffffff]">Weekly Todos</h3>
               <span className="text-xs font-semibold text-[#d2d2d2]">
-                {completedWeeklyTasks}/6 Completed
+                {completedWeeklyTasks}/{totalWeeklyTasks} Completed
               </span>
             </div>
 
@@ -754,34 +856,55 @@ export function HomeCockpitView({
 
                   {!cat.isCollapsed && (
                     <div className="px-4 pb-3 pt-1 space-y-2.5 border-t border-[#383838]">
-                      {cat.tasks.map((task) => (
-                        <div
-                          key={task.id}
-                          onClick={() => toggleWeeklyTask(catIdx, task.id)}
-                          className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-[#383838] cursor-pointer transition-colors group"
-                        >
+                      {cat.tasks.length === 0 ? (
+                        <p className="text-xs text-[#868686] py-1">No weekly tasks in this category.</p>
+                      ) : (
+                        cat.tasks.map((task) => (
                           <div
-                            className={`h-5 w-5 rounded flex items-center justify-center border transition-all ${
-                              task.completed
-                                ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
-                                : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
-                            }`}
+                            key={task.id}
+                            className="flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-[#383838] transition-colors group"
                           >
-                            {task.completed && (
-                              <Check className="h-3.5 w-3.5 stroke-[3]" />
+                            <div
+                              onClick={() => toggleWeeklyTask(catIdx, task.id)}
+                              className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                            >
+                              <div
+                                className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 ${
+                                  task.completed
+                                    ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
+                                    : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
+                                }`}
+                              >
+                                {task.completed && (
+                                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                )}
+                              </div>
+                              <span
+                                className={`text-sm truncate ${
+                                  task.completed
+                                    ? "text-[#868686] line-through"
+                                    : "text-[#ffffff]"
+                                }`}
+                              >
+                                {task.text}
+                              </span>
+                            </div>
+                            {isLoggedIn && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTask(catIdx, task.id, "weekly");
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-[#868686] hover:text-red-400 transition-opacity"
+                                title="Delete task"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             )}
                           </div>
-                          <span
-                            className={`text-sm ${
-                              task.completed
-                                ? "text-[#868686] line-through"
-                                : "text-[#ffffff]"
-                            }`}
-                          >
-                            {task.text}
-                          </span>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
@@ -850,15 +973,11 @@ export function HomeCockpitView({
                       }}
                       className="w-full h-11 bg-[#545454] border border-[#484848] text-[#f4f3f6] rounded-xl px-3 text-sm focus:outline-none focus:ring-1 focus:ring-white"
                     >
-                      <option value="Category 1" className="bg-[#292929] text-white">
-                        Category 1
-                      </option>
-                      <option value="Category 2" className="bg-[#292929] text-white">
-                        Category 2
-                      </option>
-                      <option value="Category 3" className="bg-[#292929] text-white">
-                        Category 3
-                      </option>
+                      {categoryOptions.map((catName) => (
+                        <option key={catName} value={catName} className="bg-[#292929] text-white">
+                          {catName}
+                        </option>
+                      ))}
                       <option value="__NEW__" className="bg-[#292929] text-white">
                         + Create New Category...
                       </option>

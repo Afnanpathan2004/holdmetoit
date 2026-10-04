@@ -3,6 +3,7 @@ import { AppHeader } from "@/features/auth/presentation/auth-nav";
 import { HomeCockpitView } from "@/features/study-logs/presentation/home-cockpit-view";
 import { getParticipantCockpit } from "@/features/study-logs/data/cockpit-data";
 import { findLatestAvailableChallenge } from "@/features/challenges/data/challenge.repository";
+import { getUserCategorizedTasks } from "@/features/tasks/data/task.repository";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       cockpit = await getParticipantCockpit(session.user.id, searchParams?.challenge);
     } catch {
       cockpit = null;
+    }
+  }
+
+  let userTasks = null;
+  if (session?.user?.id) {
+    try {
+      userTasks = cockpit?.userTasks ?? (await getUserCategorizedTasks(session.user.id));
+    } catch {
+      userTasks = null;
     }
   }
 
@@ -48,9 +58,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           todayLoggedSeconds={cockpit?.todayLoggedSeconds ?? 0}
           todayLoggedClock={cockpit?.todayLoggedClock ?? "00:00:00"}
           user={session?.user}
-          initialGoals={cockpit?.goals}
           cockpit={cockpit}
           upcomingChallenge={upcomingChallenge}
+          userTasks={userTasks}
         />
       </main>
     </div>

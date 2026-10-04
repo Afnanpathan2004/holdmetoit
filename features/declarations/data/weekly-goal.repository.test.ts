@@ -10,106 +10,28 @@ import {
 vi.mock("@/core/db", () => ({
   prisma: {
     $transaction: vi.fn(),
-    weeklyGoal: {
-      findFirst: vi.fn(),
-      update: vi.fn(),
-    },
     challengeParticipant: {
       update: vi.fn(),
     },
   },
 }));
 
-describe("weeklyGoal repository", () => {
+describe("weekly-goal.repository (legacy stub & target updater)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe("replaceWeeklyGoals", () => {
-    it("deletes previous goals and creates ordered goals within a transaction", async () => {
-      const mockTx = {
-        weeklyGoal: {
-          deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
-          createMany: vi.fn().mockResolvedValue({ count: 3 }),
-          findMany: vi.fn().mockResolvedValue([
-            { id: "g1", description: "Goal 1", sortOrder: 0 },
-            { id: "g2", description: "Goal 2", sortOrder: 1 },
-            { id: "g3", description: "Goal 3", sortOrder: 2 },
-          ]),
-        },
-      };
-
-      vi.mocked(prisma.$transaction).mockImplementation(async (callback) => {
-        return callback(mockTx as never);
-      });
-
-      const goals = await replaceWeeklyGoals("part_1", [
-        "Goal 1",
-        "Goal 2",
-        "Goal 3",
-      ]);
-
-      expect(mockTx.weeklyGoal.deleteMany).toHaveBeenCalledWith({
-        where: { participantId: "part_1" },
-      });
-
-      expect(mockTx.weeklyGoal.createMany).toHaveBeenCalledWith({
-        data: [
-          { participantId: "part_1", description: "Goal 1", sortOrder: 0 },
-          { participantId: "part_1", description: "Goal 2", sortOrder: 1 },
-          { participantId: "part_1", description: "Goal 3", sortOrder: 2 },
-        ],
-      });
-
-      expect(mockTx.weeklyGoal.findMany).toHaveBeenCalledWith({
-        where: { participantId: "part_1" },
-        orderBy: { sortOrder: "asc" },
-      });
-
-      expect(goals).toHaveLength(3);
+    it("returns empty array as legacy weekly goals are superseded by tasks", async () => {
+      const result = await replaceWeeklyGoals("part_1", ["Goal 1"]);
+      expect(result).toEqual([]);
     });
   });
 
   describe("setWeeklyGoalCompleted", () => {
-    it("updates goal completed status when goal belongs to participant", async () => {
-      const existingGoal = {
-        id: "g_1",
-        participantId: "part_1",
-        description: "Finish physics",
-        completed: false,
-      };
-
-      vi.mocked(prisma.weeklyGoal.findFirst).mockResolvedValue(existingGoal as never);
-      vi.mocked(prisma.weeklyGoal.update).mockResolvedValue({
-        ...existingGoal,
-        completed: true,
-        completedAt: new Date(),
-      } as never);
-
-      const updated = await setWeeklyGoalCompleted("part_1", "g_1", true);
-
-      expect(prisma.weeklyGoal.findFirst).toHaveBeenCalledWith({
-        where: { id: "g_1", participantId: "part_1" },
-      });
-
-      expect(prisma.weeklyGoal.update).toHaveBeenCalledWith({
-        where: { id: "g_1" },
-        data: {
-          completed: true,
-          completedAt: expect.any(Date),
-        },
-      });
-
-      expect(updated?.completed).toBe(true);
-    });
-
-    it("returns null when goal does not belong to the participant", async () => {
-      vi.mocked(prisma.weeklyGoal.findFirst).mockResolvedValue(null);
-
-      const result = await setWeeklyGoalCompleted("part_other", "g_1", true);
-
+    it("returns null as legacy weekly goals are superseded by tasks", async () => {
+      const result = await setWeeklyGoalCompleted("part_1", "g_1", true);
       expect(result).toBeNull();
-      expect(prisma.weeklyGoal.update).not.toHaveBeenCalled();
     });
   });
 
@@ -130,4 +52,3 @@ describe("weeklyGoal repository", () => {
     });
   });
 });
-
