@@ -91,6 +91,7 @@ model Challenge {
   status           ChallengeStatus @default(UPCOMING)
   startAt          DateTime
   endAt            DateTime
+  eventBannerUrl   String?
   punishmentPfpUrl String?
 
   hostId String?

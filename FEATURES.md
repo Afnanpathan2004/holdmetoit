@@ -89,7 +89,11 @@ All features are strictly tagged with their planned deployment phase:
 - **Dynamic Per-Event Team Themes:**
   - Team identities are never hardcoded across challenges. Every challenge defines its own thematic team names, icons/emojis, mascot illustrations, and accent colors (e.g. *Honey Bees vs Lavender Butterflies*, *Owls vs Larks*, *Matcha vs Espresso*, *Sunflowers vs Ferns*, *Dragons vs Griffins*).
   - Configurable during event creation via the host wizard and editable prior to kickoff.
-- **Configuration Fields:** Title, Start Date/Time, End Date/Time, Format, Dynamic Team Names/Colors/Mascots, Participant Assignment, Punishment PFP image URL/asset.
+- **Configuration Fields:** Title, Start Date/Time, End Date/Time, Format, Dynamic Team Names/Colors/Mascots, Participant Assignment, and two independent image uploads (both required for new challenges; PNG/JPEG/WebP, max 3 MB each):
+  - **Event Header Image:** Stored as `eventBannerUrl` in the configured `event-banners` directory; supplies only the challenge hero and admin event-card thumbnails with wide cropping/readability overlays.
+  - **Assigned Punishment PFP:** Stored as `punishmentPfpUrl` in the configured `punishment-pfps` directory in the same public bucket; supplies accountability avatar previews and downloads, never event headers.
+  - Both can be replaced independently in Manage. Existing challenges retain their saved legacy values (including null) when editing unrelated details; changed image URLs must belong to their designated directory. Migration backfills legacy banners from the old image without changing PFPs or storage files.
+  - Uploads provide loading, empty, and error/retry states. Cleanup after replacement/deletion checks references in both image fields across all challenges and retains shared files.
 
 ### §4.2 Host Manual Event Kickoff Trigger `[P0]`
 - **Mechanism:** Even after the scheduled start time arrives, the host retains a "Start Event Now" button to verify all rosters and declared goals before locking inputs.

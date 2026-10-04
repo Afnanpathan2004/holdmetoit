@@ -52,6 +52,7 @@ export interface ChallengeCreationInput {
   format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
   startAt: Date | string;
   endAt: Date | string;
+  eventBannerUrl?: string | null;
   punishmentPfpUrl?: string | null;
   teams: Array<{
     name: string;

@@ -120,6 +120,7 @@ To eliminate architectural drift, the core technology stack is permanently locke
 | **Language** | TypeScript | 5.x | Strict end-to-end type safety (`strict: true`) across UI, API, and DB layers |
 | **Styling & Components** | Tailwind CSS + shadcn/ui | Latest | Atomic utilities, responsive layouts (360px+), accessible Radix UI primitives |
 | **Database Engine** | PostgreSQL (Supabase / Neon) | 15+ | Relational data integrity, ACID transactions for batch logging, Discord Snowflake keys |
+| **Object Storage** | Supabase Storage (`@supabase/supabase-js`) | Latest | Server-only uploads (service-role key) of challenge images, e.g. Punishment PFP; public bucket URLs stored as strings |
 | **ORM & Migrations** | Prisma ORM | 5.x | Declarative schemas, type-safe queries, migration control |
 | **Authentication** | Auth.js (NextAuth.js v5) | Latest | Discord OAuth 2.0 (`identify` scope), session cookie management, spectator fallback |
 | **Schema Validation** | Zod | 3.x | Strict runtime payload validation at API boundaries and form inputs |

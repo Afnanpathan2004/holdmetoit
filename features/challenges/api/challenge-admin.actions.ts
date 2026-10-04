@@ -16,14 +16,33 @@ import {
   reassignParticipantTeam,
   updateAdminChallenge,
 } from "@/features/challenges/data/challenge-admin.repository";
+import { getStorageUrlConfig } from "@/core/storage/supabase-storage";
+import { findChallengeImageUrls } from "@/features/challenges/data/punishment-pfp.repository";
+import { cleanupUnreferencedChallengeImages } from "@/features/challenges/data/challenge-image-cleanup";
 import { validateChallengeCreation } from "@/features/challenges/domain/challenge-lifecycle";
+import {
+  extractManagedObjectPath,
+  type ChallengeImagePurpose,
+} from "@/features/challenges/domain/punishment-pfp";
+
+const BANNER_REQUIRED_MESSAGE = "Please upload an event header image.";
+const PFP_REQUIRED_MESSAGE = "Please upload a punishment PFP.";
+
+function isImageUrlAllowed(url: string | null, purpose: ChallengeImagePurpose): boolean {
+  try {
+    return extractManagedObjectPath(url, getStorageUrlConfig(purpose)) !== null;
+  } catch {
+    return false;
+  }
+}
 
 const createChallengeSchema = z.object({
   title: z.string().min(3).max(80),
   format: z.enum(["TEAM_VS_TEAM", "DUOS", "SOLOS"]),
   startAt: z.string().min(1),
   endAt: z.string().min(1),
-  punishmentPfpUrl: z.string().optional().nullable(),
+  eventBannerUrl: z.string().trim().min(1, BANNER_REQUIRED_MESSAGE),
+  punishmentPfpUrl: z.string().trim().min(1, PFP_REQUIRED_MESSAGE),
   teams: z
     .array(
       z.object({
@@ -51,8 +70,19 @@ export async function createChallengeAction(
       return {
         ok: false,
         code: "INVALID_INPUT",
-        message: "Please ensure all challenge fields and dates are filled properly.",
+        message: parsed.error.issues.some((issue) => issue.path[0] === "eventBannerUrl")
+          ? BANNER_REQUIRED_MESSAGE
+          : parsed.error.issues.some((issue) => issue.path[0] === "punishmentPfpUrl")
+            ? PFP_REQUIRED_MESSAGE
+            : "Please ensure all challenge fields and dates are filled properly.",
       };
+    }
+
+    if (!isImageUrlAllowed(parsed.data.eventBannerUrl, "event-banner")) {
+      return { ok: false, code: "INVALID_EVENT_BANNER", message: "Please upload an event header image through its image picker." };
+    }
+    if (!isImageUrlAllowed(parsed.data.punishmentPfpUrl, "punishment-pfp")) {
+      return { ok: false, code: "INVALID_PUNISHMENT_PFP", message: "Please upload a punishment PFP through its image picker." };
     }
 
     const validation = validateChallengeCreation(parsed.data);
@@ -212,7 +242,9 @@ const updateChallengeSchema = z.object({
   title: z.string().min(3).max(80),
   startAt: z.string().min(1),
   endAt: z.string().min(1),
-  punishmentPfpUrl: z.string().optional().nullable(),
+  // Updates preserve exact legacy strings; only changed values need folder validation.
+  eventBannerUrl: z.string().nullable(),
+  punishmentPfpUrl: z.string().nullable(),
   teams: z
     .array(
       z.object({
@@ -237,7 +269,11 @@ export async function updateChallengeAction(
       return {
         ok: false,
         code: "INVALID_INPUT",
-        message: "Please check all required fields and team names.",
+        message: parsed.error.issues.some((issue) => issue.path[0] === "eventBannerUrl")
+          ? BANNER_REQUIRED_MESSAGE
+          : parsed.error.issues.some((issue) => issue.path[0] === "punishmentPfpUrl")
+            ? PFP_REQUIRED_MESSAGE
+            : "Please check all required fields and team names.",
       };
     }
 
@@ -249,12 +285,29 @@ export async function updateChallengeAction(
       };
     }
 
+    const previousImages = await findChallengeImageUrls(parsed.data.challengeId);
+    if (!previousImages) {
+      return { ok: false, code: "NOT_FOUND", message: "Challenge not found." };
+    }
+
+    // Grandfather only the exact persisted values (including null); replacements
+    // must come from their designated folder, never from the other image picker.
+    if (parsed.data.eventBannerUrl !== previousImages.eventBannerUrl
+      && !isImageUrlAllowed(parsed.data.eventBannerUrl, "event-banner")) {
+      return { ok: false, code: "INVALID_EVENT_BANNER", message: "Please upload an event header image through its image picker." };
+    }
+    if (parsed.data.punishmentPfpUrl !== previousImages.punishmentPfpUrl
+      && !isImageUrlAllowed(parsed.data.punishmentPfpUrl, "punishment-pfp")) {
+      return { ok: false, code: "INVALID_PUNISHMENT_PFP", message: "Please upload a punishment PFP through its image picker." };
+    }
+
     await updateAdminChallenge(
       parsed.data.challengeId,
       {
         title: parsed.data.title,
         startAt: parsed.data.startAt,
         endAt: parsed.data.endAt,
+        eventBannerUrl: parsed.data.eventBannerUrl,
         punishmentPfpUrl: parsed.data.punishmentPfpUrl,
         teams: parsed.data.teams,
       },
@@ -263,6 +316,16 @@ export async function updateChallengeAction(
         username: admin.username,
       },
     );
+
+    // Cleanup only after commit, and retain images still referenced by either field.
+    const replacedUrls: Array<string | null> = [];
+    if (previousImages.eventBannerUrl !== parsed.data.eventBannerUrl) {
+      replacedUrls.push(previousImages.eventBannerUrl);
+    }
+    if (previousImages.punishmentPfpUrl !== parsed.data.punishmentPfpUrl) {
+      replacedUrls.push(previousImages.punishmentPfpUrl);
+    }
+    await cleanupUnreferencedChallengeImages(replacedUrls);
 
     revalidatePath(`/challenge/${parsed.data.challengeId}`);
     revalidatePath("/admin");
@@ -357,10 +420,17 @@ export async function deleteChallengeAction(
       };
     }
 
+    const previousImages = await findChallengeImageUrls(challengeId);
+
     await deleteAdminChallenge(challengeId, {
       id: admin.id,
       username: admin.username,
     });
+
+    await cleanupUnreferencedChallengeImages([
+      previousImages?.eventBannerUrl,
+      previousImages?.punishmentPfpUrl,
+    ]);
 
     revalidatePath("/admin");
     revalidatePath("/");

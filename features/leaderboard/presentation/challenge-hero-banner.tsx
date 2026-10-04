@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Clock } from "lucide-react";
@@ -9,6 +10,57 @@ import type { ChallengeScoreboardViewModel } from "../data/leaderboard-data";
 interface ChallengeHeroBannerProps {
   challenge: ChallengeScoreboardViewModel;
   onQuickLog?: () => void;
+}
+
+function ChallengeHeroImage({ src }: { src: string | null }) {
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [attempt, setAttempt] = useState(0);
+
+  return (
+    <>
+      <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#292929] to-[#0e0e10]">
+        {src && status === "loading" && (
+          <div
+            role="status"
+            aria-label="Loading challenge image"
+            className="absolute inset-0 animate-pulse bg-[#292929] motion-reduce:animate-none"
+          />
+        )}
+        {src && status !== "error" && (
+          <Image
+            key={attempt}
+            src={src}
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 1200px) 100vw, 1200px"
+            onLoad={() => setStatus("loaded")}
+            onError={() => setStatus("error")}
+            className={`object-cover object-center transition-opacity motion-reduce:transition-none ${
+              status === "loaded" ? "opacity-60" : "opacity-0"
+            }`}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e10] via-[#0e0e10]/70 to-[#0e0e10]/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0e0e10]/90 via-transparent to-[#0e0e10]/80" />
+      </div>
+      {src && status === "error" && (
+        <div role="status" className="relative z-10 flex flex-wrap items-center gap-2 px-6 pt-4 text-xs text-[#d1d1d1] sm:px-8">
+          <span>Challenge image unavailable.</span>
+          <button
+            type="button"
+            onClick={() => {
+              setAttempt((previous) => previous + 1);
+              setStatus("loading");
+            }}
+            className="min-h-[44px] rounded-md px-2 font-medium underline underline-offset-4 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+            Retry image
+          </button>
+        </div>
+      )}
+    </>
+  );
 }
 
 export function ChallengeHeroBanner({ challenge, onQuickLog }: ChallengeHeroBannerProps) {
@@ -36,19 +88,8 @@ export function ChallengeHeroBanner({ challenge, onQuickLog }: ChallengeHeroBann
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-[#262626] bg-[#0e0e10] shadow-2xl min-h-[220px]">
-      {/* 1. Hero Battle Artwork Background (Frame 6 49:1812) */}
-      <div className="absolute inset-0 z-0">
-        <Image
-          src="/assets/challenge_hero_battle.jpg"
-          alt={challenge.title}
-          fill
-          priority
-          sizes="(max-width: 1200px) 100vw, 1200px"
-          className="object-cover object-center opacity-60"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e10] via-[#0e0e10]/70 to-[#0e0e10]/30" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0e0e10]/90 via-transparent to-[#0e0e10]/80" />
-      </div>
+      {/* A new saved URL remounts the image, clearing any prior load/error state. */}
+      <ChallengeHeroImage key={challenge.heroImageUrl} src={challenge.heroImageUrl} />
 
       {/* 2. Content Layer */}
       <div className="relative z-10 p-6 sm:p-8 flex flex-col justify-between min-h-[220px]">

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { Download, ShieldAlert, ShieldCheck } from "lucide-react";
 import type { PunishmentWallData } from "../data/leaderboard-data";
+import { toDownloadUrl } from "@/features/challenges/domain/punishment-pfp";
 
 interface PunishmentWallProps {
   wallData: PunishmentWallData;
@@ -12,6 +13,8 @@ interface PunishmentWallProps {
 export function PunishmentWall({ wallData }: PunishmentWallProps) {
   const { punishmentPfpUrl, flaggedMembers, isEventCompleted } = wallData;
   const [downloadNotified, setDownloadNotified] = useState(false);
+  const pfpExt = punishmentPfpUrl.match(/\.(png|jpe?g|webp)(?:\?|$)/i)?.[1]?.toLowerCase() ?? "jpg";
+  const downloadFileName = `holdmetoit-punishment-avatar.${pfpExt}`;
 
   const handleDownloadClick = () => {
     setDownloadNotified(true);
@@ -47,13 +50,13 @@ export function PunishmentWall({ wallData }: PunishmentWallProps) {
             </span>
           )}
           <a
-            href={punishmentPfpUrl}
-            download="holdmetoit-punishment-avatar.jpg"
+            href={toDownloadUrl(punishmentPfpUrl, downloadFileName)}
+            download={downloadFileName}
             onClick={handleDownloadClick}
             className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#ffffff] px-4 py-2 text-xs font-bold text-[#0d0d0d] shadow transition-all hover:bg-[#e0e0e0] active:scale-[0.98]"
           >
             <Download className="h-4 w-4" />
-            <span>Download Forfeit Avatar (.jpg)</span>
+            <span>Download Forfeit Avatar (.{pfpExt})</span>
           </a>
         </div>
       </div>

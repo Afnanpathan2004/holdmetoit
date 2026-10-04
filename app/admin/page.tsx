@@ -1,8 +1,9 @@
-import Image from "next/image";
+
 import Link from "next/link";
 import { ArrowLeft, Plus, Users, Palette, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listAllChallengesForAdmin } from "@/features/challenges/data/challenge-admin.repository";
+import { ChallengeCardImage } from "@/features/challenges/presentation/challenge-card-image";
 
 export const dynamic = "force-dynamic";
 
@@ -92,16 +93,11 @@ export default async function AdminDashboardPage() {
                 className="rounded-2xl border border-[#262626] bg-[#141414] overflow-hidden shadow-lg flex flex-col justify-between hover:border-[#383838] transition-all group"
               >
                 {/* Banner Thumbnail (Rectangle 16) */}
-                <div className="relative h-36 w-full bg-[#1c1c1c] overflow-hidden">
-                  <Image
-                    src="/assets/challenge_hero_battle.jpg"
-                    alt={c.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 380px"
-                    className="object-cover object-center group-hover:scale-105 transition-transform duration-500 opacity-80"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1d1d1d] via-transparent to-transparent" />
-                </div>
+                <ChallengeCardImage
+                  key={c.eventBannerUrl}
+                  src={c.eventBannerUrl?.trim() || null}
+                  title={c.title}
+                />
 
                 {/* Card Content (Rectangle 17) */}
                 <div className="p-5 bg-[#1d1d1d] space-y-4 flex-1 flex flex-col justify-between">

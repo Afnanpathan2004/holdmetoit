@@ -4,7 +4,7 @@
 > **Repository:** `e:\Projects\HoldMeToIt-Git`  
 > **Current Branch:** `afnan-jr`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-09-30  
+> **Last Updated:** 2026-10-04
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**  
 
 ---
@@ -28,7 +28,7 @@ The repository contains the authoritative 5-document specification suite ratifie
 - **Specification Phase:** 100% Complete. All 5 core documents are aligned with zero conflicting requirements.
 - **Phase 0 (MVP Core) Implementation:** 100% Complete! Slices 0, 1, 2, 3, 4, 5, and 6 are all verified and passing.
 - **E2E Quality Matrix:** All 6 User Journeys (J1–J6) automated, tested, and green.
-- **Git State:** Branch `krish`, clean, tested, and synchronized with upstream.
+- **Git State:** Branch `afnan-jr`; working tree contains staged and unstaged collaborative changes. Do not reset or overwrite them.
 
 ---
 
@@ -40,7 +40,7 @@ Phase 0 focuses exclusively on **The Spreadsheet Exorcism** — running a full w
 | :--- | :--- | :--- | :---: | :---: | :---: |
 | `FEAT-AUTH-01` | Discord OAuth 2.0 (`identify` scope) | Auth & Identity | Participant, Admin | `DONE` | ✅ Completed in Slice 2 & J1 |
 | `FEAT-AUTH-02` | Public Read-Only Spectator Mode | Auth & Identity | Spectator | `DONE` | ✅ Completed in Slice 4 & J1 |
-| `FEAT-CHAL-01` | Multi-Format Challenge Creator (Team/Duo/Solo) | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 & J2 |
+| `FEAT-CHAL-01` | Multi-Format Challenge Creator (Team/Duo/Solo) | Challenge Ops | Admin | `IMPLEMENTED` | Independent event-header/PFP uploads implemented; new env variable, reviewed migration deployment and browser verification pending (Session 24) |
 | `FEAT-CHAL-02` | Host Manual Event Kickoff Trigger | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 & J3 |
 | `FEAT-CHAL-05` | Event Lock & Freeze Final Results | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 & J6 |
 | `FEAT-CHAL-06` | Duo Partner Self-Naming & Dynamic Team Identities | Challenge Ops | Participant, Admin | `DONE` | ✅ Completed in Slice 5 & J2 |
@@ -124,11 +124,7 @@ graph TD
 
 > [!IMPORTANT]  
 > **EXACT NEXT STEP FOR THE INCOMING AGENT:**  
-> Phase 0 (MVP Core) + Operational Usability Enablers are **100% Complete and Certified**. Proceed to **Phase 1: Automation & Integrations**:
-> 1. Implement Direct YPT API Bot Ingestion Endpoint (`FEAT-LOG-03`) at `POST /api/v1/ingest/ypt` with Bearer token authentication to ingest automated daily logs from teammate YPT bots.
-> 2. Implement Automated Countdown Timer & Challenge Expiration (`FEAT-CHAL-03`).
-> 3. Scaffold `@HoldMeToItBot` 24/7 Discord daemon (`FEAT-DISC-02`) with slash commands (`/stats`, `/standings`, `/deficit`).
-> 4. Implement automated daily check-in and results webhook embeds (`FEAT-DISC-03`).
+> Configure `SUPABASE_PUNISHMENT_PFPS_FOLDER=punishment-pfps`, review the target database against the new baseline, then deploy the migration/backfill following `prisma/migrations/README.md`. Neither the migration nor protected env files were changed in the live environment. Verify two distinct uploads and independent replacement/cleanup before Phase 1 work.
 
 ---
 
@@ -137,7 +133,7 @@ graph TD
 In accordance with **`AGENTS.md` Rule §9.3**:
 1. **No Outdated Baggage:** Obsolete notes and work-in-progress drafts are actively pruned.
 2. **Prune Stale Details:** All 22 Phase 0 feature rows transitioned to `DONE`.
-3. **Session Log Retention:** Retains only the last 4 active engineering sessions below.
+3. **Session Log Retention:** Retains only the last 5 active engineering sessions below; earlier sessions are summarized.
 
 ---
 
@@ -145,108 +141,14 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 
 ### Previous Sessions (Summarized)
 - **Sessions 1–8 (2026-09-06):** Repository architecture, Rule §9.3 enactment, cozy aesthetic tokens, typography upgrade, dynamic per-event team themes, duo partner self-naming (`FEAT-CHAL-06`), Spiced Cinnamon palette upgrade, core domain engines, participant cockpit.
+- **Sessions 9–12 (2026-09-07):** Slice 4 scoreboard/standings/Punishment Wall, Slice 5 admin operations and Discord broadcaster, Slice 6 E2E J1–J6 certification of Phase 0, participant/admin enrollment flows and Discord image `remotePatterns`.
 
-### Session 9 — 2026-09-07
-- **Agent Role:** Participant UI & Scoring Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Slice 4: Head-to-Head Live Scoreboard & Standings):**
-  - Scaffolded public assets into `public/assets/` and `public/prototype/assets/`.
-  - Implemented `leaderboard-data.ts` and `leaderboard-data.test.ts`.
-  - Built `MatchBanner` (`FEAT-LEAD-01`), `StandingsTable` (`FEAT-LEAD-02`), and `PunishmentWall` (`FEAT-PUN-02`, `FEAT-PUN-03`).
-  - Created public spectator scoreboard page `app/challenge/[id]/page.tsx` with Law L9 loading skeleton.
+- **Session 13 (2026-09-07):** Discord OAuth configuration, profile/session navigation and database seeding.
+- **Session 15 (2026-09-30):** Manual weekly leaderboard models, pure aggregation math, repositories, batch logging actions and `/challenge/[id]/manual` UI.
 
-### Session 10 — 2026-09-07
-- **Agent Role:** Admin Operations & Broadcaster Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Slice 5: Admin Operations & Discord Broadcaster):**
-  - Implemented `challenge-creator-wizard.tsx`, `admin-challenge-console.tsx`, `admin-roster-grid.tsx` (Law L5), `admin-goals-pardons.tsx` (`FEAT-DECL-04`, `FEAT-PUN-04`), `discord-summary-card.tsx` (`FEAT-DISC-01`), and `audit-trail-table.tsx` (`FEAT-AUDIT-01`).
-  - Implemented `challenge-admin.repository.ts`, `admin-override.repository.ts`, `admin-goal.repository.ts`, `admin-pardon.repository.ts`, and `admin-challenge-view.ts`.
-  - Created routes `/admin`, `/admin/challenges/new`, `/admin/challenges/[id]`, `/admin/challenges/[id]/roster` with Law L9 loading skeletons.
+- **Session 18 (2026-10-04):** Consolidated cockpit and routes, removed superseded UI, adopted obsidian styling, and quarantined prototypes; `/dashboard` redirects to `/`.
 
-### Session 11 — 2026-09-07
-- **Agent Role:** QA Lead & System Architect Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Slice 6: E2E Quality Verification & Release Gate):**
-  - Authored comprehensive E2E Quality Matrix test suite: `features/e2e/quality-matrix-j1-j6.test.ts`.
-  - Automated verification for all 6 user journeys (J1–J6).
-  - Verified 24 test files (143 tests, 100% green), zero TypeScript errors, and zero production build errors.
-  - Certified Phase 0 (MVP Core) as complete.
-
-### Session 12 — 2026-09-07
-- **Agent Role:** Fullstack Engineer & Operational Enablers Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Operational Usability & Enrollment Slices):**
-  - Configured `next.config.mjs` with `images.remotePatterns` for `cdn.discordapp.com`.
-  - Implemented participant self-enrollment modal and server action (`JoinChallengeModal`, `enrollInChallengeAction`).
-  - Implemented admin roster assignment modal (`adminEnrollParticipant`, `AdminRosterGrid`).
-
-### Session 13 — 2026-09-07
-- **Agent Role:** Data & Identity Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Discord Auth Connection & Navigation Integration):**
-  - Verified `.env` / `.env.local` configuration for Supabase PostgreSQL (`DATABASE_URL`, `DIRECT_URL`), `AUTH_SECRET`, and Discord OAuth (`AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET`).
-  - Executed `prisma db push` and seeded initial tournament data (`prisma/seed.ts`).
-  - Implemented `features/auth/api/auth.actions.ts` (`loginWithDiscordAction`, `logoutAction`).
-  - Created `features/auth/presentation/auth-nav.tsx` (`UserNav`, `SignInWithDiscordButton`, `SignOutButton`, `DiscordIcon`).
-  - Updated `app/page.tsx` with top authentication bar, dynamic Discord login button, and direct navigation into Cockpit / Admin hubs.
-  - Updated `app/challenge/[id]/layout.tsx`, `app/admin/layout.tsx`, and `app/(dashboard)/layout.tsx` to render `UserNav` with avatar, name, and sign-out controls.
-
-### Session 15 — 2026-09-30
-- **Agent Role:** Fullstack Scoring & Data Agent
-- **Git Branch:** `afnan-jr`
-- **Changes Completed (Manual Weekly Challenge Leaderboard Slice):**
-  - **Prisma Schema:** Integrated manual leaderboard relational models into `prisma/schema.prisma` (`TeamMember` and `LeaderboardEntry`) mapped strictly to database table and column names (`team_members`, `leaderboard_entries`, `session_hours`, `slot_date`, `punishment_pfp`, `challenge_color`), maintaining full compatibility with Auth.js Discord OAuth.
-  - **Pure Domain Engine:** Implemented `features/leaderboard/domain/manual-leaderboard.ts` with pure TypeScript math for aggregating individual hours, team totals, head-to-head match banners, and day-by-day slot matrices. Added 4 unit tests in `manual-leaderboard.test.ts`.
-  - **Data Access Layer:** Implemented `features/leaderboard/data/manual-leaderboard.repository.ts` using Prisma only (zero Redis, zero WebSockets) with composite key upserts, batch transactions, and view model mapping. Added 5 repository tests in `manual-leaderboard.repository.test.ts`.
-  - **Server Actions:** Implemented `features/leaderboard/api/manual-leaderboard.actions.ts` (`logManualSessionHoursAction`, `batchLogManualSessionHoursAction`) with Zod schema validation and cache revalidation.
-  - **Presentation & UI:** Built `features/leaderboard/presentation/manual-leaderboard-view.tsx` matching Cozy Café aesthetic tokens (`#e08a32` Honey, `#14110f` Roasted Espresso, tabular monospace numbers) with match banner, team cards, participant standings table, weekly slot matrix, and session logging modal.
-  - **Route & Loading:** Added `/challenge/[id]/manual` page (`app/challenge/[id]/manual/page.tsx`) and Law L9 loading skeleton (`app/challenge/[id]/manual/loading.tsx`).
-  - **Quality Gates:** 29 test files (175 tests) passing 100% green, `npm run typecheck` exits with 0, `npm run build` succeeds cleanly.
-
-### Session 18 — 2026-10-04
-- **Agent Role:** Frontend Architect & UI Consolidation Agent
-- **Git Branch:** `afnan-jr`
-- **Changes Completed (Legacy UI Purge & Complete Obsidian Consolidation):**
-  - **Orphaned Component Deletion (8 files purged):** Deleted legacy files completely superseded by Figma components:
-    - `features/study-logs/presentation/study-desk-log.tsx`
-    - `features/study-logs/presentation/duration-input.tsx`
-    - `features/declarations/presentation/weekly-goals-panel.tsx`
-    - `features/leaderboard/presentation/match-banner.tsx`
-    - `features/leaderboard/presentation/standings-table.tsx`
-    - `features/study-logs/presentation/catch-up-card.tsx`
-    - `features/study-logs/presentation/participant-cockpit.tsx`
-    - `features/study-logs/presentation/cockpit-todo-lists.tsx`
-  - **Route & Layout Consolidation:**
-    - Configured permanent HTTP 308 redirect in `next.config.mjs` from `/dashboard` to `/`.
-    - Deleted redundant `app/(dashboard)` layout, loading, and page hierarchy.
-  - **CSS Variables & Theme Purge:**
-    - Replaced all warm brownish/orange HSL variables in `app/globals.css` `:root` with pure monochrome obsidian values (`--background: 0 0% 5%`, `--primary: 0 0% 100%`, `--card: 0 0% 8%`, `--border: 0 0% 16%`, `--ring: 0 0% 100%`).
-    - Purged legacy `cafe:` color object, `shadow-cafe`, and `obsidian.amber` from `tailwind.config.ts`.
-  - **Home Cockpit Dynamic Integration:**
-    - Connected `HomeCockpitView` with full `CockpitViewModel` data, interactive weekly goal server action toggles (`toggleWeeklyGoalAction`), and real-time deficit/target progress meters.
-  - **Asset & Prototype Quarantine:**
-    - Quarantined static `prototype/` site into `.archive/prototype/` per AGENTS.md §3 Rule 7.
-    - Removed `public/prototype/` and unused legacy assets (`public/assets/hero_cafe.jpg`, `public/assets/stamp_cafe.jpg`).
-  - **Quality Gates:**
-    - `npm run typecheck` exits 0 (zero errors).
-    - `npm run test` passes 29/29 test suites (175/175 tests green).
-    - `npm run build` succeeds cleanly with all static and dynamic routes compiled.
-
-### Session 19 — 2026-10-04
-- **Agent Role:** Frontend Architect & UI Consolidation Agent
-- **Git Branch:** `afnan-jr`
-- **Changes Completed (Manage Challenge Route & Console Removal):**
-  - **Removed Route:** Completely deleted `app/admin/challenges/[id]` (including `page.tsx`, `loading.tsx`, and `roster/page.tsx`).
-  - **Removed Dedicated Console Components:** Deleted orphaned presentation files and data mapper:
-    - `features/challenges/presentation/admin-challenge-console.tsx`
-    - `features/challenges/presentation/admin-roster-grid.tsx`
-    - `features/challenges/presentation/admin-goals-pardons.tsx`
-    - `features/notifications/presentation/discord-summary-card.tsx`
-    - `features/audit/presentation/audit-trail-table.tsx`
-    - `features/challenges/data/admin-challenge-view.ts`
-  - **Cleaned Navigation & Links:**
-    - Updated `app/admin/page.tsx` tournament cards with a single "View Challenge" button (`/challenge/${c.id}`).
-    - Removed the "Manage" tab and button from `features/leaderboard/presentation/challenge-view.tsx` (now strictly `Overview`, `Leaderboard`, `About` matching Figma).
+- **Session 19 (2026-10-04):** Removed the old dedicated admin challenge routes/console components; admin cards link to the shared challenge view. Manage was restored there in Session 20.
 ### Session 20 — 2026-10-04
 - **Agent Role:** Admin Operations & UI Architect
 - **Git Branch:** `afnan-jr`
@@ -255,9 +157,9 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - Faithfully implemented Figma mockup (`media_1791061815092.png`) using the pure obsidian design system.
     - **Section 1: Challenge Details & Timetable:** Title input and UTC datetime-local pickers with calendar icons.
     - **Section 2: Dynamic House / Team Identities:** Dynamic team cards with emoji input, team name, color swatch/picker with hex label, and `+ Add Another Team` button.
-    - **Section 3: Assigned Punishment PFP Asset:** Avatar preview box with URL input.
-    - **Section 4: Participant House Assignments (Roster Reassignment):** Table of all enrolled scholars with Discord avatars, display names, and interactive dropdown selector to move any participant to another team with instant server action execution (`reassignParticipantTeamAction`).
-    - **Section 5: Danger Zone (Delete Event):** Prominent delete action with a confirmation modal ensuring safe cascading deletion across all related tables (`deleteChallengeAction`), redirecting to `/admin`.
+    - **Event Images:** Independent Event Header Image and Assigned Punishment PFP uploads (Session 24 supersedes the original single field).
+    - **Participant House Assignments (Roster Reassignment):** Table of all enrolled scholars with Discord avatars, display names, and interactive dropdown selector to move any participant to another team with instant server action execution (`reassignParticipantTeamAction`).
+    - **Danger Zone (Delete Event):** Prominent delete action with a confirmation modal ensuring safe cascading deletion across all related tables (`deleteChallengeAction`), redirecting to `/admin`.
     - **Bottom Action Bar:** Form reset (`Cancel`) and `Save & Update Event` with loading spinners and feedback alert banners.
   - **Repository & Transaction Updates (`features/challenges/data/challenge-admin.repository.ts`):**
     - `updateAdminChallenge`: Transactionally updates title, startAt, endAt, punishmentPfpUrl, and upserts/prunes teams.
@@ -275,15 +177,43 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run test` passes 29/29 test suites (183/183 tests green).
     - `npm run build` succeeds cleanly with all routes compiled.
 
+
+### Session 21 — 2026-10-04
+- **Agent Role:** Admin Operations & Data Agent
+- **Changes Completed (Punishment PFP image upload via Supabase Storage):**
+  - Replaced the punishment PFP URL text input (wizard and Manage tab) with a required image upload (PNG/JPEG/WebP, max 3 MB, GIF rejected). `Challenge.punishmentPfpUrl` still stores the public URL; no schema change.
+  - Added `@supabase/supabase-js`; `core/storage/supabase-storage.ts` (service-role client, upload, best-effort delete). Env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET`, `SUPABASE_EVENT_BANNERS_FOLDER`.
+  - Pure helpers in `features/challenges/domain/punishment-pfp.ts` (magic-byte validation, managed-URL guard, download URL).
+  - Initial single-image actions were generalized to `uploadChallengeImageAction` / `discardChallengeImageUploadAction` in Session 24. New challenge image URLs must use their designated folders; updates grandfather only exact persisted legacy values.
+  - Cleanup: old file deleted after a successful update, on challenge delete, and when an unsaved upload is replaced/discarded (never deletes legacy/external URLs or URLs still referenced).
+  - Punishment Wall download uses `?download=` for Supabase URLs; `next.config.mjs` adds Supabase `remotePatterns` and a 4 MB server-action body limit.
+  - **Gates:** typecheck clean, 32 test files / 214 tests green, `npm run build` succeeds.
+  - **Known gap:** a wizard upload abandoned by closing the tab is orphaned in storage (no scheduled sweeper yet).
+
+### Session 22 — 2026-10-04
+- **Changes:** Connected the hero to saved artwork instead of a hardcoded image. Session 24 now derives `heroImageUrl` only from `eventBannerUrl`; punishment PFPs are independent.
+- **States:** Loading skeleton, neutral empty/error background and retry button. URL-keyed image subtree resets load/error state when Manage saves a replacement. Existing `router.refresh()` and route revalidation are unchanged.
+- **Tests:** Added uploaded/missing/replacement URL mapping tests and hero rendering/callback tests. Enabled automatic JSX transform in Vitest without adding dependencies.
+- **Gates:** `npm run typecheck`, `npm run test` (33 files / 224 tests), and `npm run build` passed. Browser/mobile and live Supabase verification were not run.
+
+### Session 23 — 2026-10-04
+- **Changes:** Admin cards use saved artwork instead of hardcoded battle artwork (`app/admin/page.tsx`). Session 24 switches their source to `eventBannerUrl` only. `ChallengeCardImage` retains loading skeleton, neutral missing/error background and retry; URL-keyed instances reset on replacement.
+- **Tests:** Added six admin-page rendering/image-state regressions. `npm run typecheck`, `npm run test` (34 files / 230 tests), and `npm run build` passed.
+- **Verification pending:** Live admin thumbnail rendering, replacement refresh and 360px layout. Supabase public access must be enabled for the configured bucket; the last diagnostic confirmed `holdmetoit-bucket` was private despite the uploaded file existing.
+
+### Session 24 — 2026-10-04
+- **Preview follow-up:** Changed the shared Event Header Image preview from 16:9 to 5:1 in Create and Manage; circular PFP preview and actual hero/card layouts are unchanged. Updated the preview regression assertion; typecheck, all 390 tests, and production build passed again. Next step remains configuration/migration deployment and browser verification in §8.
+- **Changes:** Wizard and Manage have two independent fields: Event Header Image (5:1 preview) and Assigned Punishment PFP (circular preview). Both are required for new challenges; PNG/JPEG/WebP only, max 3 MB each. `ChallengeImageInput` replaces the old single-purpose component.
+- **Storage/actions:** `uploadChallengeImageAction` validates purpose and selects env-configured directories. Added `SUPABASE_PUNISHMENT_PFPS_FOLDER`. Banner and PFP replacements use strict folder guards; exact legacy strings/nulls can remain unchanged. Submit/save/reset are blocked during uploads.
+- **Data:** Added nullable `Challenge.eventBannerUrl`; hero/admin thumbnails use only the banner, punishment views use only PFP. Raw fields remain available to Manage so display normalization/fallbacks are never persisted accidentally.
+- **Cleanup:** Shared helper checks references in either column before deleting, recognizes saved query/fragment aliases, deduplicates candidates, retains shared legacy images and runs only after commit. Unsaved replacements/cancel use the same reference protections. Tab-close orphans still require a future sweeper.
+- **Migrations:** Added generated pre-banner baseline and incremental nullable-column/backfill SQL. Existing PFP values and files are retained; banner is backfilled from the previous PFP. See `prisma/migrations/README.md` for fresh vs existing db-push databases. No live database changes made; do not blindly deploy baseline into a populated DB.
+- **Validation:** `npm run typecheck` passed; `npm run test` passed 37 files / 390 tests. `npm run build` passed (an earlier attempt failed on a missing generated `.next` chunk; retry and final build both passed). Browser/mobile/live-storage verification remains pending. `.env.example` is blocked by private-file settings; variable documentation is in README.
+
 ---
 
-## 5. Next Steps for Incoming Agent
+## 8. Next Steps for Incoming Agent
 
-1. **Local Preview & Verification:** Run `bun run dev` (or `npm run dev`) and test the `/challenge/[id]` Manage tab at `http://localhost:3000`.
-2. **Phase 1 Evolution:** Proceed with automated YPT ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`) per `ROADMAP.md`.
-
-
-
-
-
-
+1. **Configuration and deployment:** Add `SUPABASE_PUNISHMENT_PFPS_FOLDER=punishment-pfps` locally and in deployment env. Confirm the configured bucket is public. Back up/review the existing DB schema, resolve the baseline only after verifying it matches, then deploy the banner migration/backfill per `prisma/migrations/README.md`. Do not use `db push` to skip the backfill.
+2. **Manual verification:** Upload two visibly different images. Confirm event headers land in `SUPABASE_EVENT_BANNERS_FOLDER` and punishment avatars in `SUPABASE_PUNISHMENT_PFPS_FOLDER`, within the same configured bucket. Hero/admin cards must show only the header; punishment previews/downloads only the PFP. Independently replace each and confirm shared legacy references prevent premature deletion. Check cancel/reset, old challenges, guest access and 360px layout.
+3. **Phase 1 Evolution:** After deployment and browser checks, proceed with automated YPT ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`) per `ROADMAP.md`.

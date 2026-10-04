@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import {
   AlertCircle,
   Calendar,
@@ -16,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createChallengeAction } from "@/features/challenges/api/challenge-admin.actions";
+import { discardChallengeImageUploadAction } from "@/features/challenges/api/punishment-pfp.actions";
+import { ChallengeImageInput } from "@/features/challenges/presentation/challenge-image-input";
 
 type Format = "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
 
@@ -94,12 +95,18 @@ export function ChallengeCreatorWizard() {
   const [teams, setTeams] = useState<TeamConfig[]>(
     PRESET_THEMES.serpentsVsRaven.teams,
   );
-  const [punishmentPfpUrl, setPunishmentPfpUrl] = useState(
-    "/prototype/assets/punishment_pfp.jpg",
-  );
+  const [eventBannerUrl, setEventBannerUrl] = useState<string | null>(null);
+  const [isBannerUploading, setIsBannerUploading] = useState(false);
+  const [bannerError, setBannerError] = useState<string | null>(null);
+  const [punishmentPfpUrl, setPunishmentPfpUrl] = useState<string | null>(null);
+  const [isPfpUploading, setIsPfpUploading] = useState(false);
+  const [pfpError, setPfpError] = useState<string | null>(null);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isCreating, setIsCreating] = useState(false);
+  const isUploading = isBannerUploading || isPfpUploading;
+  const isSubmitting = isPending || isCreating;
 
   const handlePresetChange = (presetKey: string) => {
     setSelectedPreset(presetKey);
@@ -162,22 +169,34 @@ export function ChallengeCreatorWizard() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || isUploading) return;
     setErrorMsg(null);
+    setBannerError(eventBannerUrl ? null : "Please upload an event header image.");
+    setPfpError(punishmentPfpUrl ? null : "Please upload a punishment PFP.");
+    if (!eventBannerUrl || !punishmentPfpUrl) return;
 
+    setIsCreating(true);
     startTransition(async () => {
-      const result = await createChallengeAction({
-        title,
-        format,
-        startAt,
-        endAt,
-        punishmentPfpUrl: punishmentPfpUrl || null,
-        teams,
-      });
+      try {
+        const result = await createChallengeAction({
+          title,
+          format,
+          startAt,
+          endAt,
+          eventBannerUrl,
+          punishmentPfpUrl,
+          teams,
+        });
 
-      if (result.ok && result.data?.challengeId) {
-        router.push(`/challenge/${result.data.challengeId}`);
-      } else if (!result.ok) {
-        setErrorMsg(result.message);
+        if (result.ok && result.data?.challengeId) {
+          router.push(`/challenge/${result.data.challengeId}`);
+        } else if (!result.ok) {
+          setErrorMsg(result.message);
+        }
+      } catch {
+        setErrorMsg("Could not create the challenge. Please try again.");
+      } finally {
+        setIsCreating(false);
       }
     });
   };
@@ -378,40 +397,39 @@ export function ChallengeCreatorWizard() {
         </div>
       </div>
 
-      {/* Step 4: Assigned Punishment PFP Asset (Figma 144:1012 step-4) */}
-      <div className="space-y-4 pt-3 border-t border-[#1f1f1f]">
+      <section className="space-y-4 pt-3 border-t border-[#1f1f1f]">
         <h3 className="text-base font-bold text-[#ffffff] tracking-tight">
-          Assigned Punishment PFP Asset
+          Event Header Image <span className="text-[#ff5757]" aria-label="required">*</span>
         </h3>
+        <ChallengeImageInput
+          purpose="event-banner"
+          value={eventBannerUrl}
+          onChange={(url) => {
+            setEventBannerUrl(url);
+            setBannerError(null);
+          }}
+          onBusyChange={setIsBannerUploading}
+          disabled={isSubmitting}
+          error={bannerError}
+        />
+      </section>
 
-        <div className="flex items-center gap-4">
-          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#333333] bg-[#171717] flex items-center justify-center">
-            {punishmentPfpUrl ? (
-              <Image
-                src={punishmentPfpUrl}
-                alt="Forfeit Asset Preview"
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <User className="h-5 w-5 text-[#868686]" />
-            )}
-          </div>
-
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-[#f4f3f6] mb-1">
-              Forfeit Avatar Asset URL
-            </label>
-            <Input
-              type="text"
-              value={punishmentPfpUrl}
-              onChange={(e) => setPunishmentPfpUrl(e.target.value)}
-              placeholder="https://holdme.to/assets/shame-bee.png"
-              className="h-11 bg-[#545454] border-[#484848] text-[#f4f3f6] font-sans text-xs rounded-xl"
-            />
-          </div>
-        </div>
-      </div>
+      <section className="space-y-4 pt-3 border-t border-[#1f1f1f]">
+        <h3 className="text-base font-bold text-[#ffffff] tracking-tight">
+          Assigned Punishment PFP <span className="text-[#ff5757]" aria-label="required">*</span>
+        </h3>
+        <ChallengeImageInput
+          purpose="punishment-pfp"
+          value={punishmentPfpUrl}
+          onChange={(url) => {
+            setPunishmentPfpUrl(url);
+            setPfpError(null);
+          }}
+          onBusyChange={setIsPfpUploading}
+          disabled={isSubmitting}
+          error={pfpError}
+        />
+      </section>
 
       {errorMsg && (
         <div className="flex items-center gap-2 rounded-xl border border-[#ff5757]/40 bg-[#381717] p-3 text-xs text-[#ff5757]">
@@ -421,22 +439,28 @@ export function ChallengeCreatorWizard() {
       )}
 
       {/* Modal Actions */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1f1f1f]">
+      <div className="flex flex-col-reverse items-stretch gap-3 pt-4 border-t border-[#1f1f1f] sm:flex-row sm:items-center sm:justify-end">
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.back()}
-          disabled={isPending}
+          onClick={() => {
+            if (isSubmitting || isUploading) return;
+            for (const url of Array.from(new Set([eventBannerUrl, punishmentPfpUrl]))) {
+              if (url) void discardChallengeImageUploadAction(url).catch(() => {});
+            }
+            router.back();
+          }}
+          disabled={isSubmitting || isUploading}
           className="h-11 px-6 rounded-xl border-[#ffffff] text-[#ffffff] bg-transparent hover:bg-white/10 text-xs font-semibold"
         >
           Cancel
         </Button>
         <Button
           type="submit"
-          disabled={isPending || !title.trim()}
+          disabled={isSubmitting || isUploading || !title.trim()}
           className="h-11 px-8 rounded-xl bg-[#ffffff] text-[#0a080e] hover:bg-[#e0e0e0] text-xs font-bold shadow-lg"
         >
-          {isPending ? "Creating..." : "Create & Launch Challenge"}
+          {isSubmitting ? "Creating..." : "Create & Launch Challenge"}
         </Button>
       </div>
     </form>

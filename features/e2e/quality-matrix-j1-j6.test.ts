@@ -76,6 +76,7 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
         status: "ACTIVE",
         startAt: new Date("2026-09-01T08:00:00Z"),
         endAt: new Date("2026-09-08T08:00:00Z"),
+        eventBannerUrl: "/assets/challenge_hero_battle.jpg",
         punishmentPfpUrl: "/prototype/assets/punishment_pfp.jpg",
         teams: [
           { id: "t_bees", name: "Honey Bees", color: "#d9822b", iconEmoji: "🐝", mascotUrl: null, sortOrder: 0 },
@@ -87,6 +88,7 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
       const spectatorView = buildScoreboardViewModel(rawChallenge, undefined, new Date("2026-09-04T08:00:00Z"));
       expect(spectatorView.currentUser.isLoggedIn).toBe(false);
       expect(spectatorView.currentUser.isEnrolled).toBe(false);
+      expect(spectatorView.heroImageUrl).toBe("/assets/challenge_hero_battle.jpg");
       expect(spectatorView.punishmentWall.punishmentPfpUrl).toBe("/prototype/assets/punishment_pfp.jpg");
 
       // 2. User clicks 'Login with Discord' and Discord profile is mapped
@@ -128,6 +130,7 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
           format: "TEAM_VS_TEAM",
           startAt: new Date("2026-09-01T08:00:00Z"),
           endAt: new Date("2026-09-08T08:00:00Z"),
+          eventBannerUrl: "/assets/challenge_hero_battle.jpg",
           punishmentPfpUrl: "/prototype/assets/punishment_pfp.jpg",
           teams: [
             { name: "Honey Bees", color: "#d9822b", iconEmoji: "🐝" },

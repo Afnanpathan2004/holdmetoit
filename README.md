@@ -86,12 +86,24 @@ npm install
 cp .env.example .env.local
 ```
 
-### 3. Local Development
+Event header and punishment PFP uploads use separate directories in the same public Supabase Storage bucket (server-only variables, never prefix with `NEXT_PUBLIC_`):
 ```bash
-# Run database migrations
-npx prisma db push
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_STORAGE_BUCKET=holdmetoit-bucket  # use your actual public bucket name
+SUPABASE_EVENT_BANNERS_FOLDER=event-banners
+SUPABASE_PUNISHMENT_PFPS_FOLDER=punishment-pfps
+```
 
-# Start Next.js development server
+### 3. Database Setup and Local Development
+
+Review [`prisma/migrations/README.md`](prisma/migrations/README.md) before applying migrations. For a fresh, empty database:
+```bash
+npx prisma migrate deploy
 npm run dev
 ```
+
+Existing databases previously created using `db push` must first be backed up and verified against the baseline before marking it applied. Then deploy the banner migration as documented in the migration README. Do not run the baseline SQL against a populated database or use `db push` to bypass the backfill.
+
+The banner migration adds `Challenge.eventBannerUrl` and copies existing punishment image URLs into it without changing the punishment PFP or deleting storage files. New challenges require two images; existing challenges may keep their saved legacy values until independently replaced. Configure both storage directories and apply the migration before running the updated application.
 Open [http://localhost:3000](http://localhost:3000) in your browser.

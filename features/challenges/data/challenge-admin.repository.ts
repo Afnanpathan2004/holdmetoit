@@ -100,6 +100,7 @@ export async function createAdminChallenge(
         status: "UPCOMING",
         startAt: new Date(input.startAt),
         endAt: new Date(input.endAt),
+        eventBannerUrl: input.eventBannerUrl?.trim() || null,
         punishmentPfpUrl: input.punishmentPfpUrl?.trim() || null,
         hostId: actor.id,
         teams: {
@@ -351,7 +352,8 @@ export interface UpdateAdminChallengeInput {
   title: string;
   startAt: string;
   endAt: string;
-  punishmentPfpUrl?: string | null;
+  eventBannerUrl: string | null;
+  punishmentPfpUrl: string | null;
   teams: Array<{
     id?: string;
     name: string;
@@ -386,7 +388,8 @@ export async function updateAdminChallenge(
         title: input.title.trim(),
         startAt: new Date(input.startAt),
         endAt: new Date(input.endAt),
-        punishmentPfpUrl: input.punishmentPfpUrl?.trim() || null,
+        eventBannerUrl: input.eventBannerUrl,
+        punishmentPfpUrl: input.punishmentPfpUrl,
       },
     });
 

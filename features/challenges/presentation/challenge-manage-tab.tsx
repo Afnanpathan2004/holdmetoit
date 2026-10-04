@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -27,6 +27,8 @@ import {
   reassignParticipantTeamAction,
   updateChallengeAction,
 } from "@/features/challenges/api/challenge-admin.actions";
+import { discardChallengeImageUploadAction } from "@/features/challenges/api/punishment-pfp.actions";
+import { ChallengeImageInput } from "@/features/challenges/presentation/challenge-image-input";
 
 interface ChallengeManageTabProps {
   challenge: ChallengeScoreboardViewModel;
@@ -68,9 +70,28 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
     formatDateForInput(challenge.startAt),
   );
   const [endAt, setEndAt] = useState(() => formatDateForInput(challenge.endAt));
-  const [punishmentPfpUrl, setPunishmentPfpUrl] = useState(
-    challenge.punishmentWall.punishmentPfpUrl || "",
-  );
+  // Preserve raw saved values rather than normalized images or display-only fallbacks.
+  const [savedImages, setSavedImages] = useState({
+    eventBannerUrl: challenge.eventBannerUrl,
+    punishmentPfpUrl: challenge.punishmentPfpUrl,
+  });
+  const [eventBannerUrl, setEventBannerUrl] = useState<string | null>(challenge.eventBannerUrl);
+  const [punishmentPfpUrl, setPunishmentPfpUrl] = useState<string | null>(challenge.punishmentPfpUrl);
+  const [isBannerUploading, setIsBannerUploading] = useState(false);
+  const [isPfpUploading, setIsPfpUploading] = useState(false);
+  const [imageInputVersion, setImageInputVersion] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const isUploading = isBannerUploading || isPfpUploading;
+  const isBusy = isPending || isSaving || isUploading || isDeleting;
+
+  useEffect(() => {
+    setSavedImages({
+      eventBannerUrl: challenge.eventBannerUrl,
+      punishmentPfpUrl: challenge.punishmentPfpUrl,
+    });
+    setEventBannerUrl(challenge.eventBannerUrl);
+    setPunishmentPfpUrl(challenge.punishmentPfpUrl);
+  }, [challenge.id, challenge.eventBannerUrl, challenge.punishmentPfpUrl]);
 
   const [teams, setTeams] = useState<TeamFormItem[]>(() =>
     challenge.teams.map((t) => ({
@@ -93,10 +114,19 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
   });
 
   const handleReset = () => {
+    if (isBusy) return;
     setTitle(challenge.title);
     setStartAt(formatDateForInput(challenge.startAt));
     setEndAt(formatDateForInput(challenge.endAt));
-    setPunishmentPfpUrl(challenge.punishmentWall.punishmentPfpUrl || "");
+    const persistedUrls = new Set([savedImages.eventBannerUrl, savedImages.punishmentPfpUrl]);
+    for (const url of Array.from(new Set([eventBannerUrl, punishmentPfpUrl]))) {
+      if (url && !persistedUrls.has(url)) {
+        void discardChallengeImageUploadAction(url).catch(() => {});
+      }
+    }
+    setEventBannerUrl(savedImages.eventBannerUrl);
+    setPunishmentPfpUrl(savedImages.punishmentPfpUrl);
+    setImageInputVersion((version) => version + 1);
     setTeams(
       challenge.teams.map((t) => ({
         id: t.id,
@@ -171,6 +201,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
   };
 
   const handleSaveChallenge = () => {
+    if (isBusy) return;
     setFeedback(null);
     if (!title.trim()) {
       setFeedback({ type: "error", message: "Challenge title cannot be empty." });
@@ -190,31 +221,41 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
       });
       return;
     }
-
+    // Preserve legacy null, empty and whitespace image values exactly on unrelated edits.
+    setIsSaving(true);
     startTransition(async () => {
-      const res = await updateChallengeAction({
-        challengeId: challenge.id,
-        title: title.trim(),
-        startAt: new Date(startAt).toISOString(),
-        endAt: new Date(endAt).toISOString(),
-        punishmentPfpUrl: punishmentPfpUrl.trim() || null,
-        teams: teams.map((t) => ({
-          id: t.id,
-          name: t.name.trim(),
-          color: t.color,
-          iconEmoji: t.iconEmoji,
-          mascotUrl: t.mascotUrl,
-        })),
-      });
-
-      if (res.ok) {
-        setFeedback({
-          type: "success",
-          message: "Challenge details and house identities updated successfully.",
+      try {
+        const res = await updateChallengeAction({
+          challengeId: challenge.id,
+          title: title.trim(),
+          startAt: new Date(startAt).toISOString(),
+          endAt: new Date(endAt).toISOString(),
+          eventBannerUrl,
+          punishmentPfpUrl,
+          teams: teams.map((t) => ({
+            id: t.id,
+            name: t.name.trim(),
+            color: t.color,
+            iconEmoji: t.iconEmoji,
+            mascotUrl: t.mascotUrl,
+          })),
         });
-        router.refresh();
-      } else {
-        setFeedback({ type: "error", message: res.message });
+
+        if (res.ok) {
+          // Mark both uploads saved immediately, before refresh returns new props.
+          setSavedImages({ eventBannerUrl, punishmentPfpUrl });
+          setFeedback({
+            type: "success",
+            message: "Challenge details and house identities updated successfully.",
+          });
+          router.refresh();
+        } else {
+          setFeedback({ type: "error", message: res.message });
+        }
+      } catch {
+        setFeedback({ type: "error", message: "Could not update the challenge. Please try again." });
+      } finally {
+        setIsSaving(false);
       }
     });
   };
@@ -515,39 +556,34 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
           </button>
         </section>
 
-        {/* SECTION 3: ASSIGNED PUNISHMENT PFP ASSET */}
         <section className="space-y-5 pt-4 border-t border-[#262626]">
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
-            Assigned Punishment PFP Asset
+            Event Header Image
           </h3>
+          <ChallengeImageInput
+            key={`event-banner-${imageInputVersion}`}
+            purpose="event-banner"
+            value={eventBannerUrl}
+            savedValue={savedImages.eventBannerUrl}
+            onChange={setEventBannerUrl}
+            onBusyChange={setIsBannerUploading}
+            disabled={isPending || isSaving || isDeleting}
+          />
+        </section>
 
-          <div className="flex items-center gap-3">
-            {/* Forfeit Avatar Icon Box */}
-            <div className="h-12 w-12 rounded-2xl bg-[#292929] border border-[#383838] flex items-center justify-center shrink-0 overflow-hidden">
-              {punishmentPfpUrl && punishmentPfpUrl.startsWith("http") ? (
-                <Image
-                  src={punishmentPfpUrl}
-                  alt="Punishment PFP"
-                  width={48}
-                  height={48}
-                  className="h-full w-full object-cover"
-                  unoptimized
-                />
-              ) : (
-                <UserIcon className="h-5 w-5 text-[#868686]" />
-              )}
-            </div>
-
-            {/* Asset URL Input */}
-            <div className="flex-1">
-              <Input
-                value={punishmentPfpUrl}
-                onChange={(e) => setPunishmentPfpUrl(e.target.value)}
-                placeholder="https://holdme.to/assets/shame-bee.png"
-                className="h-12 rounded-2xl bg-[#292929] border-[#383838] focus:border-[#545454] text-white px-4 text-xs font-sans"
-              />
-            </div>
-          </div>
+        <section className="space-y-5 pt-4 border-t border-[#262626]">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
+            Assigned Punishment PFP
+          </h3>
+          <ChallengeImageInput
+            key={`punishment-pfp-${imageInputVersion}`}
+            purpose="punishment-pfp"
+            value={punishmentPfpUrl}
+            savedValue={savedImages.punishmentPfpUrl}
+            onChange={setPunishmentPfpUrl}
+            onBusyChange={setIsPfpUploading}
+            disabled={isPending || isSaving || isDeleting}
+          />
         </section>
 
         {/* SECTION 4: PARTICIPANT HOUSE ASSIGNMENTS (ROSTER REASSIGNMENT) */}
@@ -650,7 +686,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
             type="button"
             variant="outline"
             onClick={handleReset}
-            disabled={isPending}
+            disabled={isBusy}
             className="h-11 px-6 rounded-2xl border-[#383838] bg-[#1c1c1c] text-[#ffffff] hover:bg-[#292929] hover:text-[#ffffff] text-xs font-bold"
           >
             Cancel
@@ -659,10 +695,10 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
           <Button
             type="button"
             onClick={handleSaveChallenge}
-            disabled={isPending}
+            disabled={isBusy}
             className="h-11 px-6 rounded-2xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold shadow-sm gap-2"
           >
-            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {(isPending || isSaving) && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Save & Update Event
           </Button>
         </div>
@@ -685,6 +721,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
           <Button
             type="button"
             onClick={() => setShowDeleteModal(true)}
+            disabled={isBusy}
             className="h-11 px-5 rounded-2xl border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs shrink-0 gap-2"
           >
             <Trash2 className="h-3.5 w-3.5" />

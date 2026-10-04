@@ -16,6 +16,7 @@ async function main() {
     where: { id: SEED_CHALLENGE_ID },
     create: {
       id: SEED_CHALLENGE_ID,
+      eventBannerUrl: "/assets/challenge_hero_battle.jpg",
       title: "Midterm Reading Week Sprint",
       format: "TEAM_VS_TEAM",
       status: "UPCOMING",
@@ -24,6 +25,7 @@ async function main() {
       punishmentPfpUrl: "/prototype/assets/punishment_pfp.jpg",
     },
     update: {
+      eventBannerUrl: "/assets/challenge_hero_battle.jpg",
       title: "Midterm Reading Week Sprint",
       format: "TEAM_VS_TEAM",
       status: "UPCOMING",

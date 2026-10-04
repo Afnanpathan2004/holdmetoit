@@ -89,6 +89,8 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
           format: "TEAM_VS_TEAM",
           startAt: new Date("2026-09-01T08:00:00Z"),
           endAt: new Date("2026-09-08T08:00:00Z"),
+          eventBannerUrl: " https://example.com/banner.webp ",
+          punishmentPfpUrl: " https://example.com/pfp.png ",
           teams: [{ name: "Bees" }, { name: "Butterflies" }],
         },
         { id: "admin_1", username: "HostAdmin" },
@@ -100,9 +102,38 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
           data: expect.objectContaining({
             title: "Sprint Battle",
             status: "UPCOMING",
+            eventBannerUrl: "https://example.com/banner.webp",
+            punishmentPfpUrl: "https://example.com/pfp.png",
           }),
         }),
       );
+    });
+  });
+
+  describe("optional challenge creation images", () => {
+    it("stores null for omitted images without deriving a banner from a PFP", async () => {
+      vi.mocked(prisma.challenge.create).mockResolvedValue({
+        id: "c_new",
+        title: "Study Battle",
+        format: "SOLOS",
+        teams: [],
+      } as never);
+
+      await createAdminChallenge({
+        title: "Study Battle",
+        format: "SOLOS",
+        startAt: "2026-09-01T00:00:00.000Z",
+        endAt: "2026-09-08T00:00:00.000Z",
+        punishmentPfpUrl: "https://example.com/pfp.png",
+        teams: [{ name: "Solo" }],
+      }, { id: "admin_1", username: "HostAdmin" });
+
+      expect(prisma.challenge.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          eventBannerUrl: null,
+          punishmentPfpUrl: "https://example.com/pfp.png",
+        }),
+      }));
     });
   });
 
@@ -286,7 +317,8 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
           title: "New Title",
           startAt: "2026-09-02T00:00:00.000Z",
           endAt: "2026-09-09T00:00:00.000Z",
-          punishmentPfpUrl: "https://example.com/pfp.png",
+          eventBannerUrl: " https://example.com/banner.webp ",
+          punishmentPfpUrl: " https://example.com/pfp.png ",
           teams: [
             { id: "t_1", name: "Updated Bees", color: "#FFB066", iconEmoji: "🐝" },
             { name: "New Butterflies", color: "#A29DAE", iconEmoji: "🦋" },
@@ -296,9 +328,55 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
       );
 
       expect(result).toEqual(mockUpdated);
-      expect(prisma.challenge.update).toHaveBeenCalled();
+      expect(prisma.challenge.update).toHaveBeenCalledWith({
+        where: { id: "c_1" },
+        data: {
+          title: "New Title",
+          startAt: new Date("2026-09-02T00:00:00.000Z"),
+          endAt: new Date("2026-09-09T00:00:00.000Z"),
+          eventBannerUrl: " https://example.com/banner.webp ",
+          punishmentPfpUrl: " https://example.com/pfp.png ",
+        },
+      });
       expect(prisma.team.update).toHaveBeenCalled();
       expect(prisma.team.create).toHaveBeenCalled();
+    });
+  });
+
+  describe("nullable and legacy challenge image updates", () => {
+    it.each([
+      { eventBannerUrl: null, punishmentPfpUrl: null },
+      { eventBannerUrl: "https://example.com/banner.webp", punishmentPfpUrl: null },
+      { eventBannerUrl: null, punishmentPfpUrl: "https://example.com/pfp.png" },
+      { eventBannerUrl: "", punishmentPfpUrl: "   " },
+      { eventBannerUrl: "   ", punishmentPfpUrl: "" },
+      {
+        eventBannerUrl: "  https://example.com/legacy-banner.webp?download=banner.webp#preview  ",
+        punishmentPfpUrl: "  https://example.com/legacy-pfp.png#avatar  ",
+      },
+    ])("preserves unchanged raw legacy image fields independently (%j)", async (images) => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+        title: "Study Battle",
+        format: "SOLOS",
+        startAt: new Date("2026-09-01"),
+        endAt: new Date("2026-09-08"),
+        teams: [],
+        ...images,
+      } as never);
+      vi.mocked(prisma.challenge.update).mockResolvedValue({ id: "c_1" } as never);
+
+      await updateAdminChallenge("c_1", {
+        title: "Study Battle",
+        startAt: "2026-09-01T00:00:00.000Z",
+        endAt: "2026-09-08T00:00:00.000Z",
+        teams: [],
+        ...images,
+      }, { id: "admin_1", username: "HostAdmin" });
+
+      expect(prisma.challenge.update).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining(images),
+      }));
     });
   });
 

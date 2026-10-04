@@ -69,6 +69,21 @@ describe("challenge lifecycle domain (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
       expect(result.errors).toEqual({});
     });
 
+    it("accepts separate optional event banner and punishment PFP URLs", () => {
+      const result = validateChallengeCreation({
+        title: "Midterm Study Battle",
+        format: "SOLOS",
+        startAt: new Date("2026-09-01T08:00:00Z"),
+        endAt: new Date("2026-09-08T08:00:00Z"),
+        eventBannerUrl: "https://example.com/banner.webp",
+        punishmentPfpUrl: "https://example.com/pfp.png",
+        teams: [{ name: "Solo Grinders" }],
+      });
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual({});
+    });
+
     it("rejects short or empty titles", () => {
       const result = validateChallengeCreation({
         title: "Hi",

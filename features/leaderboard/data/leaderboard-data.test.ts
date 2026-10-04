@@ -13,6 +13,7 @@ describe("buildScoreboardViewModel", () => {
     status: "ACTIVE",
     startAt: new Date("2026-09-01T00:00:00.000Z"),
     endAt: new Date("2026-09-08T00:00:00.000Z"),
+    eventBannerUrl: "/assets/challenge_hero_battle.jpg",
     punishmentPfpUrl: "/assets/punishment_pfp.jpg",
     teams: [
       {
@@ -80,6 +81,83 @@ describe("buildScoreboardViewModel", () => {
   };
 
   const fixedNow = new Date("2026-09-04T12:00:00.000Z");
+
+  it("keeps differing hero and punishment image URLs separate", () => {
+    const url = "https://example.supabase.co/storage/v1/object/public/holdmetoit-bucket/event-banners/upload.png";
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, eventBannerUrl: url },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.heroImageUrl).toBe(url);
+    expect(result.eventBannerUrl).toBe(url);
+    expect(result.punishmentPfpUrl).toBe(mockChallenge.punishmentPfpUrl);
+    expect(result.punishmentWall.punishmentPfpUrl).toBe(mockChallenge.punishmentPfpUrl);
+    expect(result.currentUser.isLoggedIn).toBe(false);
+  });
+
+  it.each([null, "", "   "])("preserves the raw top-level PFP without the wall fallback (%s)", (url) => {
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, punishmentPfpUrl: url },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.punishmentPfpUrl).toBe(url);
+    expect(result.heroImageUrl).toBe(mockChallenge.eventBannerUrl);
+    expect(result.punishmentWall.punishmentPfpUrl).toBe(url ?? "/assets/punishment_pfp.jpg");
+  });
+
+  it.each([null, "", "   "])("does not use the PFP when the banner is missing (%s)", (url) => {
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, eventBannerUrl: url },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.heroImageUrl).toBeNull();
+    expect(result.eventBannerUrl).toBe(url);
+  });
+
+  it("retains whitespace in the raw banner while normalizing the hero", () => {
+    const url = "  https://example.com/legacy-banner.webp?download=banner.webp#preview  ";
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, eventBannerUrl: url },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.eventBannerUrl).toBe(url);
+    expect(result.heroImageUrl).toBe(url.trim());
+    expect(result.punishmentPfpUrl).toBe(mockChallenge.punishmentPfpUrl);
+  });
+
+  it("maps a replacement image without retaining the previous URL", () => {
+    const first = buildScoreboardViewModel(mockChallenge, undefined, fixedNow);
+    const replacementUrl = "https://example.supabase.co/storage/v1/object/public/holdmetoit-bucket/event-banners/replacement.webp";
+    const updated = buildScoreboardViewModel(
+      { ...mockChallenge, eventBannerUrl: replacementUrl },
+      undefined,
+      fixedNow,
+    );
+
+    expect(updated.heroImageUrl).toBe(replacementUrl);
+    expect(updated.heroImageUrl).not.toBe(first.heroImageUrl);
+    expect(updated.punishmentWall.punishmentPfpUrl).toBe(first.punishmentWall.punishmentPfpUrl);
+  });
+
+  it("does not change the hero when only the punishment PFP changes", () => {
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, punishmentPfpUrl: "https://example.com/replacement-pfp.png" },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.heroImageUrl).toBe(mockChallenge.eventBannerUrl);
+    expect(result.punishmentPfpUrl).toBe("https://example.com/replacement-pfp.png");
+    expect(result.punishmentWall.punishmentPfpUrl).toBe("https://example.com/replacement-pfp.png");
+  });
 
   it("correctly aggregates team scores and calculates lead margin", () => {
     const result = buildScoreboardViewModel(mockChallenge, "user-1", fixedNow);

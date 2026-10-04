@@ -98,6 +98,9 @@ export interface PunishmentWallData {
 export interface ChallengeScoreboardViewModel {
   id: string;
   title: string;
+  heroImageUrl: string | null;
+  eventBannerUrl: string | null;
+  punishmentPfpUrl: string | null;
   format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
   status: "UPCOMING" | "ACTIVE" | "COMPLETED";
   startAt: string;
@@ -124,6 +127,7 @@ export interface RawChallengePayload {
   status: "UPCOMING" | "ACTIVE" | "COMPLETED";
   startAt: Date;
   endAt: Date;
+  eventBannerUrl: string | null;
   punishmentPfpUrl: string | null;
   teams: Array<{
     id: string;
@@ -467,6 +471,9 @@ export function buildScoreboardViewModel(
   return {
     id: challenge.id,
     title: challenge.title,
+    heroImageUrl: challenge.eventBannerUrl?.trim() || null,
+    eventBannerUrl: challenge.eventBannerUrl,
+    punishmentPfpUrl: challenge.punishmentPfpUrl,
     format: challenge.format,
     status: challenge.status,
     startAt: challenge.startAt.toISOString(),
