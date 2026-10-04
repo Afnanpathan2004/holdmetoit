@@ -123,4 +123,38 @@ describe("enrollInChallengeAction (FEAT-CHAL-02)", () => {
       message: "Cannot join a challenge that has already ended.",
     });
   });
+
+  it("successfully enrolls without teamId as unassigned", async () => {
+    vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValue({
+      id: "u_1",
+    } as never);
+
+    vi.mocked(
+      participantRepoModule.enrollParticipantInChallenge,
+    ).mockResolvedValue({
+      id: "part_new",
+      userId: "u_1",
+      challengeId: "c_1",
+      teamId: null,
+      targetSeconds: 126000,
+    } as never);
+
+    const result = await enrollInChallengeAction({
+      challengeId: "c_1",
+      hours: 35,
+      minutes: 0,
+      seconds: 0,
+      leaveDays: 2,
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(
+      participantRepoModule.enrollParticipantInChallenge,
+    ).toHaveBeenCalledWith({
+      userId: "u_1",
+      challengeId: "c_1",
+      teamId: null,
+      targetSeconds: 126000,
+    });
+  });
 });

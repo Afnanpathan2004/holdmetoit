@@ -223,6 +223,50 @@ describe("participant repository", () => {
         }),
       ).rejects.toThrow("Team Solar is full (max 2 members).");
     });
+
+    it("successfully enrolls as unassigned when teamId is omitted or no-assigned", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+        status: "UPCOMING",
+      } as never);
+
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(null);
+
+      const createdParticipant = {
+        id: "part_unassigned",
+        userId: "u_1",
+        challengeId: "c_1",
+        teamId: null,
+        targetSeconds: 126000,
+        status: "NORMAL",
+      };
+
+      vi.mocked(prisma.challengeParticipant.create).mockResolvedValue(
+        createdParticipant as never,
+      );
+
+      const result = await enrollParticipantInChallenge({
+        challengeId: "c_1",
+        userId: "u_1",
+        targetSeconds: 126000,
+      });
+
+      expect(result).toEqual(createdParticipant);
+      expect(prisma.challengeParticipant.create).toHaveBeenCalledWith({
+        data: {
+          userId: "u_1",
+          challengeId: "c_1",
+          teamId: null,
+          targetSeconds: 126000,
+          status: "NORMAL",
+        },
+        include: {
+          team: true,
+          challenge: true,
+          user: true,
+        },
+      });
+    });
   });
 });
 

@@ -10,10 +10,11 @@ import { composeDurationSeconds } from "@/features/study-logs/domain/daily-log.v
 
 const enrollParticipantSchema = z.object({
   challengeId: z.string().min(1),
-  teamId: z.string().min(1),
+  teamId: z.string().optional(),
   hours: z.number().int().min(0).max(105).default(35),
   minutes: z.number().int().min(0).max(59).default(0),
   seconds: z.number().int().min(0).max(59).default(0),
+  leaveDays: z.number().int().min(0).max(30).optional(),
 });
 
 export type EnrollActionResult =
@@ -31,7 +32,7 @@ export async function enrollInChallengeAction(
       return {
         ok: false,
         code: "INVALID_INPUT",
-        message: "Please select a valid team and target duration.",
+        message: "Please enter a valid target duration.",
       };
     }
 
@@ -50,10 +51,15 @@ export async function enrollInChallengeAction(
       };
     }
 
+    const resolvedTeamId =
+      parsed.data.teamId && parsed.data.teamId !== "no-assigned"
+        ? parsed.data.teamId
+        : null;
+
     await enrollParticipantInChallenge({
       userId: user.id,
       challengeId: parsed.data.challengeId,
-      teamId: parsed.data.teamId,
+      teamId: resolvedTeamId,
       targetSeconds,
     });
 

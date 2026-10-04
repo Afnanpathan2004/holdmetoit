@@ -448,6 +448,40 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
         }),
       ).rejects.toThrow("Selected destination team does not belong to this challenge.");
     });
+
+    it("unassigns participant when newTeamId is no-assigned", async () => {
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue({
+        id: "part_1",
+        challengeId: "c_1",
+        teamId: "t_1",
+        team: { id: "t_1", name: "Bees" },
+        user: { id: "u_1", displayName: "Afnan", username: "afnan" },
+      } as never);
+
+      const mockUnassigned = {
+        id: "part_1",
+        teamId: null,
+        team: null,
+        user: { id: "u_1", displayName: "Afnan" },
+      };
+      vi.mocked(prisma.challengeParticipant.update).mockResolvedValue(
+        mockUnassigned as never,
+      );
+
+      const result = await reassignParticipantTeam({
+        participantId: "part_1",
+        newTeamId: "no-assigned",
+        reason: "Reset to unassigned",
+        admin: { id: "admin_1", username: "HostAdmin" },
+      });
+
+      expect(result).toEqual(mockUnassigned);
+      expect(prisma.challengeParticipant.update).toHaveBeenCalledWith({
+        where: { id: "part_1" },
+        data: { teamId: null },
+        include: { team: true, user: true },
+      });
+    });
   });
 
   describe("deleteAdminChallenge", () => {

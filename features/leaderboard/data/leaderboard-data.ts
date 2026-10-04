@@ -140,7 +140,7 @@ export interface RawChallengePayload {
   participants: Array<{
     id: string;
     userId: string;
-    teamId: string;
+    teamId: string | null;
     targetSeconds: number;
     status: "NORMAL" | "DEFICIT" | "EXCUSED" | "PUNISHED";
     user: {
@@ -193,7 +193,7 @@ export function buildScoreboardViewModel(
     const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
     return {
       participantId: p.id,
-      teamId: p.teamId,
+      teamId: p.teamId ?? "no-assigned",
       loggedSeconds: totalLoggedSeconds,
     };
   });
@@ -216,7 +216,9 @@ export function buildScoreboardViewModel(
 
   const companionCounts = new Map<string, number>();
   for (const p of challenge.participants) {
-    companionCounts.set(p.teamId, (companionCounts.get(p.teamId) ?? 0) + 1);
+    if (p.teamId) {
+      companionCounts.set(p.teamId, (companionCounts.get(p.teamId) ?? 0) + 1);
+    }
   }
 
   const teams: ScoreboardTeam[] = challenge.teams.map((team) => {
@@ -341,7 +343,7 @@ export function buildScoreboardViewModel(
       }
     }
 
-    const team = teamLookup.get(p.teamId);
+    const team = p.teamId ? teamLookup.get(p.teamId) : null;
 
     return {
       participantId: p.id,
@@ -350,10 +352,10 @@ export function buildScoreboardViewModel(
         p.user.displayName ?? p.user.name ?? p.user.username ?? "Anonymous",
       username: p.user.username,
       image: p.user.image,
-      teamId: p.teamId,
-      teamName: team?.name ?? "Independent",
+      teamId: p.teamId ?? "no-assigned",
+      teamName: team?.name ?? "Unassigned",
       teamColor: team?.color ?? null,
-      teamIcon: team?.iconEmoji ?? null,
+      teamIcon: team?.iconEmoji ?? "⏳",
       totalLoggedSeconds,
       totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
       targetSeconds: p.targetSeconds,
@@ -414,7 +416,7 @@ export function buildScoreboardViewModel(
         (evaluation.hoursDeficitSeconds > 0 || evaluation.incompleteGoals > 0);
 
     if (shouldFlag) {
-      const team = teamLookup.get(p.teamId);
+      const team = p.teamId ? teamLookup.get(p.teamId) : null;
       const hoursDeficitSeconds =
         p.punishmentRecord?.hoursDeficitSeconds ??
         evaluation.hoursDeficitSeconds;
@@ -435,8 +437,8 @@ export function buildScoreboardViewModel(
           p.user.displayName ?? p.user.name ?? p.user.username ?? "Anonymous",
         username: p.user.username,
         image: p.user.image,
-        teamName: team?.name ?? "Independent",
-        teamIcon: team?.iconEmoji ?? null,
+        teamName: team?.name ?? "Unassigned",
+        teamIcon: team?.iconEmoji ?? "⏳",
         hoursDeficitSeconds,
         hoursDeficitClock: formatSecondsToClock(hoursDeficitSeconds),
         incompleteGoalsCount,
@@ -502,8 +504,6 @@ export async function getChallengeScoreboard(
   challengeId: string,
   currentUserId?: string,
 ): Promise<ChallengeScoreboardViewModel | null> {
-  const challenges = await prisma.challenge.findMany();
-
   const challenge = await prisma.challenge.findUnique({
     where: { id: challengeId },
     include: {

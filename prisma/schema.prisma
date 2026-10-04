@@ -133,7 +133,7 @@ model ChallengeParticipant {
   id            String            @id @default(cuid())
   challengeId   String
   userId        String
-  teamId        String
+  teamId        String?
   targetSeconds Int               @default(0)
   status        ParticipantStatus @default(NORMAL)
 
@@ -142,7 +142,7 @@ model ChallengeParticipant {
 
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  team      Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   dailyStudyLogs   DailyStudyLog[]
   weeklyGoals      WeeklyGoal[]

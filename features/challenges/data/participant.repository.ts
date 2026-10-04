@@ -64,12 +64,34 @@ export async function findOwnedParticipant(
 export async function enrollParticipantInChallenge(params: {
   userId: string;
   challengeId: string;
-  teamId: string;
+  teamId?: string | null;
   targetSeconds?: number;
 }) {
-  const challenge = await prisma.challenge.findUnique({
-    where: { id: params.challengeId },
-  });
+  const hasTeam = Boolean(params.teamId && params.teamId !== "no-assigned");
+
+  const [challenge, existing, team] = await Promise.all([
+    prisma.challenge.findUnique({
+      where: { id: params.challengeId },
+    }),
+    prisma.challengeParticipant.findUnique({
+      where: {
+        challengeId_userId: {
+          challengeId: params.challengeId,
+          userId: params.userId,
+        },
+      },
+    }),
+    hasTeam
+      ? prisma.team.findUnique({
+          where: { id: params.teamId! },
+          include: {
+            _count: {
+              select: { participants: true },
+            },
+          },
+        })
+      : Promise.resolve(null),
+  ]);
 
   if (!challenge) {
     throw new Error("Challenge not found.");
@@ -79,43 +101,27 @@ export async function enrollParticipantInChallenge(params: {
     throw new Error("Cannot enroll in a completed challenge.");
   }
 
-  const existing = await prisma.challengeParticipant.findUnique({
-    where: {
-      challengeId_userId: {
-        challengeId: params.challengeId,
-        userId: params.userId,
-      },
-    },
-  });
-
   if (existing) {
     throw new Error("User is already enrolled in this challenge.");
   }
 
-  const team = await prisma.team.findUnique({
-    where: { id: params.teamId },
-    include: {
-      _count: {
-        select: { participants: true },
-      },
-    },
-  });
+  if (hasTeam) {
+    if (!team || team.challengeId !== params.challengeId) {
+      throw new Error("Selected team does not belong to this challenge.");
+    }
 
-  if (!team || team.challengeId !== params.challengeId) {
-    throw new Error("Selected team does not belong to this challenge.");
-  }
-
-  if (team.maxMembers && team._count.participants >= team.maxMembers) {
-    throw new Error(
-      `Team ${team.name} is full (max ${team.maxMembers} member${team.maxMembers === 1 ? "" : "s"}).`,
-    );
+    if (team.maxMembers && team._count.participants >= team.maxMembers) {
+      throw new Error(
+        `Team ${team.name} is full (max ${team.maxMembers} member${team.maxMembers === 1 ? "" : "s"}).`,
+      );
+    }
   }
 
   return prisma.challengeParticipant.create({
     data: {
       userId: params.userId,
       challengeId: params.challengeId,
-      teamId: params.teamId,
+      teamId: hasTeam ? params.teamId! : null,
       targetSeconds: params.targetSeconds ?? 0,
       status: "NORMAL",
     },

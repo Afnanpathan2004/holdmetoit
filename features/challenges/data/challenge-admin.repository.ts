@@ -274,35 +274,35 @@ export async function adminEnrollParticipant(params: {
   reason: string;
   admin: { id: string; username: string };
 }) {
-  const challenge = await prisma.challenge.findUnique({
-    where: { id: params.challengeId },
-  });
+  const [challenge, existing, team] = await Promise.all([
+    prisma.challenge.findUnique({
+      where: { id: params.challengeId },
+    }),
+    prisma.challengeParticipant.findUnique({
+      where: {
+        challengeId_userId: {
+          challengeId: params.challengeId,
+          userId: params.userId,
+        },
+      },
+    }),
+    prisma.team.findUnique({
+      where: { id: params.teamId },
+      include: {
+        _count: {
+          select: { participants: true },
+        },
+      },
+    }),
+  ]);
 
   if (!challenge) {
     throw new Error("Challenge not found.");
   }
 
-  const existing = await prisma.challengeParticipant.findUnique({
-    where: {
-      challengeId_userId: {
-        challengeId: params.challengeId,
-        userId: params.userId,
-      },
-    },
-  });
-
   if (existing) {
     throw new Error("User is already enrolled in this challenge.");
   }
-
-  const team = await prisma.team.findUnique({
-    where: { id: params.teamId },
-    include: {
-      _count: {
-        select: { participants: true },
-      },
-    },
-  });
 
   if (!team || team.challengeId !== params.challengeId) {
     throw new Error("Selected team does not belong to this challenge.");
@@ -477,6 +477,42 @@ export async function reassignParticipantTeam(params: {
     throw new Error("Participant not found.");
   }
 
+  const isUnassigning = params.newTeamId === "no-assigned" || !params.newTeamId;
+
+  if (isUnassigning) {
+    if (!participant.teamId) {
+      return participant;
+    }
+
+    const updatedParticipant = await prisma.challengeParticipant.update({
+      where: { id: params.participantId },
+      data: { teamId: null },
+      include: { team: true, user: true },
+    });
+
+    await recordAuditEvent({
+      actorId: params.admin.id,
+      actorUsername: params.admin.username,
+      actionType: "ROSTER_EDIT",
+      targetEntityId: participant.id,
+      targetEntityType: "PARTICIPANT",
+      challengeId: participant.challengeId,
+      previousValue: {
+        teamId: participant.teamId,
+        teamName: participant.team?.name ?? "Not Assigned",
+      },
+      newValue: {
+        teamId: null,
+        teamName: "Not Assigned",
+      },
+      auditReason:
+        params.reason?.trim() ||
+        `Host moved ${participant.user.displayName || participant.user.username} to unassigned roster`,
+    });
+
+    return updatedParticipant;
+  }
+
   if (participant.teamId === params.newTeamId) {
     return participant;
   }
@@ -516,15 +552,15 @@ export async function reassignParticipantTeam(params: {
     challengeId: participant.challengeId,
     previousValue: {
       teamId: participant.teamId,
-      teamName: participant.team.name,
+      teamName: participant.team?.name ?? "Not Assigned",
     },
     newValue: {
       teamId: updatedParticipant.teamId,
-      teamName: updatedParticipant.team.name,
+      teamName: updatedParticipant.team?.name ?? destinationTeam.name,
     },
     auditReason:
       params.reason?.trim() ||
-      `Host reassigned ${participant.user.displayName || participant.user.username} from ${participant.team.name} to ${destinationTeam.name}`,
+      `Host reassigned ${participant.user.displayName || participant.user.username} from ${participant.team?.name ?? "Not Assigned"} to ${destinationTeam.name}`,
   });
 
   return updatedParticipant;

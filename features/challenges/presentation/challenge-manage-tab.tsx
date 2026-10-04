@@ -607,7 +607,8 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
               {challenge.standings.map((participant) => {
                 const currentSelectedTeamId =
                   participantTeamMap[participant.participantId] ||
-                  participant.teamId;
+                  participant.teamId ||
+                  "no-assigned";
                 const isReassigning =
                   reassigningId === participant.participantId;
 
@@ -656,13 +657,19 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                           disabled={isReassigning}
                           className="h-10 pl-3 pr-8 rounded-xl bg-[#292929] border border-[#383838] focus:border-[#545454] text-xs font-semibold text-[#ffffff] appearance-none cursor-pointer focus:outline-none disabled:opacity-50"
                         >
+                          <option
+                            value="no-assigned"
+                            className="bg-[#1c1c1c] text-[#868686]"
+                          >
+                            ⏳ Not Assigned
+                          </option>
                           {teams.map((t) => (
                             <option
                               key={t.id || t.name}
                               value={t.id}
                               className="bg-[#1c1c1c] text-white"
                             >
-                              {t.iconEmoji} {t.name}
+                              {t.iconEmoji || "🛡️"} {t.name}
                             </option>
                           ))}
                         </select>

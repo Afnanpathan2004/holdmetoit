@@ -92,8 +92,8 @@ export async function getParticipantCockpit(
     challengeId: participant.challengeId,
     challengeTitle: participant.challenge.title,
     challengeStatus: participant.challenge.status,
-    teamName: participant.team.name,
-    teamIcon: participant.team.iconEmoji,
+    teamName: participant.team?.name ?? "Unassigned",
+    teamIcon: participant.team?.iconEmoji ?? "⏳",
     participant: {
       id: participant.id,
       userId: participant.userId,
