@@ -258,14 +258,29 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run test` exits 0 (46 test files, 517/517 tests green).
     - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
 
+### Session 41 — 2026-10-05
+- **Agent Role:** Participant UI & Admin Operations Agent
+- **Changes Completed (Admin Console Figma Alignment: Squircle Action Buttons & Events Header):**
+  - **Admin Action Buttons (`app/admin/page.tsx`):**
+    - Redesigned "Create Challenge" and "Change Accent Color" buttons from `rounded-full` pills to wide rounded squircle rectangles matching Figma:
+      - Width: `w-full sm:w-[253px]`, Height: `h-[74px]`.
+      - Border Radius: `rounded-[20px]`.
+      - Background & Borders: `bg-[#1d1d1d] hover:bg-[#262626] border border-[#2e2e2e]`.
+      - Typography & Icons: white text `text-[15px] font-medium`, `Plus` icon (`h-4 w-4 stroke-[2.5]`), and bright red filled circle `🔴` (`h-4 w-4 rounded-full bg-[#ff0000]`).
+  - **Navigation & Section Layout:**
+    - Placed `← Back` navigation with underline (`underline underline-offset-4`) on its own row above the action buttons.
+    - Updated "Events" header to feature a matching solid underline (`border-b-2 border-white pb-1.5 inline-block`).
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run test` exits 0 (46 test files, 517/517 tests green).
+    - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
+
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify In-Browser DEV Experience:** Start `npm run dev` and test:
-   - Configure `DEV_DISCORD_IDS='["<your_discord_snowflake_id>"]'` and `DISCORD_ADMIN_ROLE_IDS="<server_role_id>"` in `.env`.
-   - Log in via Discord OAuth as a developer; verify the cozy amber `DEV` badge appears in `UserNav` and "Admin Console" is accessible.
-   - Log in as a community admin holding the Discord server role; verify the `ADMIN` badge appears and admin features are unlocked.
-   - Log in as a regular member without the server role or dev ID; verify role is `PARTICIPANT`.
+1. **Verify In-Browser Experience:** Start `npm run dev` and navigate to `/admin`:
+   - Inspect the redesigned "Create Challenge" and "Change Accent Color" squircle buttons across desktop and mobile (360px+) viewports.
+   - Verify that clicking "Create Challenge" seamlessly routes to `/admin/challenges/new`.
 2. **Phase 1 Feature Roadmap:** Begin implementation of Yeolpumta (YPT) automated ingestion (`FEAT-LOG-03`) or Discord bot slash commands (`FEAT-DISC-03`) per `ROADMAP.md`.
 
