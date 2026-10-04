@@ -313,13 +313,75 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run typecheck` exits 0 (zero TypeScript errors).
     - `npm run build` succeeds cleanly with all routes compiled.
 
+### Session 37 — 2026-10-05
+- **Agent Role:** Participant UI & Tasks / Data & Identity Agent
+- **Changes Completed (Context Menu on Tasks and Categories for Editing & Deleting):**
+  - **Domain Validation (`features/tasks/domain/task.validation.ts` / Law L7):**
+    - Implemented `updateTaskSchema` (`{ taskId, title }`), `updateCategorySchema` (`{ categoryId, name }`), and `deleteCategorySchema` (`{ categoryId }`).
+    - Added unit test coverage for new schemas in `features/tasks/domain/task.validation.test.ts`.
+  - **Data Persistence Layer (`features/tasks/data/task.repository.ts`):**
+    - Implemented `updateTask` with user ownership verification.
+    - Implemented `updateCategory` with user ownership verification and duplicate name collision checking.
+    - Implemented `deleteCategory` which cascades deletion of all contained tasks via relational integrity.
+    - Added comprehensive unit tests in `features/tasks/data/task.repository.test.ts`.
+  - **Server Actions Layer (`features/tasks/api/task.actions.ts`):**
+    - Implemented authenticated `updateTaskAction`, `updateCategoryAction`, and `deleteCategoryAction` with session validation and revalidation of `/` and `/dashboard`.
+    - Added comprehensive unit tests in `features/tasks/api/task.actions.test.ts`.
+  - **Presentation Layer (`features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx`):**
+    - Implemented dual-trigger context menu support:
+      - **Right-Click (`onContextMenu`):** Native event handler on both category headers and task rows opening menu at click position.
+      - **3-Dots Options Trigger (`MoreVertical`):** Visible on hover for desktop and persistent on mobile (360px+ viewport) for accessibility.
+    - Added floating context menu container with click-outside and `Escape` key dismissal.
+    - Added **Edit Task Modal** with pre-filled title and instant optimistic UI update.
+    - Added **Rename Category Modal** with pre-filled name and instant optimistic UI update across both Daily and Weekly sections.
+    - Added **Delete Category Confirmation Modal** warning users before deleting a category and its tasks.
+    - Added component unit tests in `features/study-logs/presentation/cockpit/cockpit-tasks-section.test.tsx`.
+  - **Quality Gates:**
+    - `npm run test` exits 0 (42 test files, 481/481 tests green).
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run build` succeeds cleanly with all routes compiled.
+
+### Session 38 — 2026-10-05
+- **Agent Role:** Data & Identity / Participant UI Agent
+- **Changes Completed (Segregating Daily and Weekly Categories):**
+  - **Prisma Schema & PostgreSQL Migration (`prisma/`):**
+    - Added `taskType TaskType @default(DAILY) @map("task_type")` to `model Category` in `prisma/schema.prisma`.
+    - Updated unique constraint to `@@unique([userId, name, taskType])` and added index `@@index([userId, taskType])`.
+    - Generated and executed migration `20261005010000_add_task_type_to_categories` on Supabase PostgreSQL, gracefully migrating existing categories and duplicating any mixed categories to maintain referential integrity.
+  - **Domain Layer (`features/tasks/domain/` / Law L7):**
+    - Added `taskType: TaskType` to `CategoryItem` and `CategoryGroup` in `task.types.ts`.
+    - Added `taskType: taskTypeSchema.default("DAILY")` to `createCategorySchema` and optional `taskType` to `updateCategorySchema` in `task.validation.ts`.
+    - Set `CreateCategoryInput = z.input<typeof createCategorySchema>`.
+    - Verified pure domain validations in `task.validation.test.ts`.
+  - **Data Persistence Layer (`features/tasks/data/task.repository.ts`):**
+    - Updated `getUserCategorizedTasks` to populate `dailyCategories` strictly with `taskType === "DAILY"` and `weeklyCategories` strictly with `taskType === "WEEKLY"`, eliminating cross-contamination.
+    - Added automatic seeding of default `Category 1` for both `DAILY` and `WEEKLY` if missing.
+    - Updated `createTask` and `createCategory` to associate new categories with their respective `taskType`.
+    - Scoped `updateCategory` collision checks to `taskType`.
+    - Updated unit test suite in `task.repository.test.ts`.
+  - **Server Actions Layer (`features/tasks/api/task.actions.ts`):**
+    - Updated `createCategoryAction` to pass `taskType` to repository.
+    - Updated test suite in `task.actions.test.ts`.
+  - **Presentation Layer (`features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx`):**
+    - Segregated dropdown options: `dailyCategoryOptions` vs `weeklyCategoryOptions`.
+    - Filtered category selector inside Add Todo modal to strictly show categories matching `addModalType` (`daily` vs `weekly`).
+    - Initialized modal default `selectedCategory` to the first category of that specific type.
+    - Scoped context menu operations (rename and delete) to the active category type.
+    - Added unit test in `cockpit-tasks-section.test.tsx` asserting complete isolation between daily and weekly categories.
+  - **Quality Gates:**
+    - `npx prisma migrate status`: Database schema is fully migrated and in sync.
+    - `npm run test` exits 0 (42 test files, 485/485 tests green).
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
+
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify In-Browser Flow:** Start `npm run dev` and verify that the study log modal:
-   - Does NOT show the "Previously committed: HH:MM:SS" box.
-   - Hides the "Yesterday" toggle button when yesterday's hours have already been logged or if the event started today.
-   - Shows the "Yesterday" toggle button only when `isYesterdayMissed` is true.
-   - Successfully updates hours on submit and reflects updated hours in the input when reopened.
+1. **Verify In-Browser Experience:** Start `npm run dev` and test:
+   - Creating a new category in "Daily Todos" and verifying it never appears in "Weekly Todos".
+   - Creating a new category in "Weekly Todos" and verifying it never appears in "Daily Todos".
+   - Opening "Add more todos" under Daily/Weekly and checking that the category dropdown only shows categories for that respective section.
+   - Renaming or deleting a category in one section and verifying the other section remains unchanged.
 2. **Phase 1 Feature Roadmap:** Begin implementation of Yeolpumta (YPT) automated ingestion (`FEAT-LOG-03`) or Discord bot slash commands (`FEAT-DISC-03`) per `ROADMAP.md`.
+

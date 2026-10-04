@@ -16,6 +16,7 @@ export interface CategoryItem {
   id: string;
   userId: string;
   name: string;
+  taskType: TaskType;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +24,7 @@ export interface CategoryItem {
 export interface CategoryGroup {
   id: string;
   name: string;
+  taskType: TaskType;
   isCollapsed: boolean;
   tasks: TaskItem[];
 }

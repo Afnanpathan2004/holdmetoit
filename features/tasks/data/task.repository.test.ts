@@ -3,9 +3,12 @@ import { prisma } from "@/core/db";
 import {
   createCategory,
   createTask,
+  deleteCategory,
   deleteTask,
   getUserCategorizedTasks,
   toggleTask,
+  updateCategory,
+  updateTask,
 } from "./task.repository";
 
 vi.mock("@/core/db", () => {
@@ -14,6 +17,8 @@ vi.mock("@/core/db", () => {
       findMany: vi.fn(),
       findFirst: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     },
     task: {
       create: vi.fn(),
@@ -31,12 +36,13 @@ describe("task.repository", () => {
   });
 
   describe("getUserCategorizedTasks", () => {
-    it("returns categorized daily and weekly tasks", async () => {
+    it("returns strictly segregated daily and weekly categories", async () => {
       const mockCategories = [
         {
           id: "cat_1",
           userId: "user_1",
-          name: "Academics",
+          name: "Daily Academics",
+          taskType: "DAILY",
           createdAt: new Date("2026-10-01"),
           updatedAt: new Date("2026-10-01"),
           tasks: [
@@ -51,15 +57,25 @@ describe("task.repository", () => {
               updatedAt: new Date("2026-10-01"),
               completedAt: new Date("2026-10-01"),
             },
+          ],
+        },
+        {
+          id: "cat_2",
+          userId: "user_1",
+          name: "Weekly Milestones",
+          taskType: "WEEKLY",
+          createdAt: new Date("2026-10-02"),
+          updatedAt: new Date("2026-10-02"),
+          tasks: [
             {
               id: "t_2",
               userId: "user_1",
-              categoryId: "cat_1",
+              categoryId: "cat_2",
               title: "Weekly physics problem set",
               taskType: "WEEKLY",
               isComplete: false,
-              createdAt: new Date("2026-10-01"),
-              updatedAt: new Date("2026-10-01"),
+              createdAt: new Date("2026-10-02"),
+              updatedAt: new Date("2026-10-02"),
               completedAt: null,
             },
           ],
@@ -70,27 +86,47 @@ describe("task.repository", () => {
 
       const result = await getUserCategorizedTasks("user_1");
 
-      expect(result.categories).toHaveLength(1);
+      expect(result.categories).toHaveLength(2);
+
+      // Verify DAILY categories contain only DAILY category and tasks
+      expect(result.dailyCategories).toHaveLength(1);
+      expect(result.dailyCategories[0].name).toBe("Daily Academics");
       expect(result.dailyCategories[0].tasks).toHaveLength(1);
       expect(result.dailyCategories[0].tasks[0].title).toBe("Daily math review");
+
+      // Verify WEEKLY categories contain only WEEKLY category and tasks
+      expect(result.weeklyCategories).toHaveLength(1);
+      expect(result.weeklyCategories[0].name).toBe("Weekly Milestones");
       expect(result.weeklyCategories[0].tasks).toHaveLength(1);
       expect(result.weeklyCategories[0].tasks[0].title).toBe("Weekly physics problem set");
+
       expect(result.totalDailyTasks).toBe(1);
       expect(result.completedDailyTasks).toBe(1);
       expect(result.totalWeeklyTasks).toBe(1);
       expect(result.completedWeeklyTasks).toBe(0);
     });
 
-    it("seeds default Category 1 if user has no categories", async () => {
+    it("seeds default Category 1 for both DAILY and WEEKLY if user has no categories", async () => {
       vi.mocked(prisma.category.findMany).mockResolvedValue([] as never);
-      vi.mocked(prisma.category.create).mockResolvedValue({
-        id: "cat_default",
-        userId: "user_new",
-        name: "Category 1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        tasks: [],
-      } as never);
+      vi.mocked(prisma.category.create)
+        .mockResolvedValueOnce({
+          id: "cat_default_daily",
+          userId: "user_new",
+          name: "Category 1",
+          taskType: "DAILY",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          tasks: [],
+        } as never)
+        .mockResolvedValueOnce({
+          id: "cat_default_weekly",
+          userId: "user_new",
+          name: "Category 1",
+          taskType: "WEEKLY",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          tasks: [],
+        } as never);
 
       const result = await getUserCategorizedTasks("user_new");
 
@@ -99,11 +135,22 @@ describe("task.repository", () => {
           data: expect.objectContaining({
             userId: "user_new",
             name: "Category 1",
+            taskType: "DAILY",
           }),
         }),
       );
-      expect(result.categories).toHaveLength(1);
-      expect(result.categories[0].name).toBe("Category 1");
+      expect(prisma.category.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: "user_new",
+            name: "Category 1",
+            taskType: "WEEKLY",
+          }),
+        }),
+      );
+      expect(result.categories).toHaveLength(2);
+      expect(result.dailyCategories).toHaveLength(1);
+      expect(result.weeklyCategories).toHaveLength(1);
     });
   });
 
@@ -165,7 +212,7 @@ describe("task.repository", () => {
 
       expect(prisma.category.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: { userId: "user_1", name: "Biology" },
+          data: { userId: "user_1", name: "Biology", taskType: "WEEKLY" },
         }),
       );
       expect(prisma.task.create).toHaveBeenCalledWith(
@@ -245,17 +292,179 @@ describe("task.repository", () => {
   });
 
   describe("createCategory", () => {
-    it("returns existing category if already present", async () => {
-      const existing = { id: "cat_exist", name: "Chemistry" };
+    it("returns existing category if already present with same taskType", async () => {
+      const existing = { id: "cat_exist", name: "Chemistry", taskType: "DAILY" };
       vi.mocked(prisma.category.findFirst).mockResolvedValue(existing as never);
 
       const result = await createCategory({
         userId: "user_1",
         name: "Chemistry",
+        taskType: "DAILY",
       });
 
       expect(result).toEqual(existing);
       expect(prisma.category.create).not.toHaveBeenCalled();
+    });
+
+    it("creates a new category with given taskType if not existing", async () => {
+      vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+      const created = { id: "cat_created", name: "Physics", taskType: "WEEKLY" };
+      vi.mocked(prisma.category.create).mockResolvedValue(created as never);
+
+      const result = await createCategory({
+        userId: "user_1",
+        name: "Physics",
+        taskType: "WEEKLY",
+      });
+
+      expect(result).toEqual(created);
+      expect(prisma.category.create).toHaveBeenCalledWith({
+        data: {
+          userId: "user_1",
+          name: "Physics",
+          taskType: "WEEKLY",
+        },
+      });
+    });
+  });
+
+  describe("updateTask", () => {
+    it("updates task title when owned by user", async () => {
+      vi.mocked(prisma.task.findFirst).mockResolvedValue({
+        id: "task_1",
+        userId: "user_1",
+        title: "Old title",
+      } as never);
+      vi.mocked(prisma.task.update).mockResolvedValue({
+        id: "task_1",
+        title: "New title",
+      } as never);
+
+      const result = await updateTask({
+        taskId: "task_1",
+        userId: "user_1",
+        title: "  New title  ",
+      });
+
+      expect(result).toEqual({ id: "task_1", title: "New title" });
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: "task_1" },
+        data: { title: "New title" },
+        include: { category: true },
+      });
+    });
+
+    it("returns null if task does not exist or not owned by user", async () => {
+      vi.mocked(prisma.task.findFirst).mockResolvedValue(null);
+
+      const result = await updateTask({
+        taskId: "task_99",
+        userId: "user_1",
+        title: "New title",
+      });
+
+      expect(result).toBeNull();
+      expect(prisma.task.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateCategory", () => {
+    it("updates category name when owned by user and not colliding", async () => {
+      vi.mocked(prisma.category.findFirst)
+        .mockResolvedValueOnce({
+          id: "cat_1",
+          userId: "user_1",
+          name: "Old Name",
+          taskType: "DAILY",
+        } as never)
+        .mockResolvedValueOnce(null); // No collision
+
+      vi.mocked(prisma.category.update).mockResolvedValue({
+        id: "cat_1",
+        name: "New Name",
+      } as never);
+
+      const result = await updateCategory({
+        categoryId: "cat_1",
+        userId: "user_1",
+        name: "New Name",
+      });
+
+      expect(result).toEqual({ id: "cat_1", name: "New Name" });
+      expect(prisma.category.update).toHaveBeenCalledWith({
+        where: { id: "cat_1" },
+        data: { name: "New Name" },
+      });
+    });
+
+    it("returns null if category not found", async () => {
+      vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+
+      const result = await updateCategory({
+        categoryId: "cat_99",
+        userId: "user_1",
+        name: "New Name",
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it("throws error if new category name already exists for user in same taskType", async () => {
+      vi.mocked(prisma.category.findFirst)
+        .mockResolvedValueOnce({
+          id: "cat_1",
+          userId: "user_1",
+          name: "Category 1",
+          taskType: "DAILY",
+        } as never)
+        .mockResolvedValueOnce({
+          id: "cat_2",
+          userId: "user_1",
+          name: "Category 2",
+          taskType: "DAILY",
+        } as never); // Collision!
+
+      await expect(
+        updateCategory({
+          categoryId: "cat_1",
+          userId: "user_1",
+          name: "Category 2",
+        }),
+      ).rejects.toThrow('Category "Category 2" already exists.');
+    });
+  });
+
+  describe("deleteCategory", () => {
+    it("deletes category when owned by user", async () => {
+      vi.mocked(prisma.category.findFirst).mockResolvedValue({
+        id: "cat_del",
+        userId: "user_1",
+      } as never);
+      vi.mocked(prisma.category.delete).mockResolvedValue({
+        id: "cat_del",
+      } as never);
+
+      const result = await deleteCategory({
+        categoryId: "cat_del",
+        userId: "user_1",
+      });
+
+      expect(result).toEqual({ id: "cat_del" });
+      expect(prisma.category.delete).toHaveBeenCalledWith({
+        where: { id: "cat_del" },
+      });
+    });
+
+    it("returns null if category not found", async () => {
+      vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+
+      const result = await deleteCategory({
+        categoryId: "cat_missing",
+        userId: "user_1",
+      });
+
+      expect(result).toBeNull();
+      expect(prisma.category.delete).not.toHaveBeenCalled();
     });
   });
 });

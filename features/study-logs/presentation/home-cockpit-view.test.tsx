@@ -49,11 +49,12 @@ describe("HomeCockpitView", () => {
       canLogStudyTime: true,
       isReadOnly: false,
       userTasks: {
-        categories: [{ id: "cat-1", userId: "user-1", name: "Deep Work", createdAt: new Date(), updatedAt: new Date() }],
+        categories: [{ id: "cat-1", userId: "user-1", name: "Deep Work", taskType: "DAILY", createdAt: new Date(), updatedAt: new Date() }],
         dailyCategories: [
           {
             id: "cat-1",
             name: "Deep Work",
+            taskType: "DAILY",
             isCollapsed: false,
             tasks: [
               {
@@ -72,8 +73,9 @@ describe("HomeCockpitView", () => {
         ],
         weeklyCategories: [
           {
-            id: "cat-1",
-            name: "Deep Work",
+            id: "cat-2",
+            name: "Sprint Goals",
+            taskType: "WEEKLY",
             isCollapsed: false,
             tasks: [],
           },
