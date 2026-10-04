@@ -682,7 +682,7 @@ export function HomeCockpitView({
         );
       })()}
 
-      {cockpit && effectiveTargetSeconds > 0 && (
+      {cockpit && cockpit.challengeStatus === "ACTIVE" && effectiveTargetSeconds > 0 && (
         <div className="rounded-2xl border border-[#262626] bg-[#141414] p-5 sm:p-6 shadow-md space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
