@@ -185,7 +185,7 @@ export function HomeCockpitView({
 
   const categoryOptions = Array.from(
     new Set([
-      ...(effectiveUserTasks?.categories.map((c) => c.name) ?? []),
+      ...(effectiveUserTasks?.categories?.map((c) => c.name) ?? []),
       ...dailyCategories.map((c) => c.name),
       ...weeklyCategories.map((c) => c.name),
       "Category 1",
@@ -193,7 +193,7 @@ export function HomeCockpitView({
   );
 
   const categoryNameToId = new Map(
-    effectiveUserTasks?.categories.map((c) => [c.name, c.id]) ?? [],
+    effectiveUserTasks?.categories?.map((c) => [c.name, c.id]) ?? [],
   );
 
   const toggleDailyCollapse = (index: number) => {
@@ -699,9 +699,9 @@ export function HomeCockpitView({
               {cockpit.catchUp && cockpit.catchUp.deficitSeconds > 0 ? (
                 <div className="rounded-xl border border-[#ef4444]/40 bg-[#401010] px-3 py-1.5 text-xs text-[#ff5757]">
                   <span className="font-semibold">Deficit:</span>{" "}
-                  <span className="font-sans font-sans-tabular">-{formatSecondsToClock(cockpit.catchUp.deficitSeconds)}</span>
+                  <span className="font-sans font-sans-tabular">-{formatSecondsToClock(Math.round(cockpit.catchUp.deficitSeconds))}</span>
                   {cockpit.catchUp.paceSecondsPerDay ? (
-                    <> (need <span className="font-sans font-sans-tabular">{formatSecondsToClock(cockpit.catchUp.paceSecondsPerDay)}</span>/day)</>
+                    <> (need <span className="font-sans font-sans-tabular">{formatSecondsToClock(Math.round(cockpit.catchUp.paceSecondsPerDay))}</span>/day)</>
                   ) : null}
                 </div>
               ) : (
