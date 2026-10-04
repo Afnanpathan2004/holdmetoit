@@ -13,6 +13,7 @@ describe("buildScoreboardViewModel", () => {
     status: "ACTIVE",
     startAt: new Date("2026-09-01T00:00:00.000Z"),
     endAt: new Date("2026-09-08T00:00:00.000Z"),
+    eventBannerUrl: "/assets/challenge_hero_battle.jpg",
     punishmentPfpUrl: "/assets/punishment_pfp.jpg",
     teams: [
       {
@@ -50,10 +51,6 @@ describe("buildScoreboardViewModel", () => {
           { durationSeconds: 16_200 }, // 4h30m
           { durationSeconds: 18_900 }, // 5h15m
         ],
-        weeklyGoals: [
-          { id: "g1", description: "Read Ch 1-3", completed: true },
-          { id: "g2", description: "Past paper 1", completed: true },
-        ],
       },
       {
         id: "part-2",
@@ -71,15 +68,88 @@ describe("buildScoreboardViewModel", () => {
         dailyStudyLogs: [
           { durationSeconds: 7_200 }, // 2h
         ],
-        weeklyGoals: [
-          { id: "g3", description: "Chemistry problem set", completed: false },
-          { id: "g4", description: "Bio notes", completed: false },
-        ],
       },
     ],
   };
 
   const fixedNow = new Date("2026-09-04T12:00:00.000Z");
+
+  it("keeps differing hero and punishment image URLs separate", () => {
+    const url = "https://example.supabase.co/storage/v1/object/public/holdmetoit-bucket/event-banners/upload.png";
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, eventBannerUrl: url },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.heroImageUrl).toBe(url);
+    expect(result.eventBannerUrl).toBe(url);
+    expect(result.punishmentPfpUrl).toBe(mockChallenge.punishmentPfpUrl);
+    expect(result.punishmentWall.punishmentPfpUrl).toBe(mockChallenge.punishmentPfpUrl);
+    expect(result.currentUser.isLoggedIn).toBe(false);
+  });
+
+  it.each([null, "", "   "])("preserves the raw top-level PFP without the wall fallback (%s)", (url) => {
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, punishmentPfpUrl: url },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.punishmentPfpUrl).toBe(url);
+    expect(result.heroImageUrl).toBe(mockChallenge.eventBannerUrl);
+    expect(result.punishmentWall.punishmentPfpUrl).toBe(url ?? "/assets/punishment_pfp.jpg");
+  });
+
+  it.each([null, "", "   "])("does not use the PFP when the banner is missing (%s)", (url) => {
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, eventBannerUrl: url },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.heroImageUrl).toBeNull();
+    expect(result.eventBannerUrl).toBe(url);
+  });
+
+  it("retains whitespace in the raw banner while normalizing the hero", () => {
+    const url = "  https://example.com/legacy-banner.webp?download=banner.webp#preview  ";
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, eventBannerUrl: url },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.eventBannerUrl).toBe(url);
+    expect(result.heroImageUrl).toBe(url.trim());
+    expect(result.punishmentPfpUrl).toBe(mockChallenge.punishmentPfpUrl);
+  });
+
+  it("maps a replacement image without retaining the previous URL", () => {
+    const first = buildScoreboardViewModel(mockChallenge, undefined, fixedNow);
+    const replacementUrl = "https://example.supabase.co/storage/v1/object/public/holdmetoit-bucket/event-banners/replacement.webp";
+    const updated = buildScoreboardViewModel(
+      { ...mockChallenge, eventBannerUrl: replacementUrl },
+      undefined,
+      fixedNow,
+    );
+
+    expect(updated.heroImageUrl).toBe(replacementUrl);
+    expect(updated.heroImageUrl).not.toBe(first.heroImageUrl);
+    expect(updated.punishmentWall.punishmentPfpUrl).toBe(first.punishmentWall.punishmentPfpUrl);
+  });
+
+  it("does not change the hero when only the punishment PFP changes", () => {
+    const result = buildScoreboardViewModel(
+      { ...mockChallenge, punishmentPfpUrl: "https://example.com/replacement-pfp.png" },
+      undefined,
+      fixedNow,
+    );
+
+    expect(result.heroImageUrl).toBe(mockChallenge.eventBannerUrl);
+    expect(result.punishmentPfpUrl).toBe("https://example.com/replacement-pfp.png");
+    expect(result.punishmentWall.punishmentPfpUrl).toBe("https://example.com/replacement-pfp.png");
+  });
 
   it("correctly aggregates team scores and calculates lead margin", () => {
     const result = buildScoreboardViewModel(mockChallenge, "user-1", fixedNow);
@@ -92,14 +162,23 @@ describe("buildScoreboardViewModel", () => {
 
     expect(bees?.totalLoggedSeconds).toBe(35_100);
     expect(bees?.isLeader).toBe(true);
+    expect(bees?.targetSeconds).toBe(126_000);
+    expect(bees?.targetHours).toBe(35);
+    expect(bees?.completionPercentage).toBe(28); // 35100 / 126000 = 27.85% -> 28%
+
     expect(butterflies?.totalLoggedSeconds).toBe(7_200);
     expect(butterflies?.isLeader).toBe(false);
+    expect(butterflies?.targetSeconds).toBe(126_000);
+    expect(butterflies?.targetHours).toBe(35);
+    expect(butterflies?.completionPercentage).toBe(6); // 7200 / 126000 = 5.71% -> 6%
 
     // Match banner
     expect(result.matchHeader.hasMatchup).toBe(true);
     expect(result.matchHeader.leaderSide).toBe("a");
     expect(result.matchHeader.leadMarginSeconds).toBe(27_900); // 35100 - 7200 = 27900
     expect(result.matchHeader.leaderTeamId).toBe("team-bees");
+    expect(result.matchHeader.ratioPercentageA).toBe(83); // 35100 / (35100+7200) = 82.978% -> 83%
+    expect(result.matchHeader.ratioPercentageB).toBe(17);
   });
 
   it("sorts participant standings descending by logged seconds", () => {
@@ -120,7 +199,7 @@ describe("buildScoreboardViewModel", () => {
     // AuraStudier also hasn't met 35h yet (has 35100s) during ACTIVE sprint
     const sloth = result.punishmentWall.flaggedMembers.find((m) => m.displayName === "SlothBrain");
     expect(sloth).toBeDefined();
-    expect(sloth?.incompleteGoalsCount).toBe(2);
+    expect(sloth?.incompleteGoalsCount).toBe(0);
     expect(sloth?.hoursDeficitSeconds).toBe(118_800);
   });
 
@@ -167,6 +246,114 @@ describe("buildScoreboardViewModel", () => {
     expect(result.standings).toEqual([]);
     expect(result.punishmentWall.flaggedMembers).toEqual([]);
     expect(result.matchHeader.leadMarginSeconds).toBe(0);
+    expect(result.matchHeader.ratioPercentageA).toBe(0);
+    expect(result.matchHeader.ratioPercentageB).toBe(0);
     expect(result.teams[0].totalLoggedSeconds).toBe(0);
+    expect(result.teams[0].targetSeconds).toBe(0);
+    expect(result.teams[0].targetHours).toBe(0);
+    expect(result.teams[0].completionPercentage).toBe(0);
+  });
+
+  it("calculates 100% share for Team A and 0% for Team B when Team B has zero logged hours", () => {
+    const oneSidedChallenge: RawChallengePayload = {
+      ...mockChallenge,
+      participants: [
+        {
+          id: "part-1",
+          userId: "user-1",
+          teamId: "team-bees",
+          targetSeconds: 126_000,
+          status: "NORMAL",
+          user: {
+            id: "user-1",
+            displayName: "SoloWorker",
+            username: "solo",
+            name: null,
+            image: null,
+          },
+          dailyStudyLogs: [{ durationSeconds: 25_200 }], // 7h
+        },
+        {
+          id: "part-2",
+          userId: "user-2",
+          teamId: "team-butterflies",
+          targetSeconds: 126_000,
+          status: "NORMAL",
+          user: {
+            id: "user-2",
+            displayName: "ZeroWorker",
+            username: "zero",
+            name: null,
+            image: null,
+          },
+          dailyStudyLogs: [], // 0h
+        },
+      ],
+    };
+
+    const result = buildScoreboardViewModel(oneSidedChallenge, undefined, fixedNow);
+
+    expect(result.matchHeader.ratioPercentageA).toBe(100);
+    expect(result.matchHeader.ratioPercentageB).toBe(0);
+
+    const bees = result.teams.find((t) => t.id === "team-bees");
+    const butterflies = result.teams.find((t) => t.id === "team-butterflies");
+
+    expect(bees?.completionPercentage).toBe(20); // 25200 / 126000 = 20%
+    expect(butterflies?.completionPercentage).toBe(0);
+  });
+
+  describe("countdown and dynamic lifecycle status", () => {
+    it("calculates daysRemaining against startAt when challenge is UPCOMING (e.g. tomorrow = 1 day left)", () => {
+      // Challenge starts tomorrow Oct 5 and ends Oct 12
+      const upcomingChallenge: RawChallengePayload = {
+        ...mockChallenge,
+        status: undefined,
+        startAt: new Date("2026-10-05T00:00:00.000Z"),
+        endAt: new Date("2026-10-12T00:00:00.000Z"),
+      };
+
+      // Current time is Oct 4
+      const nowOct4 = new Date("2026-10-04T12:00:00.000Z");
+      const result = buildScoreboardViewModel(upcomingChallenge, undefined, nowOct4);
+
+      expect(result.status).toBe("UPCOMING");
+      // Must be 1 day left, NOT 8 days left!
+      expect(result.daysRemaining).toBe(1);
+      expect(result.currentDayNumber).toBe(0);
+      expect(result.timeRemainingHuman).toContain("Starts in");
+    });
+
+    it("calculates daysRemaining as 0 and starts today when current time is kickoff day before startAt", () => {
+      const upcomingChallenge: RawChallengePayload = {
+        ...mockChallenge,
+        status: undefined,
+        startAt: new Date("2026-10-05T18:00:00.000Z"),
+        endAt: new Date("2026-10-12T00:00:00.000Z"),
+      };
+
+      const nowKickoffDay = new Date("2026-10-05T08:00:00.000Z");
+      const result = buildScoreboardViewModel(upcomingChallenge, undefined, nowKickoffDay);
+
+      expect(result.status).toBe("UPCOMING");
+      expect(result.daysRemaining).toBe(0);
+      expect(result.timeRemainingHuman).toContain("Starts in");
+    });
+
+    it("calculates daysRemaining against endAt when challenge is ACTIVE", () => {
+      const activeChallenge: RawChallengePayload = {
+        ...mockChallenge,
+        status: undefined,
+        startAt: new Date("2026-10-01T00:00:00.000Z"),
+        endAt: new Date("2026-10-08T00:00:00.000Z"),
+      };
+
+      const midDate = new Date("2026-10-04T12:00:00.000Z");
+      const result = buildScoreboardViewModel(activeChallenge, undefined, midDate);
+
+      expect(result.status).toBe("ACTIVE");
+      expect(result.daysRemaining).toBe(4);
+      expect(result.currentDayNumber).toBe(4);
+    });
   });
 });

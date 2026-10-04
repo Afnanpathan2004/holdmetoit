@@ -9,11 +9,15 @@ import {
   kickoffChallenge,
   lockChallengeResults,
 } from "@/features/challenges/data/challenge-admin.repository";
-import { canEditDeclarations, canLogStudyTime } from "@/features/declarations/domain/declaration-lock";
+import {
+  calculateChallengeStatus,
+  canEditDeclarations,
+  canLogStudyTime,
+} from "@/features/challenges/domain/challenge-lifecycle";
 import {
   validateWeeklyGoalDescriptions,
   validateWeeklyTargetSeconds,
-} from "@/features/declarations/domain/weekly-goals.validation";
+} from "@/features/challenges/domain/target-hours.validation";
 import { buildScoreboardViewModel, type RawChallengePayload } from "@/features/leaderboard/data/leaderboard-data";
 import {
   calculateRemainingDeficit,
@@ -76,6 +80,7 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
         status: "ACTIVE",
         startAt: new Date("2026-09-01T08:00:00Z"),
         endAt: new Date("2026-09-08T08:00:00Z"),
+        eventBannerUrl: "/assets/challenge_hero_battle.jpg",
         punishmentPfpUrl: "/prototype/assets/punishment_pfp.jpg",
         teams: [
           { id: "t_bees", name: "Honey Bees", color: "#d9822b", iconEmoji: "🐝", mascotUrl: null, sortOrder: 0 },
@@ -87,6 +92,7 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
       const spectatorView = buildScoreboardViewModel(rawChallenge, undefined, new Date("2026-09-04T08:00:00Z"));
       expect(spectatorView.currentUser.isLoggedIn).toBe(false);
       expect(spectatorView.currentUser.isEnrolled).toBe(false);
+      expect(spectatorView.heroImageUrl).toBe("/assets/challenge_hero_battle.jpg");
       expect(spectatorView.punishmentWall.punishmentPfpUrl).toBe("/prototype/assets/punishment_pfp.jpg");
 
       // 2. User clicks 'Login with Discord' and Discord profile is mapped
@@ -113,7 +119,8 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
         id: "chal_created",
         title: "Bees vs Butterflies",
         format: "TEAM_VS_TEAM" as const,
-        status: "UPCOMING" as const,
+        startAt: new Date("2026-09-01T08:00:00Z"),
+        endAt: new Date("2026-09-08T08:00:00Z"),
         teams: [
           { id: "t_1", name: "Honey Bees", maxMembers: null },
           { id: "t_2", name: "Lavender Butterflies", maxMembers: null },
@@ -128,6 +135,7 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
           format: "TEAM_VS_TEAM",
           startAt: new Date("2026-09-01T08:00:00Z"),
           endAt: new Date("2026-09-08T08:00:00Z"),
+          eventBannerUrl: "/assets/challenge_hero_battle.jpg",
           punishmentPfpUrl: "/prototype/assets/punishment_pfp.jpg",
           teams: [
             { name: "Honey Bees", color: "#d9822b", iconEmoji: "🐝" },
@@ -137,7 +145,7 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
         { id: "admin_host", username: "HostMod" },
       );
 
-      expect(challenge.status).toBe("UPCOMING");
+      expect(calculateChallengeStatus(challenge, new Date("2026-08-31T08:00:00Z"))).toBe("UPCOMING");
       expect(challenge.teams).toHaveLength(2);
 
       // Verify audit log recorded creation event (FEAT-AUDIT-01)
@@ -169,11 +177,13 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
       // 2. Host triggers kickoff
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "chal_kickoff",
-        status: "UPCOMING",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
       vi.mocked(prisma.challenge.update).mockResolvedValue({
         id: "chal_kickoff",
-        status: "ACTIVE",
+        startAt: new Date(Date.now() - 3600000),
+        endAt: new Date(Date.now() + 7 * 86400000),
       } as never);
 
       const activeChallenge = await kickoffChallenge("chal_kickoff", {
@@ -305,7 +315,8 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
       // 2. Host locks results
       vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
         id: "chal_complete",
-        status: "ACTIVE",
+        startAt: new Date(Date.now() - 7 * 86400000),
+        endAt: new Date(Date.now() + 86400000),
         participants: [
           {
             id: "part_1",
@@ -320,7 +331,8 @@ describe("HoldMeToIt E2E Quality Matrix Verification (Journeys J1–J6)", () => 
 
       vi.mocked(prisma.challenge.update).mockResolvedValue({
         id: "chal_complete",
-        status: "COMPLETED",
+        startAt: new Date(Date.now() - 7 * 86400000),
+        endAt: new Date(Date.now() - 3600000),
       } as never);
 
       const completed = await lockChallengeResults("chal_complete", {

@@ -10,12 +10,14 @@ import {
 import {
   aggregateTeamScores,
   calculateLeadMargin,
+  calculateSharePercentages,
   type TeamRef,
 } from "@/features/leaderboard/domain/leaderboard";
 import {
   formatSecondsToClock,
   formatSecondsToHuman,
 } from "@/features/study-logs/domain/duration";
+import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 
 export interface ScoreboardTeam {
   id: string;
@@ -27,6 +29,10 @@ export interface ScoreboardTeam {
   companionCount: number;
   totalLoggedSeconds: number;
   totalLoggedClock: string;
+  targetSeconds: number;
+  targetClock: string;
+  targetHours: number;
+  completionPercentage: number;
   isLeader: boolean;
 }
 
@@ -98,6 +104,9 @@ export interface PunishmentWallData {
 export interface ChallengeScoreboardViewModel {
   id: string;
   title: string;
+  heroImageUrl: string | null;
+  eventBannerUrl: string | null;
+  punishmentPfpUrl: string | null;
   format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
   status: "UPCOMING" | "ACTIVE" | "COMPLETED";
   startAt: string;
@@ -121,9 +130,10 @@ export interface RawChallengePayload {
   id: string;
   title: string;
   format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
-  status: "UPCOMING" | "ACTIVE" | "COMPLETED";
+  status?: "UPCOMING" | "ACTIVE" | "COMPLETED";
   startAt: Date;
   endAt: Date;
+  eventBannerUrl: string | null;
   punishmentPfpUrl: string | null;
   teams: Array<{
     id: string;
@@ -136,7 +146,7 @@ export interface RawChallengePayload {
   participants: Array<{
     id: string;
     userId: string;
-    teamId: string;
+    teamId: string | null;
     targetSeconds: number;
     status: "NORMAL" | "DEFICIT" | "EXCUSED" | "PUNISHED";
     user: {
@@ -148,11 +158,6 @@ export interface RawChallengePayload {
     };
     dailyStudyLogs: Array<{
       durationSeconds: number;
-    }>;
-    weeklyGoals: Array<{
-      id: string;
-      description: string;
-      completed: boolean;
     }>;
     punishmentRecord?: {
       isPunished: boolean;
@@ -169,27 +174,32 @@ export function buildScoreboardViewModel(
   currentUserId?: string,
   now = new Date(),
 ): ChallengeScoreboardViewModel {
-  const daysRemaining = calculateInclusiveDaysRemaining(challenge.endAt, now);
+  const status = challenge.status ?? calculateChallengeStatus(challenge, now);
+  const isUpcoming = status === "UPCOMING";
+  const targetDate = isUpcoming ? challenge.startAt : challenge.endAt;
+  const daysRemaining = calculateInclusiveDaysRemaining(targetDate, now);
   const totalDays = Math.max(
     1,
     Math.ceil(
       (challenge.endAt.getTime() - challenge.startAt.getTime()) / 86_400_000,
     ),
   );
-  const elapsedDays = Math.max(
-    1,
-    Math.min(
-      totalDays,
-      Math.ceil((now.getTime() - challenge.startAt.getTime()) / 86_400_000),
-    ),
-  );
+  const elapsedDays = isUpcoming
+    ? 0
+    : Math.max(
+        1,
+        Math.min(
+          totalDays,
+          Math.ceil((now.getTime() - challenge.startAt.getTime()) / 86_400_000),
+        ),
+      );
 
   // 1. Participant logs mapping
   const participantScores = challenge.participants.map((p) => {
     const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
     return {
       participantId: p.id,
-      teamId: p.teamId,
+      teamId: p.teamId ?? "no-assigned",
       loggedSeconds: totalLoggedSeconds,
     };
   });
@@ -211,8 +221,15 @@ export function buildScoreboardViewModel(
   const highestTeamScore = teamAggregates[0]?.totalSeconds ?? 0;
 
   const companionCounts = new Map<string, number>();
+  const teamTargetMap = new Map<string, number>();
   for (const p of challenge.participants) {
-    companionCounts.set(p.teamId, (companionCounts.get(p.teamId) ?? 0) + 1);
+    if (p.teamId) {
+      companionCounts.set(p.teamId, (companionCounts.get(p.teamId) ?? 0) + 1);
+      teamTargetMap.set(
+        p.teamId,
+        (teamTargetMap.get(p.teamId) ?? 0) + (p.targetSeconds ?? 0),
+      );
+    }
   }
 
   const teams: ScoreboardTeam[] = challenge.teams.map((team) => {
@@ -221,6 +238,12 @@ export function buildScoreboardViewModel(
       teamAggregates.length > 0 &&
       totalLoggedSeconds === highestTeamScore &&
       totalLoggedSeconds > 0;
+    const targetSeconds = teamTargetMap.get(team.id) ?? 0;
+    const targetHours = Math.round(targetSeconds / 3600);
+    const completionPercentage =
+      targetSeconds > 0
+        ? Math.min(100, Math.round((totalLoggedSeconds / targetSeconds) * 100))
+        : 0;
 
     return {
       id: team.id,
@@ -232,6 +255,10 @@ export function buildScoreboardViewModel(
       companionCount: companionCounts.get(team.id) ?? 0,
       totalLoggedSeconds,
       totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
+      targetSeconds,
+      targetClock: formatSecondsToClock(targetSeconds),
+      targetHours,
+      completionPercentage,
       isLeader,
     };
   });
@@ -251,21 +278,21 @@ export function buildScoreboardViewModel(
     signedMarginSeconds: 0,
   };
 
+  let sharePercentages = {
+    ratioPercentageA: 0,
+    ratioPercentageB: 0,
+  };
+
   if (teamA && teamB) {
     leadMarginResult = calculateLeadMargin(
       teamA.totalLoggedSeconds,
       teamB.totalLoggedSeconds,
     );
+    sharePercentages = calculateSharePercentages(
+      teamA.totalLoggedSeconds,
+      teamB.totalLoggedSeconds,
+    );
   }
-
-  const totalMatchSeconds =
-    (teamA?.totalLoggedSeconds ?? 0) + (teamB?.totalLoggedSeconds ?? 0);
-  const ratioPercentageA =
-    totalMatchSeconds > 0 && teamA
-      ? Math.round((teamA.totalLoggedSeconds / totalMatchSeconds) * 1000) / 10
-      : 50;
-  const ratioPercentageB =
-    totalMatchSeconds > 0 ? Math.round((100 - ratioPercentageA) * 10) / 10 : 50;
 
   const matchHeader: ScoreboardMatchHeader = {
     hasMatchup: teams.length >= 2,
@@ -281,8 +308,8 @@ export function buildScoreboardViewModel(
           ? teamB.id
           : null,
     leaderSide: leadMarginResult.leader,
-    ratioPercentageA,
-    ratioPercentageB,
+    ratioPercentageA: sharePercentages.ratioPercentageA,
+    ratioPercentageB: sharePercentages.ratioPercentageB,
   };
 
   // 4. Standings rows (FEAT-LEAD-02)
@@ -290,8 +317,8 @@ export function buildScoreboardViewModel(
 
   const participantRows = challenge.participants.map((p) => {
     const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
-    const goalsCompletedCount = p.weeklyGoals.filter((g) => g.completed).length;
-    const goalsTotalCount = p.weeklyGoals.length;
+    const goalsCompletedCount = 0;
+    const goalsTotalCount = 0;
     const deficitSeconds = Math.max(0, p.targetSeconds - totalLoggedSeconds);
 
     const completionPercentage =
@@ -305,15 +332,14 @@ export function buildScoreboardViewModel(
     let paceStatus: ParticipantPaceStatus = "on-track";
     let paceLabel = "On Track";
 
-    if (challenge.status === "COMPLETED") {
+    if (status === "COMPLETED") {
       if (p.status === "EXCUSED" || p.punishmentRecord?.isPardoned) {
         paceStatus = "excused";
         paceLabel = "Excused";
       } else if (
         p.status === "PUNISHED" ||
         p.punishmentRecord?.isPunished ||
-        deficitSeconds > 0 ||
-        (goalsTotalCount > 0 && goalsCompletedCount < goalsTotalCount)
+        deficitSeconds > 0
       ) {
         paceStatus = "punished";
         paceLabel = "Punished";
@@ -322,22 +348,16 @@ export function buildScoreboardViewModel(
         paceLabel = "Completed";
       }
     } else {
-      if (
-        deficitSeconds === 0 &&
-        (goalsTotalCount === 0 || goalsCompletedCount === goalsTotalCount)
-      ) {
+      if (deficitSeconds === 0) {
         paceStatus = "serene";
         paceLabel = "Serene";
-      } else if (deficitSeconds > 0) {
+      } else {
         paceStatus = "catch-up";
         paceLabel = "Catch-Up";
-      } else {
-        paceStatus = "on-track";
-        paceLabel = "On Track";
       }
     }
 
-    const team = teamLookup.get(p.teamId);
+    const team = p.teamId ? teamLookup.get(p.teamId) : null;
 
     return {
       participantId: p.id,
@@ -346,10 +366,10 @@ export function buildScoreboardViewModel(
         p.user.displayName ?? p.user.name ?? p.user.username ?? "Anonymous",
       username: p.user.username,
       image: p.user.image,
-      teamId: p.teamId,
-      teamName: team?.name ?? "Independent",
+      teamId: p.teamId ?? "no-assigned",
+      teamName: team?.name ?? "Unassigned",
       teamColor: team?.color ?? null,
-      teamIcon: team?.iconEmoji ?? null,
+      teamIcon: team?.iconEmoji ?? "⏳",
       totalLoggedSeconds,
       totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
       targetSeconds: p.targetSeconds,
@@ -382,21 +402,18 @@ export function buildScoreboardViewModel(
   );
 
   // 5. Punishment Wall data (FEAT-PUN-02, FEAT-PUN-03, Law L6)
-  const isEventCompleted = challenge.status === "COMPLETED";
+  const isEventCompleted = status === "COMPLETED";
   const defaultPunishmentPfp = "/assets/punishment_pfp.jpg";
 
   const flaggedMembers: FlaggedPunishmentMember[] = [];
 
   for (const p of challenge.participants) {
     const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
-    const goalsStatusList: WeeklyGoalStatus[] = p.weeklyGoals.map((g) => ({
-      completed: g.completed,
-    }));
 
     const evaluation = evaluateParticipantPunishment(
       p.targetSeconds,
       totalLoggedSeconds,
-      goalsStatusList,
+      [],
     );
 
     const isExplicitlyPunished =
@@ -410,7 +427,7 @@ export function buildScoreboardViewModel(
         (evaluation.hoursDeficitSeconds > 0 || evaluation.incompleteGoals > 0);
 
     if (shouldFlag) {
-      const team = teamLookup.get(p.teamId);
+      const team = p.teamId ? teamLookup.get(p.teamId) : null;
       const hoursDeficitSeconds =
         p.punishmentRecord?.hoursDeficitSeconds ??
         evaluation.hoursDeficitSeconds;
@@ -431,8 +448,8 @@ export function buildScoreboardViewModel(
           p.user.displayName ?? p.user.name ?? p.user.username ?? "Anonymous",
         username: p.user.username,
         image: p.user.image,
-        teamName: team?.name ?? "Independent",
-        teamIcon: team?.iconEmoji ?? null,
+        teamName: team?.name ?? "Unassigned",
+        teamIcon: team?.iconEmoji ?? "⏳",
         hoursDeficitSeconds,
         hoursDeficitClock: formatSecondsToClock(hoursDeficitSeconds),
         incompleteGoalsCount,
@@ -454,21 +471,37 @@ export function buildScoreboardViewModel(
     ? challenge.participants.find((p) => p.userId === currentUserId)
     : undefined;
 
-  const timeRemainingMs = challenge.endAt.getTime() - now.getTime();
   let timeRemainingHuman = "Event concluded";
-  if (timeRemainingMs > 0) {
-    const totalRemainingSecs = Math.floor(timeRemainingMs / 1000);
-    const remDays = Math.floor(totalRemainingSecs / 86400);
-    const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
-    const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
-    timeRemainingHuman = `${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
+  if (isUpcoming) {
+    const timeUntilStartMs = challenge.startAt.getTime() - now.getTime();
+    if (timeUntilStartMs > 0) {
+      const totalRemainingSecs = Math.floor(timeUntilStartMs / 1000);
+      const remDays = Math.floor(totalRemainingSecs / 86400);
+      const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
+      const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
+      timeRemainingHuman = `Starts in ${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
+    } else {
+      timeRemainingHuman = "Starts today";
+    }
+  } else if (!isEventCompleted) {
+    const timeRemainingMs = challenge.endAt.getTime() - now.getTime();
+    if (timeRemainingMs > 0) {
+      const totalRemainingSecs = Math.floor(timeRemainingMs / 1000);
+      const remDays = Math.floor(totalRemainingSecs / 86400);
+      const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
+      const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
+      timeRemainingHuman = `${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
+    }
   }
 
   return {
     id: challenge.id,
     title: challenge.title,
+    heroImageUrl: challenge.eventBannerUrl?.trim() || null,
+    eventBannerUrl: challenge.eventBannerUrl,
+    punishmentPfpUrl: challenge.punishmentPfpUrl,
     format: challenge.format,
-    status: challenge.status,
+    status,
     startAt: challenge.startAt.toISOString(),
     endAt: challenge.endAt.toISOString(),
     daysRemaining,
@@ -495,10 +528,6 @@ export async function getChallengeScoreboard(
   challengeId: string,
   currentUserId?: string,
 ): Promise<ChallengeScoreboardViewModel | null> {
-  const challenges = await prisma.challenge.findMany();
-
-  console.log("All challenges:", challenges);
-
   const challenge = await prisma.challenge.findUnique({
     where: { id: challengeId },
     include: {
@@ -519,13 +548,6 @@ export async function getChallengeScoreboard(
           dailyStudyLogs: {
             select: {
               durationSeconds: true,
-            },
-          },
-          weeklyGoals: {
-            select: {
-              id: true,
-              description: true,
-              completed: true,
             },
           },
           punishmentRecord: {

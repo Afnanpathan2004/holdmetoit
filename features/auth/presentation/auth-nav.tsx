@@ -21,7 +21,7 @@ export function DiscordIcon({ className = "h-4 w-4" }: { className?: string }) {
 }
 
 export function SignInWithDiscordButton({
-  redirectTo = "/dashboard",
+  redirectTo = "/",
   className,
   size = "default",
   variant = "default",
@@ -49,7 +49,7 @@ export function SignInWithDiscordButton({
 }
 
 export function SignOutButton({
-  className,
+  className = "",
   size = "sm",
 }: {
   className?: string;
@@ -61,9 +61,9 @@ export function SignOutButton({
         type="submit"
         variant="ghost"
         size={size}
-        className={className}
+        className={`h-8 px-2.5 text-xs text-[#ffffff] hover:text-[#d1d1d1] hover:bg-[#1c1c1c] transition-colors gap-1.5 ${className}`}
       >
-        <LogOut className="h-3.5 w-3.5 mr-1.5" />
+        <LogOut className="h-3.5 w-3.5" />
         <span>Sign Out</span>
       </Button>
     </form>
@@ -84,7 +84,13 @@ export interface UserNavProps {
 
 export function UserNav({ user, redirectTo }: UserNavProps) {
   if (!user) {
-    return <SignInWithDiscordButton redirectTo={redirectTo} size="sm" />;
+    return (
+      <SignInWithDiscordButton
+        redirectTo={redirectTo}
+        size="sm"
+        className="bg-[#5865F2] hover:bg-[#4752c4] text-white text-xs h-8 px-3.5 rounded-full font-medium"
+      />
+    );
   }
 
   const displayName = user.displayName || user.name || user.username || "Companion";
@@ -93,36 +99,73 @@ export function UserNav({ user, redirectTo }: UserNavProps) {
 
   return (
     <div className="flex items-center gap-2 sm:gap-3">
-      <div className="flex items-center gap-2 rounded-full border border-cafe-border bg-cafe-card/80 px-2.5 py-1 text-xs shadow-sm">
-        <div className="relative h-6 w-6 overflow-hidden rounded-full border border-cafe-honey/40 bg-cafe-honey/20 shrink-0">
+      {isAdmin && (
+        <Link
+          href="/admin"
+          className="inline-flex items-center justify-center rounded-full bg-[#1c1c1c] hover:bg-[#292929] px-3 py-1.5 text-xs font-medium text-[#f4f3f6] transition-colors border border-[#333333]"
+        >
+          Admin Console
+        </Link>
+      )}
+
+      {/* User Capsule */}
+      <div className="flex items-center gap-2 rounded-full border border-[#434343] bg-[#1c1c1c] px-2.5 py-1 text-xs">
+        <div className="relative h-5 w-5 overflow-hidden rounded-full border border-[#545454] bg-[#292929] shrink-0">
           {user.image ? (
             <Image
               src={user.image}
               alt={displayName}
               fill
-              sizes="24px"
+              sizes="20px"
               className="object-cover"
             />
           ) : (
-            <span className="flex h-full w-full items-center justify-center font-serif text-[11px] font-bold text-cafe-honey">
+            <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-[#f4f3f6]">
               {initial}
             </span>
           )}
         </div>
 
-        <span className="max-w-[110px] sm:max-w-[140px] truncate font-medium text-cafe-parchment">
+        <span className="max-w-[100px] sm:max-w-[130px] truncate font-medium text-[#f4f3f6]">
           {displayName}
         </span>
-
-        {isAdmin && (
-          <span className="inline-flex items-center gap-1 rounded bg-cafe-honey/15 px-1.5 py-0.5 text-[10px] font-semibold text-cafe-honey border border-cafe-honey/30">
-            <Shield className="h-2.5 w-2.5" />
-            Host
-          </span>
-        )}
       </div>
 
       <SignOutButton />
     </div>
+  );
+}
+
+export function AppHeader({
+  user,
+  redirectTo,
+  subtitle,
+}: {
+  user?: UserNavProps["user"];
+  redirectTo?: string;
+  subtitle?: string;
+}) {
+  return (
+    <header className="sticky top-0 z-40 h-16 border-b border-[#1f1f1f] bg-[#0d0d0d]/95 backdrop-blur-md">
+      <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#ffffff] text-[#0a080e] shadow-sm">
+              <Shield className="h-3.5 w-3.5 fill-current" />
+            </div>
+            <span className="font-semibold text-base tracking-tight text-[#f4f3f6] group-hover:text-white transition-colors">
+              HoldMeToIt
+            </span>
+          </Link>
+          {subtitle && (
+            <span className="hidden sm:inline-block text-xs text-[#868686] border-l border-[#292929] pl-3">
+              {subtitle}
+            </span>
+          )}
+        </div>
+
+        <UserNav user={user} redirectTo={redirectTo} />
+      </div>
+    </header>
   );
 }

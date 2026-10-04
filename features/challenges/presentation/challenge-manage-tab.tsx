@@ -1,0 +1,786 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import {
+  AlertTriangle,
+  Calendar,
+  Check,
+  ChevronDown,
+  Loader2,
+  Lock,
+  Play,
+  Plus,
+  RefreshCw,
+  Trash2,
+  User as UserIcon,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { ChallengeScoreboardViewModel } from "@/features/leaderboard/data/leaderboard-data";
+import {
+  deleteChallengeAction,
+  kickoffChallengeAction,
+  lockChallengeResultsAction,
+  reassignParticipantTeamAction,
+  updateChallengeAction,
+} from "@/features/challenges/api/challenge-admin.actions";
+import { discardChallengeImageUploadAction } from "@/features/challenges/api/punishment-pfp.actions";
+import { ChallengeImageInput } from "@/features/challenges/presentation/challenge-image-input";
+
+interface ChallengeManageTabProps {
+  challenge: ChallengeScoreboardViewModel;
+}
+
+interface TeamFormItem {
+  id?: string;
+  name: string;
+  color: string;
+  iconEmoji: string;
+  mascotUrl?: string;
+}
+
+function formatDateForInput(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().slice(0, 16);
+  } catch {
+    return "";
+  }
+}
+
+export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [reassigningId, setReassigningId] = useState<string | null>(null);
+
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  // Form states
+  const [title, setTitle] = useState(challenge.title);
+  const [startAt, setStartAt] = useState(() =>
+    formatDateForInput(challenge.startAt),
+  );
+  const [endAt, setEndAt] = useState(() => formatDateForInput(challenge.endAt));
+  // Preserve raw saved values rather than normalized images or display-only fallbacks.
+  const [savedImages, setSavedImages] = useState({
+    eventBannerUrl: challenge.eventBannerUrl,
+    punishmentPfpUrl: challenge.punishmentPfpUrl,
+  });
+  const [eventBannerUrl, setEventBannerUrl] = useState<string | null>(challenge.eventBannerUrl);
+  const [punishmentPfpUrl, setPunishmentPfpUrl] = useState<string | null>(challenge.punishmentPfpUrl);
+  const [isBannerUploading, setIsBannerUploading] = useState(false);
+  const [isPfpUploading, setIsPfpUploading] = useState(false);
+  const [imageInputVersion, setImageInputVersion] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const isUploading = isBannerUploading || isPfpUploading;
+  const isBusy = isPending || isSaving || isUploading || isDeleting;
+
+  useEffect(() => {
+    setSavedImages({
+      eventBannerUrl: challenge.eventBannerUrl,
+      punishmentPfpUrl: challenge.punishmentPfpUrl,
+    });
+    setEventBannerUrl(challenge.eventBannerUrl);
+    setPunishmentPfpUrl(challenge.punishmentPfpUrl);
+  }, [challenge.id, challenge.eventBannerUrl, challenge.punishmentPfpUrl]);
+
+  const [teams, setTeams] = useState<TeamFormItem[]>(() =>
+    challenge.teams.map((t) => ({
+      id: t.id,
+      name: t.name,
+      color: t.color || "#FFB066",
+      iconEmoji: t.iconEmoji || "🐝",
+      mascotUrl: t.mascotUrl || "",
+    })),
+  );
+
+  const [participantTeamMap, setParticipantTeamMap] = useState<
+    Record<string, string>
+  >(() => {
+    const map: Record<string, string> = {};
+    for (const s of challenge.standings) {
+      map[s.participantId] = s.teamId;
+    }
+    return map;
+  });
+
+  const handleReset = () => {
+    if (isBusy) return;
+    setTitle(challenge.title);
+    setStartAt(formatDateForInput(challenge.startAt));
+    setEndAt(formatDateForInput(challenge.endAt));
+    const persistedUrls = new Set([savedImages.eventBannerUrl, savedImages.punishmentPfpUrl]);
+    for (const url of Array.from(new Set([eventBannerUrl, punishmentPfpUrl]))) {
+      if (url && !persistedUrls.has(url)) {
+        void discardChallengeImageUploadAction(url).catch(() => {});
+      }
+    }
+    setEventBannerUrl(savedImages.eventBannerUrl);
+    setPunishmentPfpUrl(savedImages.punishmentPfpUrl);
+    setImageInputVersion((version) => version + 1);
+    setTeams(
+      challenge.teams.map((t) => ({
+        id: t.id,
+        name: t.name,
+        color: t.color || "#FFB066",
+        iconEmoji: t.iconEmoji || "🐝",
+        mascotUrl: t.mascotUrl || "",
+      })),
+    );
+    const map: Record<string, string> = {};
+    for (const s of challenge.standings) {
+      map[s.participantId] = s.teamId;
+    }
+    setParticipantTeamMap(map);
+    setFeedback(null);
+  };
+
+  const handleAddTeam = () => {
+    const defaultEmojis = ["🐝", "🦋", "🦁", "🐺", "🦅", "🦉", "⚡", "🔥"];
+    const nextEmoji = defaultEmojis[teams.length % defaultEmojis.length];
+    const defaultColors = [
+      "#FFB066",
+      "#A29DAE",
+      "#60A5FA",
+      "#34D399",
+      "#F472B6",
+    ];
+    const nextColor = defaultColors[teams.length % defaultColors.length];
+
+    setTeams((prev) => [
+      ...prev,
+      {
+        name: `Team ${prev.length + 1}`,
+        color: nextColor,
+        iconEmoji: nextEmoji,
+      },
+    ]);
+  };
+
+  const handleRemoveTeam = (index: number) => {
+    if (teams.length <= 2) {
+      setFeedback({
+        type: "error",
+        message: "A challenge must have at least 2 teams.",
+      });
+      return;
+    }
+    const teamToRemove = teams[index];
+    const hasParticipants = challenge.standings.some(
+      (s) => s.teamId === teamToRemove.id,
+    );
+    if (hasParticipants) {
+      setFeedback({
+        type: "error",
+        message: `Cannot remove "${teamToRemove.name}" because participants are assigned to it. Reassign them first.`,
+      });
+      return;
+    }
+    setTeams((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateTeam = (
+    index: number,
+    field: keyof TeamFormItem,
+    value: string,
+  ) => {
+    setTeams((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleSaveChallenge = () => {
+    if (isBusy) return;
+    setFeedback(null);
+    if (!title.trim()) {
+      setFeedback({ type: "error", message: "Challenge title cannot be empty." });
+      return;
+    }
+    if (!startAt || !endAt) {
+      setFeedback({
+        type: "error",
+        message: "Both start and end dates are required.",
+      });
+      return;
+    }
+    if (new Date(endAt) <= new Date(startAt)) {
+      setFeedback({
+        type: "error",
+        message: "End date must be strictly after the start date.",
+      });
+      return;
+    }
+    // Preserve legacy null, empty and whitespace image values exactly on unrelated edits.
+    setIsSaving(true);
+    startTransition(async () => {
+      try {
+        const res = await updateChallengeAction({
+          challengeId: challenge.id,
+          title: title.trim(),
+          startAt: new Date(startAt).toISOString(),
+          endAt: new Date(endAt).toISOString(),
+          eventBannerUrl,
+          punishmentPfpUrl,
+          teams: teams.map((t) => ({
+            id: t.id,
+            name: t.name.trim(),
+            color: t.color,
+            iconEmoji: t.iconEmoji,
+            mascotUrl: t.mascotUrl,
+          })),
+        });
+
+        if (res.ok) {
+          // Mark both uploads saved immediately, before refresh returns new props.
+          setSavedImages({ eventBannerUrl, punishmentPfpUrl });
+          setFeedback({
+            type: "success",
+            message: "Challenge details and house identities updated successfully.",
+          });
+          router.refresh();
+        } else {
+          setFeedback({ type: "error", message: res.message });
+        }
+      } catch {
+        setFeedback({ type: "error", message: "Could not update the challenge. Please try again." });
+      } finally {
+        setIsSaving(false);
+      }
+    });
+  };
+
+  const handleReassign = async (participantId: string, newTeamId: string) => {
+    if (participantTeamMap[participantId] === newTeamId) return;
+
+    setReassigningId(participantId);
+    setFeedback(null);
+
+    const res = await reassignParticipantTeamAction({
+      challengeId: challenge.id,
+      participantId,
+      newTeamId,
+    });
+
+    setReassigningId(null);
+
+    if (res.ok) {
+      setParticipantTeamMap((prev) => ({
+        ...prev,
+        [participantId]: newTeamId,
+      }));
+      setFeedback({
+        type: "success",
+        message: "Participant moved to new house successfully.",
+      });
+      router.refresh();
+    } else {
+      setFeedback({ type: "error", message: res.message });
+    }
+  };
+
+  const handleKickoff = () => {
+    startTransition(async () => {
+      const res = await kickoffChallengeAction(challenge.id);
+      if (res.ok) {
+        setFeedback({
+          type: "success",
+          message: "Event started! Declarations are now permanently locked.",
+        });
+        router.refresh();
+      } else {
+        setFeedback({ type: "error", message: res.message });
+      }
+    });
+  };
+
+  const handleLockResults = () => {
+    startTransition(async () => {
+      const res = await lockChallengeResultsAction(challenge.id);
+      if (res.ok) {
+        setFeedback({
+          type: "success",
+          message:
+            "Event finalized and locked. Dual-failure punishment evaluation complete.",
+        });
+        router.refresh();
+      } else {
+        setFeedback({ type: "error", message: res.message });
+      }
+    });
+  };
+
+  const handleDeleteChallenge = async () => {
+    setIsDeleting(true);
+    setFeedback(null);
+
+    const res = await deleteChallengeAction(challenge.id);
+
+    if (res.ok) {
+      setShowDeleteModal(false);
+      router.push("/admin");
+    } else {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setFeedback({ type: "error", message: res.message });
+    }
+  };
+
+  return (
+    <div className="space-y-10 max-w-4xl mx-auto pb-16">
+      {/* Feedback Banner */}
+      {feedback && (
+        <div
+          className={`flex items-center gap-3 p-4 rounded-2xl text-xs font-medium border ${
+            feedback.type === "success"
+              ? "bg-[#144520]/40 border-[#22c55e]/40 text-[#4ade80]"
+              : "bg-[#450a0a]/40 border-[#ef4444]/40 text-[#f87171]"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <Check className="h-4 w-4 shrink-0" />
+          ) : (
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+          )}
+          <span>{feedback.message}</span>
+        </div>
+      )}
+
+      {/* Main Container matching Figma Obsidian Frame */}
+      <div className="rounded-3xl border border-[#262626] bg-[#141414] p-6 sm:p-8 space-y-8 shadow-xl">
+        {/* Event Lifecycle Ribbon */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#262626]">
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#868686]">
+              Lifecycle Status
+            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  challenge.status === "ACTIVE"
+                    ? "bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/30"
+                    : challenge.status === "COMPLETED"
+                      ? "bg-[#3b82f6]/20 text-[#60a5fa] border border-[#3b82f6]/30"
+                      : "bg-[#eab308]/20 text-[#facc15] border border-[#eab308]/30"
+                }`}
+              >
+                ● {challenge.status}
+              </span>
+              <span className="text-xs text-[#868686]">
+                Format: {challenge.format.replace(/_/g, " ")}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {challenge.status === "UPCOMING" && (
+              <Button
+                type="button"
+                onClick={handleKickoff}
+                disabled={isPending}
+                className="h-10 px-4 rounded-xl bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-xs gap-2"
+              >
+                {isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                )}
+                Start Event Now
+              </Button>
+            )}
+
+            {challenge.status === "ACTIVE" && (
+              <Button
+                type="button"
+                onClick={handleLockResults}
+                disabled={isPending}
+                className="h-10 px-4 rounded-xl bg-[#eab308] hover:bg-[#ca8a04] text-black font-semibold text-xs gap-2"
+              >
+                {isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Lock className="h-3.5 w-3.5" />
+                )}
+                Lock Final Results
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* SECTION 1: CHALLENGE DETAILS & TIMETABLE */}
+        <section className="space-y-5">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
+            Challenge Details & Timetable
+          </h3>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#a3a3a3]">
+                Challenge Title
+              </label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Midterm Reading Week Sprint"
+                className="h-12 rounded-2xl bg-[#292929] border-[#383838] focus:border-[#545454] text-white px-4 text-sm"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#a3a3a3] flex items-center justify-between">
+                  <span>Start Date & Time (UTC)</span>
+                  <Calendar className="h-3.5 w-3.5 text-[#868686]" />
+                </label>
+                <div className="relative">
+                  <Input
+                    type="datetime-local"
+                    value={startAt}
+                    onChange={(e) => setStartAt(e.target.value)}
+                    className="h-12 rounded-2xl bg-[#292929] border-[#383838] focus:border-[#545454] text-white px-4 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#a3a3a3] flex items-center justify-between">
+                  <span>End Date & Time (UTC)</span>
+                  <Calendar className="h-3.5 w-3.5 text-[#868686]" />
+                </label>
+                <div className="relative">
+                  <Input
+                    type="datetime-local"
+                    value={endAt}
+                    onChange={(e) => setEndAt(e.target.value)}
+                    className="h-12 rounded-2xl bg-[#292929] border-[#383838] focus:border-[#545454] text-white px-4 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 2: DYNAMIC HOUSE / TEAM IDENTITIES */}
+        <section className="space-y-5 pt-4 border-t border-[#262626]">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
+              Dynamic House / Team Identities
+            </h3>
+            <span className="text-[11px] text-[#868686]">
+              {teams.length} Teams Configured
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {teams.map((team, idx) => (
+              <div
+                key={team.id || `team-${idx}`}
+                className="flex items-center gap-3"
+              >
+                {/* Emoji Avatar Box */}
+                <div className="relative h-12 w-12 rounded-2xl bg-[#292929] border border-[#383838] flex items-center justify-center shrink-0">
+                  <input
+                    type="text"
+                    value={team.iconEmoji}
+                    onChange={(e) =>
+                      handleUpdateTeam(idx, "iconEmoji", e.target.value.slice(0, 2))
+                    }
+                    className="w-full text-center bg-transparent border-0 text-xl focus:outline-none cursor-pointer"
+                    title="Change House Emoji"
+                  />
+                </div>
+
+                {/* Team Name Input */}
+                <div className="flex-1">
+                  <Input
+                    value={team.name}
+                    onChange={(e) =>
+                      handleUpdateTeam(idx, "name", e.target.value)
+                    }
+                    placeholder="Team Name"
+                    className="h-12 rounded-2xl bg-[#292929] border-[#383838] focus:border-[#545454] text-white px-4 text-sm"
+                  />
+                </div>
+
+                {/* Color Swatch Badge */}
+                <label className="relative h-12 px-3 rounded-2xl bg-[#292929] border border-[#383838] flex items-center gap-2 cursor-pointer shrink-0 hover:bg-[#333333] transition-colors">
+                  <span
+                    className="h-5 w-5 rounded-md border border-white/20 shrink-0"
+                    style={{ backgroundColor: team.color || "#FFB066" }}
+                  />
+                  <span className="text-xs font-sans text-[#d1d1d1] uppercase select-none">
+                    {team.color || "#FFB066"}
+                  </span>
+                  <input
+                    type="color"
+                    value={team.color || "#FFB066"}
+                    onChange={(e) =>
+                      handleUpdateTeam(idx, "color", e.target.value)
+                    }
+                    className="sr-only"
+                  />
+                </label>
+
+                {/* Delete Team Button */}
+                {teams.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTeam(idx)}
+                    className="h-12 w-12 rounded-2xl border border-transparent hover:border-[#383838] hover:bg-[#292929] text-[#868686] hover:text-[#ef4444] flex items-center justify-center transition-colors shrink-0"
+                    title="Remove Team"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAddTeam}
+            className="flex items-center gap-2 text-xs font-semibold text-[#ffffff] hover:text-[#e0e0e0] transition-colors pt-1"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Another Team</span>
+          </button>
+        </section>
+
+        <section className="space-y-5 pt-4 border-t border-[#262626]">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
+            Event Header Image
+          </h3>
+          <ChallengeImageInput
+            key={`event-banner-${imageInputVersion}`}
+            purpose="event-banner"
+            value={eventBannerUrl}
+            savedValue={savedImages.eventBannerUrl}
+            onChange={setEventBannerUrl}
+            onBusyChange={setIsBannerUploading}
+            disabled={isPending || isSaving || isDeleting}
+          />
+        </section>
+
+        <section className="space-y-5 pt-4 border-t border-[#262626]">
+          <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
+            Assigned Punishment PFP
+          </h3>
+          <ChallengeImageInput
+            key={`punishment-pfp-${imageInputVersion}`}
+            purpose="punishment-pfp"
+            value={punishmentPfpUrl}
+            savedValue={savedImages.punishmentPfpUrl}
+            onChange={setPunishmentPfpUrl}
+            onBusyChange={setIsPfpUploading}
+            disabled={isPending || isSaving || isDeleting}
+          />
+        </section>
+
+        {/* SECTION 4: PARTICIPANT HOUSE ASSIGNMENTS (ROSTER REASSIGNMENT) */}
+        <section className="space-y-5 pt-4 border-t border-[#262626]">
+          <div className="space-y-1">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
+              Participant House Assignments
+            </h3>
+            <p className="text-xs text-[#868686]">
+              Reassign participants across teams or rebalance rosters. Changes are
+              persisted immediately.
+            </p>
+          </div>
+
+          {challenge.standings.length === 0 ? (
+            <div className="rounded-2xl border border-[#262626] bg-[#1c1c1c] p-6 text-center text-xs text-[#868686]">
+              No scholars have enrolled in this challenge yet.
+            </div>
+          ) : (
+            <div className="space-y-2 rounded-2xl border border-[#262626] bg-[#1a1a1a] p-3 divide-y divide-[#262626]">
+              {challenge.standings.map((participant) => {
+                const currentSelectedTeamId =
+                  participantTeamMap[participant.participantId] ||
+                  participant.teamId ||
+                  "no-assigned";
+                const isReassigning =
+                  reassigningId === participant.participantId;
+
+                return (
+                  <div
+                    key={participant.participantId}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 pb-3 first:pt-1 last:pb-1"
+                  >
+                    {/* User info */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-9 w-9 rounded-full bg-[#292929] border border-[#383838] overflow-hidden shrink-0 flex items-center justify-center">
+                        {participant.image ? (
+                          <Image
+                            src={participant.image}
+                            alt={participant.displayName}
+                            width={36}
+                            height={36}
+                            className="h-full w-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <UserIcon className="h-4 w-4 text-[#868686]" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[#ffffff] truncate">
+                          {participant.displayName}
+                        </p>
+                        <p className="text-[11px] text-[#868686] truncate">
+                          @{participant.username || "scholar"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Team Selector Dropdown */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="relative">
+                        <select
+                          value={currentSelectedTeamId}
+                          onChange={(e) =>
+                            handleReassign(
+                              participant.participantId,
+                              e.target.value,
+                            )
+                          }
+                          disabled={isReassigning}
+                          className="h-10 pl-3 pr-8 rounded-xl bg-[#292929] border border-[#383838] focus:border-[#545454] text-xs font-semibold text-[#ffffff] appearance-none cursor-pointer focus:outline-none disabled:opacity-50"
+                        >
+                          <option
+                            value="no-assigned"
+                            className="bg-[#1c1c1c] text-[#868686]"
+                          >
+                            ⏳ Not Assigned
+                          </option>
+                          {teams.map((t) => (
+                            <option
+                              key={t.id || t.name}
+                              value={t.id}
+                              className="bg-[#1c1c1c] text-white"
+                            >
+                              {t.iconEmoji || "🛡️"} {t.name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="h-3.5 w-3.5 text-[#868686] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+
+                      {isReassigning && (
+                        <Loader2 className="h-4 w-4 animate-spin text-[#868686]" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* BOTTOM ACTION BAR (Cancel & Save) */}
+        <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#262626]">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleReset}
+            disabled={isBusy}
+            className="h-11 px-6 rounded-2xl border-[#383838] bg-[#1c1c1c] text-[#ffffff] hover:bg-[#292929] hover:text-[#ffffff] text-xs font-bold"
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleSaveChallenge}
+            disabled={isBusy}
+            className="h-11 px-6 rounded-2xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold shadow-sm gap-2"
+          >
+            {(isPending || isSaving) && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Save & Update Event
+          </Button>
+        </div>
+      </div>
+
+      {/* SECTION 5: DANGER ZONE (Delete Event) */}
+      <div className="rounded-3xl border border-red-900/40 bg-red-950/10 p-6 sm:p-8 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-red-400">
+              Danger Zone
+            </h4>
+            <p className="text-xs text-[#a3a3a3] max-w-xl">
+              Permanently delete this event. All associated teams, member study
+              logs, weekly goals, and punishment records will be permanently
+              purged.
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            disabled={isBusy}
+            className="h-11 px-5 rounded-2xl border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs shrink-0 gap-2"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete Event
+          </Button>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#141414] border border-[#262626] rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="h-10 w-10 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-bold text-white">
+                Delete Challenge Event?
+              </h3>
+            </div>
+
+            <p className="text-xs leading-relaxed text-[#a3a3a3]">
+              Are you sure you want to permanently delete{" "}
+              <strong className="text-white">"{challenge.title}"</strong>?
+              This action cannot be undone. All study records, team rosters, and
+              historical standings will be erased forever.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="h-11 px-5 rounded-2xl border-[#383838] bg-[#1c1c1c] text-white hover:bg-[#292929] text-xs font-semibold"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleDeleteChallenge}
+                disabled={isDeleting}
+                className="h-11 px-5 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold gap-2"
+              >
+                {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Yes, Delete Event
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

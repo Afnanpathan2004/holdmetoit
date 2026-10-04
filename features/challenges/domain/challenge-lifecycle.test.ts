@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertCanKickoffChallenge,
   assertCanLockChallenge,
+  calculateChallengeStatus,
   canKickoffChallenge,
   canLockChallenge,
   validateChallengeCreation,
@@ -10,6 +11,31 @@ import {
 } from "./challenge-lifecycle";
 
 describe("challenge lifecycle domain (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
+  describe("calculateChallengeStatus", () => {
+    const startAt = new Date("2026-10-05T00:00:00Z");
+    const endAt = new Date("2026-10-12T00:00:00Z");
+
+    it("returns UPCOMING when current time is before startAt", () => {
+      const now = new Date("2026-10-04T12:00:00Z");
+      expect(calculateChallengeStatus({ startAt, endAt }, now)).toBe("UPCOMING");
+    });
+
+    it("returns ACTIVE when current time is between startAt and endAt", () => {
+      const onStart = new Date("2026-10-05T00:00:00Z");
+      expect(calculateChallengeStatus({ startAt, endAt }, onStart)).toBe("ACTIVE");
+
+      const midEvent = new Date("2026-10-08T15:30:00Z");
+      expect(calculateChallengeStatus({ startAt, endAt }, midEvent)).toBe("ACTIVE");
+    });
+
+    it("returns COMPLETED when current time is at or after endAt", () => {
+      const onEnd = new Date("2026-10-12T00:00:00Z");
+      expect(calculateChallengeStatus({ startAt, endAt }, onEnd)).toBe("COMPLETED");
+
+      const afterEnd = new Date("2026-10-13T09:00:00Z");
+      expect(calculateChallengeStatus({ startAt, endAt }, afterEnd)).toBe("COMPLETED");
+    });
+  });
   describe("canKickoffChallenge & assertCanKickoffChallenge", () => {
     it("permits kickoff when status is UPCOMING", () => {
       expect(canKickoffChallenge("UPCOMING")).toBe(true);
@@ -63,6 +89,21 @@ describe("challenge lifecycle domain (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
           { name: "Honey Bees", color: "#d9822b", iconEmoji: "🐝" },
           { name: "Lavender Butterflies", color: "#9986b8", iconEmoji: "🦋" },
         ],
+      });
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual({});
+    });
+
+    it("accepts separate optional event banner and punishment PFP URLs", () => {
+      const result = validateChallengeCreation({
+        title: "Midterm Study Battle",
+        format: "SOLOS",
+        startAt: new Date("2026-09-01T08:00:00Z"),
+        endAt: new Date("2026-09-08T08:00:00Z"),
+        eventBannerUrl: "https://example.com/banner.webp",
+        punishmentPfpUrl: "https://example.com/pfp.png",
+        teams: [{ name: "Solo Grinders" }],
       });
 
       expect(result.valid).toBe(true);

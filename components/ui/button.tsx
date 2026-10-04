@@ -5,17 +5,21 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-cafe-bg disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-cafe-honey text-cafe-bg shadow hover:bg-cafe-honey-light",
+          "bg-[#ffffff] text-[#0d0d0d] font-semibold shadow-sm hover:bg-[#e0e0e0] active:scale-[0.98]",
         secondary:
-          "border border-cafe-border bg-cafe-card text-cafe-parchment hover:bg-cafe-elevated",
+          "border border-[#333333] bg-[#292929] text-[#ffffff] font-medium hover:bg-[#3d3d3d] active:scale-[0.98]",
         outline:
-          "border border-cafe-border bg-transparent text-cafe-linen hover:bg-cafe-card",
-        ghost: "text-cafe-linen hover:bg-cafe-card hover:text-cafe-parchment",
+          "border border-[#333333] bg-transparent text-[#ffffff] font-medium hover:bg-[#1c1c1c] active:scale-[0.98]",
+        ghost: "text-[#d1d1d1] hover:bg-[#1c1c1c] hover:text-[#ffffff]",
+        destructive:
+          "border border-[#ef4444]/40 bg-[#401010] text-[#ff5757] font-semibold hover:bg-[#521515] active:scale-[0.98]",
+        pill:
+          "rounded-full bg-[#292929] border border-[#333333] text-[#ffffff] hover:bg-[#3d3d3d]",
       },
       size: {
         default: "h-10 px-4 py-2",

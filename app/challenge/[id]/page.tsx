@@ -5,16 +5,23 @@ import { ErrorState } from "@/components/state/error-state";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/core/auth";
 import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-data";
-import { ChallengeView } from "@/features/leaderboard/presentation/challenge-view";
+import { ChallengeView } from "@/features/challenges/presentation/challenge-view";
 
 interface ChallengePageProps {
   params: {
     id: string;
   };
+  searchParams?: {
+    tab?: "overview" | "leaderboard" | "about" | "manage";
+  };
 }
 
-export default async function ChallengePage({ params }: ChallengePageProps) {
+export default async function ChallengePage({
+  params,
+  searchParams,
+}: ChallengePageProps) {
   const session = await auth();
+  const isAdmin = session?.user?.role === "ADMIN";
 
   try {
     const challenge = await getChallengeScoreboard(
@@ -36,7 +43,13 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
       );
     }
 
-    return <ChallengeView challenge={challenge} />;
+    return (
+      <ChallengeView
+        challenge={challenge}
+        initialTab={searchParams?.tab ?? "overview"}
+        isAdmin={isAdmin}
+      />
+    );
   } catch (error) {
     console.error("Failed to load challenge scoreboard:", error);
     return (

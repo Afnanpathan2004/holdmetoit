@@ -2,9 +2,9 @@
 
 > **Project:** HoldMeToIt (Gamified Study Accountability & Challenge Management Platform)  
 > **Repository:** `e:\Projects\HoldMeToIt-Git`  
-> **Current Branch:** `krish`  
+> **Current Branch:** `afnan-jr`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-09-08  
+> **Last Updated:** 2026-10-04
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**  
 
 ---
@@ -28,7 +28,7 @@ The repository contains the authoritative 5-document specification suite ratifie
 - **Specification Phase:** 100% Complete. All 5 core documents are aligned with zero conflicting requirements.
 - **Phase 0 (MVP Core) Implementation:** 100% Complete! Slices 0, 1, 2, 3, 4, 5, and 6 are all verified and passing.
 - **E2E Quality Matrix:** All 6 User Journeys (J1–J6) automated, tested, and green.
-- **Git State:** Branch `krish`, clean, tested, and synchronized with upstream.
+- **Git State:** Branch `afnan-jr`; working tree contains staged and unstaged collaborative changes. Do not reset or overwrite them.
 
 ---
 
@@ -40,14 +40,14 @@ Phase 0 focuses exclusively on **The Spreadsheet Exorcism** — running a full w
 | :--- | :--- | :--- | :---: | :---: | :---: |
 | `FEAT-AUTH-01` | Discord OAuth 2.0 (`identify` scope) | Auth & Identity | Participant, Admin | `DONE` | ✅ Completed in Slice 2 & J1 |
 | `FEAT-AUTH-02` | Public Read-Only Spectator Mode | Auth & Identity | Spectator | `DONE` | ✅ Completed in Slice 4 & J1 |
-| `FEAT-CHAL-01` | Multi-Format Challenge Creator (Team/Duo/Solo) | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 & J2 |
+| `FEAT-CHAL-01` | Multi-Format Challenge Creator (Team/Duo/Solo) | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5, Session 24 & Session 25 (migration deployed and baseline resolved) |
 | `FEAT-CHAL-02` | Host Manual Event Kickoff Trigger | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 & J3 |
 | `FEAT-CHAL-05` | Event Lock & Freeze Final Results | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 & J6 |
 | `FEAT-CHAL-06` | Duo Partner Self-Naming & Dynamic Team Identities | Challenge Ops | Participant, Admin | `DONE` | ✅ Completed in Slice 5 & J2 |
-| `FEAT-DECL-01` | Declared Target Hours (`HH:MM:SS`) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 & J3 |
-| `FEAT-DECL-02` | Mandatory Weekly Goals Checklist (1–10 tasks) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 & J3 |
-| `FEAT-DECL-03` | Pre-Kickoff Declaration Lock on `ACTIVE` | Declarations | System | `DONE` | ✅ Completed in Slice 3 & J3 |
-| `FEAT-DECL-04` | Host Goal Unlock & Mid-Event Edit Modal | Declarations | Admin | `DONE` | ✅ Completed in Slice 5 |
+| `FEAT-DECL-01` | Declared Target Hours (`HH:MM:SS`) | Challenge Ops | Participant | `DONE` | ✅ Completed in Slice 3 & J3 |
+| `FEAT-DECL-02` | Categorizable Task Checklist (Daily & Weekly) | Tasks & Checklists | Participant | `DONE` | ✅ Decoupled to user tasks in Session 30 & Session 33 |
+| `FEAT-DECL-03` | Pre-Kickoff Target Hours Lock on `ACTIVE` | Challenge Lifecycle | System | `DONE` | ✅ Guarded in `challenge-lifecycle.ts` |
+| `FEAT-DECL-04` | Host Inline Target Edit Modal | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 |
 | `FEAT-LOG-01` | Daily Clock-Time Self-Logging (`HH:MM:SS`) | Study Logging | Participant | `DONE` | ✅ Completed in Slice 3 & J4 |
 | `FEAT-LOG-02` | 24-Hour Single-Day Limit Validation ($\le 86,400\text{s}$) | Study Logging | System | `DONE` | ✅ Completed in Slice 3 & J4 |
 | `FEAT-LOG-04` | Admin Inline Hours Override Grid (`is_override=true`) | Study Logging | Admin | `DONE` | ✅ Completed in Slice 5 & J5 |
@@ -124,11 +124,7 @@ graph TD
 
 > [!IMPORTANT]  
 > **EXACT NEXT STEP FOR THE INCOMING AGENT:**  
-> Phase 0 (MVP Core) + Operational Usability Enablers are **100% Complete and Certified**. Proceed to **Phase 1: Automation & Integrations**:
-> 1. Implement Direct YPT API Bot Ingestion Endpoint (`FEAT-LOG-03`) at `POST /api/v1/ingest/ypt` with Bearer token authentication to ingest automated daily logs from teammate YPT bots.
-> 2. Implement Automated Countdown Timer & Challenge Expiration (`FEAT-CHAL-03`).
-> 3. Scaffold `@HoldMeToItBot` 24/7 Discord daemon (`FEAT-DISC-02`) with slash commands (`/stats`, `/standings`, `/deficit`).
-> 4. Implement automated daily check-in and results webhook embeds (`FEAT-DISC-03`).
+> Verify the newly implemented categorizable todo list in the dashboard/cockpit across 360px+ mobile viewports. Validate optimistic task completion toggles, new category creation, and task deletion. Confirm that tasks remain user-scoped and fully independent of challenge enrollment, then proceed with Phase 1 feature evolution: Automated Yeolpumta (YPT) study log ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`).
 
 ---
 
@@ -136,71 +132,125 @@ graph TD
 
 In accordance with **`AGENTS.md` Rule §9.3**:
 1. **No Outdated Baggage:** Obsolete notes and work-in-progress drafts are actively pruned.
-2. **Prune Stale Details:** All 22 Phase 0 feature rows transitioned to `DONE`.
-3. **Session Log Retention:** Retains only the last 4 active engineering sessions below.
+2. **Prune Stale Details:** All Phase 0 feature rows transitioned to `DONE`.
+3. **Session Log Retention:** Retains only the last 5 active engineering sessions below; earlier sessions are summarized.
 
 ---
 
 ## 7. Session Changelog
 
 ### Previous Sessions (Summarized)
-- **Sessions 1–8 (2026-09-06):** Repository architecture, Rule §9.3 enactment, cozy aesthetic tokens, typography upgrade, dynamic per-event team themes, duo partner self-naming (`FEAT-CHAL-06`), Spiced Cinnamon palette upgrade, core domain engines, participant cockpit.
+- **Sessions 1–19 (2026-09-06 – 2026-10-04):** Core MVP architecture, cozy & obsidian theme tokens, pure domain math engine, Discord OAuth, participant cockpit, head-to-head live scoreboards, admin challenge ops, and E2E J1–J6 certification.
+- **Sessions 20–25 (2026-10-04):** Manage tab in ChallengeView with event deletion & participant reassignment, Supabase Storage integration for dual image uploads (header banner and punishment PFP), query optimization (caching NextAuth `auth()`, parallelizing queries with `Promise.all`), and database migration deployments.
+- **Sessions 26–28 (2026-10-04):** Streamlined enrollment modal with "hours" & "leaves" inputs and unassigned house flow; dynamic 7-variant dashboard cockpit banner matching Figma; redesigned two-tier challenge hero banner with in-place enrollment modal and 66% opacity overlay.
 
-### Session 9 — 2026-09-07
-- **Agent Role:** Participant UI & Scoring Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Slice 4: Head-to-Head Live Scoreboard & Standings):**
-  - Scaffolded public assets into `public/assets/` and `public/prototype/assets/`.
-  - Implemented `leaderboard-data.ts` and `leaderboard-data.test.ts`.
-  - Built `MatchBanner` (`FEAT-LEAD-01`), `StandingsTable` (`FEAT-LEAD-02`), and `PunishmentWall` (`FEAT-PUN-02`, `FEAT-PUN-03`).
-  - Created public spectator scoreboard page `app/challenge/[id]/page.tsx` with Law L9 loading skeleton.
+### Session 29 — 2026-10-04
+- **Agent Role:** Scoring & Engine Agent / Data & Identity Agent
+- **Changes Completed (Dynamic Lifecycle Status & Countdown Date Comparison):**
+  - **Database Migration (`prisma/migrations/20261004020000_remove_challenge_status/`):**
+    - Dropped `status` column and `Challenge_status_idx` index from `Challenge` table; dropped PostgreSQL `ChallengeStatus` enum.
+    - Updated `prisma/schema.prisma` and re-generated Prisma Client (v6.19.3).
+    - Cleaned `prisma/seed.ts` to omit static `status` writes.
+  - **Pure Domain Dynamic Lifecycle Engine (`features/challenges/domain/challenge-lifecycle.ts` / Law L7):**
+    - Implemented `calculateChallengeStatus(challenge, now)`: dynamically computes `"UPCOMING" | "ACTIVE" | "COMPLETED"` based on pure timestamp comparison:
+      - `now < startAt` $\rightarrow$ `"UPCOMING"`
+      - `now >= endAt` $\rightarrow$ `"COMPLETED"`
+      - Otherwise $\rightarrow$ `"ACTIVE"`
+    - Added unit tests in `challenge-lifecycle.test.ts` covering all boundary conditions.
+  - **Countdown Comparison Fix & Scoreboard ViewModel (`features/leaderboard/data/leaderboard-data.ts`):**
+    - Fixed countdown calculation: When `status === "UPCOMING"`, compares `now` against `challenge.startAt` (resolving the bug where an event starting tomorrow showed *"8 Days Left"* based on `endAt` instead of *"1 Day Left"*).
+    - Added elapsed day clamping (`0` while upcoming) and formatted `timeRemainingHuman` for upcoming (`"Starts in Xd Yh Zm"` / `"Starts today"`).
+    - Made `status` optional on `RawChallengePayload` and computed dynamically in `buildScoreboardViewModel`.
+  - **Hero Banner Presentation (`features/challenges/presentation/challenge-hero-banner.tsx`):**
+    - Updated countdown pill text formatting:
+      - `"1 Day Left"` (singular grammar for 1 day remaining).
+      - `"Starts Today"` (when 0 days left before kickoff).
+      - `"X Days Left"` (plural for 2+ days).
+      - `"Completed"` (when event has concluded).
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (0 TypeScript errors).
+    - `npm run test` exits 0 (38 test files, 425/425 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled.
 
-### Session 10 — 2026-09-07
-- **Agent Role:** Admin Operations & Broadcaster Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Slice 5: Admin Operations & Discord Broadcaster):**
-  - Implemented `challenge-creator-wizard.tsx`, `admin-challenge-console.tsx`, `admin-roster-grid.tsx` (Law L5), `admin-goals-pardons.tsx` (`FEAT-DECL-04`, `FEAT-PUN-04`), `discord-summary-card.tsx` (`FEAT-DISC-01`), and `audit-trail-table.tsx` (`FEAT-AUDIT-01`).
-  - Implemented `challenge-admin.repository.ts`, `admin-override.repository.ts`, `admin-goal.repository.ts`, `admin-pardon.repository.ts`, and `admin-challenge-view.ts`.
-  - Created routes `/admin`, `/admin/challenges/new`, `/admin/challenges/[id]`, `/admin/challenges/[id]/roster` with Law L9 loading skeletons.
+### Session 30 — 2026-10-04
+- **Agent Role:** Participant UI & Scoring / Data & Identity Agent
+- **Changes Completed (Categorizable Todo List Architecture Migration & Decoupling):**
+  - **Database Migration (`prisma/migrations/20261004030000_categorizable_todos/`):**
+    - Added `TaskType` enum (`DAILY`, `WEEKLY`).
+    - Created `categories` table (`Category` model) with `userId` FK, `name`, `createdAt`, `updatedAt`, and `@@unique([userId, name])`.
+    - Created `tasks` table (`Task` model) with `userId` FK, `categoryId` FK, `title`, `taskType`, `isComplete`, `completedAt`, `createdAt`, `updatedAt`.
+    - Decoupled todo lists completely from challenge participation: removed legacy `WeeklyGoal` model and removed `weeklyGoals` from `ChallengeParticipant`.
+  - **Pure Domain Engine (`features/tasks/domain/` / Law L7):**
+    - Created domain entities in `task.types.ts` (`TaskItem`, `CategoryItem`, `CategoryGroup`, `UserCategorizedTasks`).
+    - Built strict Zod schemas in `task.validation.ts` (`createTaskSchema`, `toggleTaskSchema`, `deleteTaskSchema`, `createCategorySchema`).
+    - Added 11 unit tests in `task.validation.test.ts`.
+  - **Data Repositories & Server Actions (`features/tasks/data/`, `features/tasks/api/`):**
+    - Implemented `task.repository.ts` with `getUserCategorizedTasks` (auto-seeds default `"Category 1"` on first load), `createTask`, `toggleTask`, `deleteTask`, and `createCategory`.
+    - Added 8 unit tests in `task.repository.test.ts`.
+    - Implemented Next.js Server Actions in `task.actions.ts` (`createTaskAction`, `toggleTaskAction`, `deleteTaskAction`, `createCategoryAction`) with session validation (`requireSessionUser`) and path revalidation.
+    - Added 7 unit tests in `task.actions.test.ts`.
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run test` exits 0 (41 test files, 450/450 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled.
 
-### Session 11 — 2026-09-07
-- **Agent Role:** QA Lead & System Architect Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Slice 6: E2E Quality Verification & Release Gate):**
-  - Authored comprehensive E2E Quality Matrix test suite: `features/e2e/quality-matrix-j1-j6.test.ts`.
-  - Automated verification for all 6 user journeys (J1–J6).
-  - Verified 24 test files (143 tests, 100% green), zero TypeScript errors, and zero production build errors.
-  - Certified Phase 0 (MVP Core) as complete.
+### Session 32 — 2026-10-04
+- **Agent Role:** Scoring & Engine Agent & Participant UI Agent
+- **Changes Completed (Dynamic Matchup Share & Target Progress):**
+  - **Pure Domain Engine (`features/leaderboard/domain/leaderboard.ts` / Law L7):**
+    - Added `calculateSharePercentages(teamASeconds, teamBSeconds)` returning `SharePercentages` (`{ ratioPercentageA, ratioPercentageB }`).
+    - Handled 0 vs 0 hours (returning 0% and 0%), single-sided hours (100% vs 0%), equal hours (50% vs 50%), and fractional shares summing strictly to 100%.
+    - Added comprehensive unit tests in `leaderboard.test.ts`.
+  - **Data / ViewModel Hydration (`features/leaderboard/data/leaderboard-data.ts`):**
+    - Extended `ScoreboardTeam` interface with `targetSeconds`, `targetClock`, `targetHours`, and `completionPercentage`.
+    - Aggregated `teamTargetMap` from enrolled participants' declared `targetSeconds`.
+    - Hydrated each team's target metrics and completion percentage.
+    - Updated `matchHeader` to use `calculateSharePercentages(teamA.totalLoggedSeconds, teamB.totalLoggedSeconds)`.
+    - Added unit tests in `leaderboard-data.test.ts`.
+  - **Presentation Layer (`features/leaderboard/presentation/challenge-leaderboard-tab.tsx`):**
+    - Fixed Falsy Zero Bug: replaced `matchHeader.ratioPercentage || 50` with nullish coalescing `?? 0`, ensuring a 0% share is never coerced to 50%.
+    - Dynamic Weekly Targets: replaced hardcoded `Weekly Target: 120h` with `Weekly Target: {team.targetHours}h`.
+    - Card Progress Bars: updated team card progress bars to use each team's actual `completionPercentage` towards its declared target rather than matchup share.
+    - Added component unit tests in `challenge-leaderboard-tab.test.tsx`.
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run test` exits 0 (43 test files, 465/465 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled.
 
-### Session 12 — 2026-09-07
-- **Agent Role:** Fullstack Engineer & Operational Enablers Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Operational Usability & Enrollment Slices):**
-  - Configured `next.config.mjs` with `images.remotePatterns` for `cdn.discordapp.com`.
-  - Implemented participant self-enrollment modal and server action (`JoinChallengeModal`, `enrollInChallengeAction`).
-  - Implemented admin roster assignment modal (`adminEnrollParticipant`, `AdminRosterGrid`).
+### Session 33 — 2026-10-04
+- **Agent Role:** Fullstack Architect & Participant UI / Challenge Ops Agent
+- **Changes Completed (Codebase Restructuring, Dead Code Elimination & Cockpit Decomposition):**
+  - **Phase 1: Legacy Declarations Pruning & Relocation:**
+    - Extracted declared target study hours domain validation into pure domain module `features/challenges/domain/target-hours.validation.ts` (with `target-hours.validation.test.ts`).
+    - Added lifecycle guard functions (`areDeclarationsLocked`, `canEditDeclarations`, `canLogStudyTime`, `isChallengeReadOnly`) to `features/challenges/domain/challenge-lifecycle.ts`.
+    - Added `updateParticipantTargetSeconds` to `features/challenges/data/participant.repository.ts`.
+    - Completely removed dead `features/declarations/` folder (10 files deleted).
+  - **Phase 2: Challenge Views Relocation:**
+    - Moved `/challenge/[id]` views (`challenge-view.tsx`, `challenge-hero-banner.tsx`, `challenge-overview-tab.tsx`) from `features/leaderboard/presentation/` to `features/challenges/presentation/` where challenge entities belong.
+    - Kept `features/leaderboard/presentation/` focused strictly on leaderboard scoring views (`challenge-leaderboard-tab.tsx`, `manual-leaderboard-view.tsx`).
+    - Updated all call sites and import paths.
+  - **Phase 3: Naming Harmonization & Action Suffix Standards:**
+    - Renamed `join-challenge-modal.tsx` $\rightarrow$ `features/challenges/presentation/enrollment-modal.tsx` (exporting `EnrollmentModal` with alias `JoinChallengeModal`).
+    - Renamed `lib/scaffold.test.ts` $\rightarrow$ `lib/utils.test.ts`.
+    - Standardized all server action file names to `.actions.ts` across the codebase (`enroll-participant.actions.ts`, `log-study-time.actions.ts`, `admin-override.actions.ts`, `admin-pardon.actions.ts`).
+  - **Phase 4: Punishment Wall Removal:**
+    - Deleted obsolete `features/leaderboard/presentation/punishment-wall.tsx` per user instruction.
+  - **Phase 5: Home Cockpit View Decomposition:**
+    - Modularized the monolithic 1,052-line `home-cockpit-view.tsx` down to 134 clean lines by extracting focused subcomponents:
+      - `features/study-logs/presentation/cockpit/cockpit-banner-card.tsx` (all 7 banner variants).
+      - `features/study-logs/presentation/cockpit/cockpit-progress-card.tsx` (weekly commitment meter and deficit badge).
+      - `features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx` (daily & weekly categorized todos, accordions, and add-todo modal).
+      - `features/study-logs/presentation/cockpit/index.ts` (subcomponent barrel).
+  - **Quality Gates:**
+    - `npm run test` exits 0 (40 test files, 448/448 tests green).
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run build` succeeds cleanly with all routes compiled.
 
-### Session 13 — 2026-09-07
-- **Agent Role:** Data & Identity Agent
-- **Git Branch:** `krish`
-- **Changes Completed (Discord Auth Connection & Navigation Integration):**
-  - Verified `.env` / `.env.local` configuration for Supabase PostgreSQL (`DATABASE_URL`, `DIRECT_URL`), `AUTH_SECRET`, and Discord OAuth (`AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET`).
-  - Executed `prisma db push` and seeded initial tournament data (`prisma/seed.ts`).
-  - Implemented `features/auth/api/auth.actions.ts` (`loginWithDiscordAction`, `logoutAction`).
-  - Created `features/auth/presentation/auth-nav.tsx` (`UserNav`, `SignInWithDiscordButton`, `SignOutButton`, `DiscordIcon`).
-  - Updated `app/page.tsx` with top authentication bar, dynamic Discord login button, and direct navigation into Cockpit / Admin hubs.
-  - Updated `app/challenge/[id]/layout.tsx`, `app/admin/layout.tsx`, and `app/(dashboard)/layout.tsx` to render `UserNav` with avatar, name, and sign-out controls.
+---
 
-### Session 14 — 2026-09-08
-- **Agent Role:** Data & Identity Agent / System Architect
-- **Git Branch:** `afnan-jr`
-- **Changes Completed (Discord Server Role RBAC & Dev Foreign Key Fix):**
-  - Designed and implemented three-tier RBAC architecture: Spectator (unauthenticated) -> Participant (authenticated) -> Host/Admin (Discord server role).
-  - Built `features/auth/data/discord-guild.service.ts` to inspect member roles via Discord REST API v10 and Bot Token, plus direct `DISCORD_ADMIN_IDS` whitelist support.
-  - Added unit test suite `features/auth/data/discord-guild.service.test.ts` (8/8 tests passing).
-  - Removed brittle `promoteFirstUserToAdminIfNeeded` and replaced with real-time `syncUserRoleFromDiscord` in NextAuth `events.signIn`.
-  - Fixed `dev-host-admin` foreign key constraint crash (`Challenge_hostId_fkey`) in `features/auth/api/require-admin.ts` by upserting dev host identity into PostgreSQL.
-  - Protected `app/admin/layout.tsx` with server-side authorization check (redirecting non-admins to `/dashboard` and guests to `/`).
-  - Quality Gates: 27 test files (166 tests) passing 100% green, `npm run typecheck` exits 0, `npm run build` exits 0.
+## 8. Next Steps for Incoming Agent
+
+1. **Verify UI in Dev Mode:** Run `npm run dev` and navigate through `/`, `/challenge/:id`, and `/admin` to verify that all restructured components render seamlessly.
+2. **Phase 1 Feature Roadmap:** Begin implementation of Yeolpumta (YPT) automated ingestion (`FEAT-LOG-03`) or Discord bot slash commands (`FEAT-DISC-03`) per `ROADMAP.md`.
 
 

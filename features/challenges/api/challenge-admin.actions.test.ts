@@ -1,12 +1,47 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { revalidatePath } from "next/cache";
+import { extractManagedObjectPath } from "@/features/challenges/domain/punishment-pfp";
 
 import {
   adminEnrollParticipantAction,
+  createChallengeAction,
+  deleteChallengeAction,
   kickoffChallengeAction,
   lockChallengeResultsAction,
+  reassignParticipantTeamAction,
+  updateChallengeAction,
 } from "@/features/challenges/api/challenge-admin.actions";
 import * as requireAdminModule from "@/features/auth/api/require-admin";
 import * as challengeAdminRepo from "@/features/challenges/data/challenge-admin.repository";
+import * as storage from "@/core/storage/supabase-storage";
+import * as pfpRepo from "@/features/challenges/data/punishment-pfp.repository";
+
+const PUBLIC_BASE = "https://abc.supabase.co/storage/v1/object/public/holdmetoit";
+const OLD_BANNER = `${PUBLIC_BASE}/event-banners/old.png`;
+const NEW_BANNER = `${PUBLIC_BASE}/event-banners/new.png`;
+const OLD_PFP = `${PUBLIC_BASE}/punishment-pfps/old.png`;
+const NEW_PFP = `${PUBLIC_BASE}/punishment-pfps/new.png`;
+const ADMIN = { id: "admin_1", username: "HostAdmin" };
+const UPDATE_INPUT = {
+  challengeId: "c_1",
+  title: "Updated Title",
+  startAt: "2026-09-01T00:00:00Z",
+  endAt: "2026-09-08T00:00:00Z",
+  eventBannerUrl: NEW_BANNER,
+  punishmentPfpUrl: NEW_PFP,
+  teams: [{ name: "Bees", color: "#FFB066", iconEmoji: "🐝" }],
+};
+
+vi.mock("@/core/storage/supabase-storage", () => ({
+  getStorageUrlConfig: vi.fn(),
+  isManagedChallengeImageUrl: vi.fn(),
+  deleteManagedChallengeImage: vi.fn(),
+}));
+
+vi.mock("@/features/challenges/data/punishment-pfp.repository", () => ({
+  findChallengeImageUrls: vi.fn(),
+  isChallengeImageReferenced: vi.fn(),
+}));
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
@@ -20,14 +55,43 @@ vi.mock("@/features/auth/api/require-admin", () => ({
 }));
 
 vi.mock("@/features/challenges/data/challenge-admin.repository", () => ({
+  createAdminChallenge: vi.fn(),
   kickoffChallenge: vi.fn(),
   lockChallengeResults: vi.fn(),
   adminEnrollParticipant: vi.fn(),
+  updateAdminChallenge: vi.fn(),
+  reassignParticipantTeam: vi.fn(),
+  deleteAdminChallenge: vi.fn(),
 }));
 
 describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    vi.mocked(requireAdminModule.requireAdminUser).mockResolvedValue(ADMIN as never);
+    vi.mocked(storage.getStorageUrlConfig).mockImplementation((purpose) => ({
+      supabaseUrl: "https://abc.supabase.co",
+      bucket: "holdmetoit",
+      folder: purpose === "event-banner" ? "event-banners" : "punishment-pfps",
+    }));
+    vi.mocked(storage.isManagedChallengeImageUrl).mockImplementation((url) =>
+      ["event-banner", "punishment-pfp"].some((purpose) =>
+        extractManagedObjectPath(url, storage.getStorageUrlConfig(
+          purpose as "event-banner" | "punishment-pfp",
+        )) !== null,
+      ),
+    );
+    vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue({
+      eventBannerUrl: OLD_BANNER,
+      punishmentPfpUrl: OLD_PFP,
+    });
+    vi.mocked(pfpRepo.isChallengeImageReferenced).mockResolvedValue(false);
+    vi.mocked(challengeAdminRepo.createAdminChallenge).mockResolvedValue({ id: "c_1" } as never);
+    vi.mocked(challengeAdminRepo.updateAdminChallenge).mockResolvedValue({ id: "c_1" } as never);
+    vi.mocked(challengeAdminRepo.deleteAdminChallenge).mockResolvedValue({ id: "c_1" } as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe("adminEnrollParticipantAction", () => {
@@ -140,6 +204,366 @@ describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
         id: "admin_1",
         username: "HostAdmin",
       });
+    });
+  });
+
+  describe("createChallengeAction dual images", () => {
+    const input = {
+      title: "Bees vs Butterflies",
+      format: "TEAM_VS_TEAM" as const,
+      startAt: UPDATE_INPUT.startAt,
+      endAt: UPDATE_INPUT.endAt,
+      eventBannerUrl: NEW_BANNER,
+      punishmentPfpUrl: NEW_PFP,
+      teams: [{ name: "Bees" }, { name: "Butterflies" }],
+    };
+
+    it("saves the two distinct image URLs independently", async () => {
+      await expect(createChallengeAction(input)).resolves.toEqual({
+        ok: true, data: { challengeId: "c_1" },
+      });
+      expect(challengeAdminRepo.createAdminChallenge).toHaveBeenCalledWith(input, ADMIN);
+      expect(storage.getStorageUrlConfig).toHaveBeenCalledWith("event-banner");
+      expect(storage.getStorageUrlConfig).toHaveBeenCalledWith("punishment-pfp");
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+    });
+
+    it.each(["eventBannerUrl", "punishmentPfpUrl"] as const)(
+      "requires %s even when the other image exists", async (field) => {
+        const missing = { ...input };
+        Reflect.deleteProperty(missing, field);
+        for (const invalid of [missing, { ...input, [field]: "" }, { ...input, [field]: " \t\n " }, { ...input, [field]: null }]) {
+          await expect(createChallengeAction(invalid as Parameters<typeof createChallengeAction>[0])).resolves.toMatchObject({
+            ok: false, code: "INVALID_INPUT",
+          });
+        }
+        expect(challengeAdminRepo.createAdminChallenge).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      { eventBannerUrl: NEW_PFP, code: "INVALID_EVENT_BANNER" },
+      { punishmentPfpUrl: NEW_BANNER, code: "INVALID_PUNISHMENT_PFP" },
+      { eventBannerUrl: NEW_PFP, punishmentPfpUrl: NEW_BANNER, code: "INVALID_EVENT_BANNER" },
+      { eventBannerUrl: "/prototype/assets/hero.jpg", code: "INVALID_EVENT_BANNER" },
+      { punishmentPfpUrl: "/prototype/assets/pfp.jpg", code: "INVALID_PUNISHMENT_PFP" },
+      { eventBannerUrl: "https://example.com/banner.png", code: "INVALID_EVENT_BANNER" },
+      { punishmentPfpUrl: "https://example.com/pfp.png", code: "INVALID_PUNISHMENT_PFP" },
+    ])("rejects wrong-folder, legacy and external images (%j)", async ({ code, ...images }) => {
+      await expect(createChallengeAction({ ...input, ...images })).resolves.toMatchObject({
+        ok: false, code,
+      });
+      expect(challengeAdminRepo.createAdminChallenge).not.toHaveBeenCalled();
+    });
+
+    it("trims both creation image URLs before validating and saving them", async () => {
+      await expect(createChallengeAction({
+        ...input,
+        eventBannerUrl: ` \t${NEW_BANNER}\n `,
+        punishmentPfpUrl: ` \t${NEW_PFP}\n `,
+      })).resolves.toEqual({ ok: true, data: { challengeId: "c_1" } });
+      expect(challengeAdminRepo.createAdminChallenge).toHaveBeenCalledExactlyOnceWith(input, ADMIN);
+    });
+
+    it("fails closed when storage URL configuration is unavailable", async () => {
+      vi.mocked(storage.getStorageUrlConfig).mockImplementation(() => { throw new Error("Missing config"); });
+      await expect(createChallengeAction(input)).resolves.toMatchObject({
+        ok: false, code: "INVALID_EVENT_BANNER",
+      });
+      expect(challengeAdminRepo.createAdminChallenge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateChallengeAction", () => {
+    it("saves both URLs and cleans both old images only after the update commits", async () => {
+      let committed = false;
+      vi.mocked(challengeAdminRepo.updateAdminChallenge).mockImplementation(async () => {
+        expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+        expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+        committed = true;
+        return { id: "c_1" } as never;
+      });
+      vi.mocked(pfpRepo.isChallengeImageReferenced).mockImplementation(async () => {
+        expect(committed).toBe(true);
+        return false;
+      });
+      await expect(updateChallengeAction(UPDATE_INPUT)).resolves.toEqual({ ok: true });
+      const { challengeId, ...data } = UPDATE_INPUT;
+      expect(challengeAdminRepo.updateAdminChallenge).toHaveBeenCalledWith(challengeId, data, ADMIN);
+      expect(pfpRepo.findChallengeImageUrls).toHaveBeenCalledWith(challengeId);
+      expect(vi.mocked(storage.deleteManagedChallengeImage).mock.calls).toEqual([[OLD_BANNER], [OLD_PFP]]);
+    });
+
+    it.each([
+      { eventBannerUrl: NEW_BANNER, punishmentPfpUrl: OLD_PFP, removed: OLD_BANNER },
+      { eventBannerUrl: OLD_BANNER, punishmentPfpUrl: NEW_PFP, removed: OLD_PFP },
+    ])("replaces one image without changing or cleaning the other (%j)", async ({ removed, ...images }) => {
+      await expect(updateChallengeAction({ ...UPDATE_INPUT, ...images })).resolves.toEqual({ ok: true });
+      expect(challengeAdminRepo.updateAdminChallenge).toHaveBeenCalledWith(
+        "c_1", expect.objectContaining(images), ADMIN,
+      );
+      expect(pfpRepo.isChallengeImageReferenced).toHaveBeenCalledExactlyOnceWith(removed);
+      expect(storage.deleteManagedChallengeImage).toHaveBeenCalledExactlyOnceWith(removed);
+    });
+
+    it("does not check references or delete unchanged images", async () => {
+      await expect(updateChallengeAction({
+        ...UPDATE_INPUT, eventBannerUrl: OLD_BANNER, punishmentPfpUrl: OLD_PFP,
+      })).resolves.toEqual({ ok: true });
+      expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { eventBannerUrl: null, punishmentPfpUrl: null },
+      { eventBannerUrl: null, punishmentPfpUrl: "/prototype/assets/pfp.jpg" },
+      { eventBannerUrl: "/prototype/assets/hero.jpg", punishmentPfpUrl: null },
+      { eventBannerUrl: "https://example.com/old.png", punishmentPfpUrl: "/prototype/assets/pfp.jpg" },
+      { eventBannerUrl: OLD_BANNER, punishmentPfpUrl: OLD_BANNER },
+      { eventBannerUrl: "", punishmentPfpUrl: "" },
+      { eventBannerUrl: " \t\n ", punishmentPfpUrl: "\n\t " },
+      { eventBannerUrl: "", punishmentPfpUrl: " \t " },
+      { eventBannerUrl: " \n ", punishmentPfpUrl: "" },
+      { eventBannerUrl: " /prototype/assets/hero.jpg ", punishmentPfpUrl: "\t/prototype/assets/pfp.jpg\n" },
+      { eventBannerUrl: ` ${OLD_BANNER} `, punishmentPfpUrl: `\t${OLD_PFP}\n` },
+    ])("preserves exact stored raw legacy/null/wrong-folder values (%j)", async (images) => {
+      vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue(images);
+      const { challengeId, ...data } = { ...UPDATE_INPUT, ...images };
+      await expect(updateChallengeAction({ challengeId, ...data })).resolves.toEqual({ ok: true });
+      expect(challengeAdminRepo.updateAdminChallenge).toHaveBeenCalledExactlyOnceWith(
+        challengeId, data, ADMIN,
+      );
+      expect(storage.getStorageUrlConfig).not.toHaveBeenCalled();
+      expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+    });
+
+    it.each(["eventBannerUrl", "punishmentPfpUrl"] as const)(
+      "allows a valid replacement for a stored null %s", async (field) => {
+        vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue({
+          eventBannerUrl: null, punishmentPfpUrl: null,
+        });
+        const images = { eventBannerUrl: null, punishmentPfpUrl: null, [field]: UPDATE_INPUT[field] };
+        await expect(updateChallengeAction({ ...UPDATE_INPUT, ...images })).resolves.toEqual({ ok: true });
+        expect(challengeAdminRepo.updateAdminChallenge).toHaveBeenCalledWith(
+          "c_1", expect.objectContaining(images), ADMIN,
+        );
+        expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      { eventBannerUrl: NEW_PFP, code: "INVALID_EVENT_BANNER" },
+      { punishmentPfpUrl: NEW_BANNER, code: "INVALID_PUNISHMENT_PFP" },
+      { eventBannerUrl: OLD_PFP, punishmentPfpUrl: OLD_BANNER, code: "INVALID_EVENT_BANNER" },
+      { eventBannerUrl: null, code: "INVALID_EVENT_BANNER" },
+      { punishmentPfpUrl: null, code: "INVALID_PUNISHMENT_PFP" },
+      { eventBannerUrl: "https://example.com/banner.png", code: "INVALID_EVENT_BANNER" },
+      { punishmentPfpUrl: "https://example.com/pfp.png", code: "INVALID_PUNISHMENT_PFP" },
+      { eventBannerUrl: "/prototype/assets/new.jpg", code: "INVALID_EVENT_BANNER" },
+      { punishmentPfpUrl: "/prototype/assets/new.jpg", code: "INVALID_PUNISHMENT_PFP" },
+    ])("rejects changed images outside their folder or clearing a saved image (%j)", async ({ code, ...images }) => {
+      await expect(updateChallengeAction({ ...UPDATE_INPUT, ...images })).resolves.toMatchObject({ ok: false, code });
+      expect(challengeAdminRepo.updateAdminChallenge).not.toHaveBeenCalled();
+      expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+    });
+
+    it.each(["eventBannerUrl", "punishmentPfpUrl"] as const)(
+      "does not grandfather a different legacy %s", async (field) => {
+        vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue({
+          eventBannerUrl: "/prototype/assets/old-banner.jpg",
+          punishmentPfpUrl: "/prototype/assets/old-pfp.jpg",
+        });
+        await expect(updateChallengeAction({
+          ...UPDATE_INPUT,
+          eventBannerUrl: "/prototype/assets/old-banner.jpg",
+          punishmentPfpUrl: "/prototype/assets/old-pfp.jpg",
+          [field]: "/prototype/assets/different.jpg",
+        })).resolves.toMatchObject({
+          ok: false, code: field === "eventBannerUrl" ? "INVALID_EVENT_BANNER" : "INVALID_PUNISHMENT_PFP",
+        });
+        expect(challengeAdminRepo.updateAdminChallenge).not.toHaveBeenCalled();
+      },
+    );
+
+    describe.each(["eventBannerUrl", "punishmentPfpUrl"] as const)("raw %s validation", (field) => {
+      it.each([
+        "",
+        " \t\n ",
+        ` ${UPDATE_INPUT[field]}`,
+        `${UPDATE_INPUT[field]} `,
+        ` \t${UPDATE_INPUT[field]}\n `,
+      ])("rejects changed empty/whitespace/padded URLs without trimming (%j)", async (rawUrl) => {
+        await expect(updateChallengeAction({ ...UPDATE_INPUT, [field]: rawUrl })).resolves.toMatchObject({
+          ok: false,
+          code: field === "eventBannerUrl" ? "INVALID_EVENT_BANNER" : "INVALID_PUNISHMENT_PFP",
+        });
+        expect(pfpRepo.findChallengeImageUrls).toHaveBeenCalledWith("c_1");
+        expect(challengeAdminRepo.updateAdminChallenge).not.toHaveBeenCalled();
+        expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+        expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+      });
+
+      it("does not grandfather a different raw whitespace string", async () => {
+        const images = { eventBannerUrl: " \t ", punishmentPfpUrl: " \t " };
+        vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue(images);
+        await expect(updateChallengeAction({ ...UPDATE_INPUT, ...images, [field]: " " })).resolves.toMatchObject({
+          ok: false,
+          code: field === "eventBannerUrl" ? "INVALID_EVENT_BANNER" : "INVALID_PUNISHMENT_PFP",
+        });
+        expect(challengeAdminRepo.updateAdminChallenge).not.toHaveBeenCalled();
+        expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+        expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+      });
+    });
+
+    it("keeps both images when the update fails", async () => {
+      vi.mocked(challengeAdminRepo.updateAdminChallenge).mockRejectedValue(new Error("db down"));
+      await expect(updateChallengeAction(UPDATE_INPUT)).resolves.toMatchObject({ ok: false, code: "UPDATE_FAILED" });
+      expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+      expect(revalidatePath).not.toHaveBeenCalled();
+    });
+
+    it("retains a replaced image referenced in either column elsewhere", async () => {
+      vi.mocked(pfpRepo.isChallengeImageReferenced).mockImplementation(async (url) => url === OLD_BANNER);
+      await expect(updateChallengeAction(UPDATE_INPUT)).resolves.toEqual({ ok: true });
+      expect(vi.mocked(pfpRepo.isChallengeImageReferenced).mock.calls).toEqual([[OLD_BANNER], [OLD_PFP]]);
+      expect(storage.deleteManagedChallengeImage).toHaveBeenCalledExactlyOnceWith(OLD_PFP);
+    });
+
+    it("retains a migrated shared banner that remains saved as the punishment PFP", async () => {
+      vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue({
+        eventBannerUrl: OLD_BANNER, punishmentPfpUrl: OLD_BANNER,
+      });
+      vi.mocked(pfpRepo.isChallengeImageReferenced).mockResolvedValue(true);
+      await expect(updateChallengeAction({ ...UPDATE_INPUT, punishmentPfpUrl: OLD_BANNER })).resolves.toEqual({ ok: true });
+      expect(pfpRepo.isChallengeImageReferenced).toHaveBeenCalledExactlyOnceWith(OLD_BANNER);
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+    });
+
+    it("deduplicates a legacy shared image when replacing both fields", async () => {
+      vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue({
+        eventBannerUrl: OLD_BANNER, punishmentPfpUrl: OLD_BANNER,
+      });
+      await expect(updateChallengeAction(UPDATE_INPUT)).resolves.toEqual({ ok: true });
+      expect(pfpRepo.isChallengeImageReferenced).toHaveBeenCalledExactlyOnceWith(OLD_BANNER);
+      expect(storage.deleteManagedChallengeImage).toHaveBeenCalledExactlyOnceWith(OLD_BANNER);
+    });
+
+    it("retains an image on reference-query failure but finishes the save and other cleanup", async () => {
+      const error = new Error("reference query failed");
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.mocked(pfpRepo.isChallengeImageReferenced).mockRejectedValueOnce(error).mockResolvedValueOnce(false);
+      await expect(updateChallengeAction(UPDATE_INPUT)).resolves.toEqual({ ok: true });
+      expect(storage.deleteManagedChallengeImage).toHaveBeenCalledExactlyOnceWith(OLD_PFP);
+      expect(log).toHaveBeenCalledWith("[challenge-images] Cleanup skipped:", error);
+      expect(revalidatePath).toHaveBeenCalledWith("/challenge/c_1");
+    });
+
+    it("rejects a missing challenge without saving or cleanup", async () => {
+      vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue(null);
+      await expect(updateChallengeAction(UPDATE_INPUT)).resolves.toMatchObject({ ok: false, code: "NOT_FOUND" });
+      expect(challengeAdminRepo.updateAdminChallenge).not.toHaveBeenCalled();
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+    });
+
+    it("rejects when endAt is before startAt", async () => {
+      await expect(updateChallengeAction({
+        ...UPDATE_INPUT, startAt: UPDATE_INPUT.endAt, endAt: UPDATE_INPUT.startAt,
+      })).resolves.toMatchObject({ ok: false, code: "INVALID_DATES" });
+      expect(challengeAdminRepo.updateAdminChallenge).not.toHaveBeenCalled();
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("reassignParticipantTeamAction", () => {
+    it("reassigns participant when called by admin", async () => {
+      vi.mocked(requireAdminModule.requireAdminUser).mockResolvedValue({
+        id: "admin_1",
+        username: "HostAdmin",
+      } as never);
+
+      vi.mocked(challengeAdminRepo.reassignParticipantTeam).mockResolvedValue({
+        id: "part_1",
+      } as never);
+
+      const result = await reassignParticipantTeamAction({
+        challengeId: "c_1",
+        participantId: "part_1",
+        newTeamId: "t_2",
+      });
+
+      expect(result).toEqual({ ok: true });
+      expect(challengeAdminRepo.reassignParticipantTeam).toHaveBeenCalledWith({
+        participantId: "part_1",
+        newTeamId: "t_2",
+        reason: undefined,
+        admin: { id: "admin_1", username: "HostAdmin" },
+      });
+    });
+  });
+
+  describe("deleteChallengeAction", () => {
+    it("deletes both images only after deleting the challenge and returns redirectTo", async () => {
+      let committed = false;
+      vi.mocked(challengeAdminRepo.deleteAdminChallenge).mockImplementation(async () => {
+        expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+        expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+        committed = true;
+        return { id: "c_1" } as never;
+      });
+      vi.mocked(pfpRepo.isChallengeImageReferenced).mockImplementation(async () => {
+        expect(committed).toBe(true);
+        return false;
+      });
+      await expect(deleteChallengeAction("c_1")).resolves.toEqual({ ok: true, data: { redirectTo: "/admin" } });
+      expect(challengeAdminRepo.deleteAdminChallenge).toHaveBeenCalledWith("c_1", ADMIN);
+      expect(vi.mocked(storage.deleteManagedChallengeImage).mock.calls).toEqual([[OLD_BANNER], [OLD_PFP]]);
+    });
+
+    it("keeps both images when deletion fails", async () => {
+      vi.mocked(challengeAdminRepo.deleteAdminChallenge).mockRejectedValue(new Error("db down"));
+      await expect(deleteChallengeAction("c_1")).resolves.toMatchObject({ ok: false, code: "DELETE_FAILED" });
+      expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+      expect(revalidatePath).not.toHaveBeenCalled();
+    });
+
+    it("deletes a duplicate image in both columns only once", async () => {
+      vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue({
+        eventBannerUrl: OLD_BANNER, punishmentPfpUrl: OLD_BANNER,
+      });
+      await expect(deleteChallengeAction("c_1")).resolves.toMatchObject({ ok: true });
+      expect(pfpRepo.isChallengeImageReferenced).toHaveBeenCalledExactlyOnceWith(OLD_BANNER);
+      expect(storage.deleteManagedChallengeImage).toHaveBeenCalledExactlyOnceWith(OLD_BANNER);
+    });
+
+    it("retains images still referenced by another challenge in either column", async () => {
+      vi.mocked(pfpRepo.isChallengeImageReferenced).mockResolvedValue(true);
+      await expect(deleteChallengeAction("c_1")).resolves.toMatchObject({ ok: true });
+      expect(vi.mocked(pfpRepo.isChallengeImageReferenced).mock.calls).toEqual([[OLD_BANNER], [OLD_PFP]]);
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+    });
+
+    it("retains the image on a failed reference query and continues best-effort cleanup", async () => {
+      const error = new Error("reference query failed");
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.mocked(pfpRepo.isChallengeImageReferenced).mockRejectedValueOnce(error).mockResolvedValueOnce(false);
+      await expect(deleteChallengeAction("c_1")).resolves.toEqual({ ok: true, data: { redirectTo: "/admin" } });
+      expect(storage.deleteManagedChallengeImage).toHaveBeenCalledExactlyOnceWith(OLD_PFP);
+      expect(log).toHaveBeenCalledWith("[challenge-images] Cleanup skipped:", error);
+      expect(revalidatePath).toHaveBeenCalledWith("/admin");
+    });
+
+    it("skips legacy and null images", async () => {
+      vi.mocked(pfpRepo.findChallengeImageUrls).mockResolvedValue({
+        eventBannerUrl: null, punishmentPfpUrl: "/prototype/assets/pfp.jpg",
+      });
+      await expect(deleteChallengeAction("c_1")).resolves.toMatchObject({ ok: true });
+      expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
+      expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
     });
   });
 });

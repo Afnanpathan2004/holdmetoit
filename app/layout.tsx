@@ -1,34 +1,17 @@
 import type { Metadata } from "next";
-import {
-  Caveat,
-  DM_Sans,
-  Fraunces,
-  JetBrains_Mono,
-} from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 
 import "./globals.css";
 
-const fontSerif = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-serif",
-  display: "swap",
-});
-
-const fontSans = DM_Sans({
+const fontSans = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
 });
 
-const fontMono = JetBrains_Mono({
+const fontDisplay = Outfit({
   subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
-const fontScript = Caveat({
-  subsets: ["latin"],
-  variable: "--font-script",
+  variable: "--font-display",
   display: "swap",
 });
 
@@ -46,9 +29,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${fontSerif.variable} ${fontSans.variable} ${fontMono.variable} ${fontScript.variable}`}
+      className={`dark ${fontSans.variable} ${fontDisplay.variable}`}
     >
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen bg-[#0d0d0d] text-[#f4f3f6] font-sans antialiased selection:bg-[#292929] selection:text-[#ffffff]">
+        {children}
+      </body>
     </html>
   );
 }

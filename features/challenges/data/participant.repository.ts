@@ -1,8 +1,10 @@
 import { prisma } from "@/core/db";
+import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 
 export async function findParticipantForUser(
   userId: string,
   challengeId?: string,
+  now = new Date(),
 ) {
   const include = {
     challenge: true,
@@ -10,9 +12,6 @@ export async function findParticipantForUser(
     user: true,
     dailyStudyLogs: {
       orderBy: { logDate: "asc" as const },
-    },
-    weeklyGoals: {
-      orderBy: { sortOrder: "asc" as const },
     },
   };
 
@@ -26,7 +25,10 @@ export async function findParticipantForUser(
   const activeParticipant = await prisma.challengeParticipant.findFirst({
     where: {
       userId,
-      challenge: { status: "ACTIVE" },
+      challenge: {
+        startAt: { lte: now },
+        endAt: { gt: now },
+      },
     },
     include,
     orderBy: { enrolledAt: "desc" },
@@ -36,10 +38,27 @@ export async function findParticipantForUser(
     return activeParticipant;
   }
 
+  const upcomingParticipant = await prisma.challengeParticipant.findFirst({
+    where: {
+      userId,
+      challenge: {
+        startAt: { gt: now },
+      },
+    },
+    include,
+    orderBy: { enrolledAt: "desc" },
+  });
+
+  if (upcomingParticipant) {
+    return upcomingParticipant;
+  }
+
   return prisma.challengeParticipant.findFirst({
     where: {
       userId,
-      challenge: { status: "UPCOMING" },
+      challenge: {
+        endAt: { lte: now },
+      },
     },
     include,
     orderBy: { enrolledAt: "desc" },
@@ -64,58 +83,64 @@ export async function findOwnedParticipant(
 export async function enrollParticipantInChallenge(params: {
   userId: string;
   challengeId: string;
-  teamId: string;
+  teamId?: string | null;
   targetSeconds?: number;
 }) {
-  const challenge = await prisma.challenge.findUnique({
-    where: { id: params.challengeId },
-  });
+  const hasTeam = Boolean(params.teamId && params.teamId !== "no-assigned");
+
+  const [challenge, existing, team] = await Promise.all([
+    prisma.challenge.findUnique({
+      where: { id: params.challengeId },
+    }),
+    prisma.challengeParticipant.findUnique({
+      where: {
+        challengeId_userId: {
+          challengeId: params.challengeId,
+          userId: params.userId,
+        },
+      },
+    }),
+    hasTeam
+      ? prisma.team.findUnique({
+          where: { id: params.teamId! },
+          include: {
+            _count: {
+              select: { participants: true },
+            },
+          },
+        })
+      : Promise.resolve(null),
+  ]);
 
   if (!challenge) {
     throw new Error("Challenge not found.");
   }
 
-  if (challenge.status === "COMPLETED") {
+  if (calculateChallengeStatus(challenge) === "COMPLETED") {
     throw new Error("Cannot enroll in a completed challenge.");
   }
-
-  const existing = await prisma.challengeParticipant.findUnique({
-    where: {
-      challengeId_userId: {
-        challengeId: params.challengeId,
-        userId: params.userId,
-      },
-    },
-  });
 
   if (existing) {
     throw new Error("User is already enrolled in this challenge.");
   }
 
-  const team = await prisma.team.findUnique({
-    where: { id: params.teamId },
-    include: {
-      _count: {
-        select: { participants: true },
-      },
-    },
-  });
+  if (hasTeam) {
+    if (!team || team.challengeId !== params.challengeId) {
+      throw new Error("Selected team does not belong to this challenge.");
+    }
 
-  if (!team || team.challengeId !== params.challengeId) {
-    throw new Error("Selected team does not belong to this challenge.");
-  }
-
-  if (team.maxMembers && team._count.participants >= team.maxMembers) {
-    throw new Error(
-      `Team ${team.name} is full (max ${team.maxMembers} member${team.maxMembers === 1 ? "" : "s"}).`,
-    );
+    if (team.maxMembers && team._count.participants >= team.maxMembers) {
+      throw new Error(
+        `Team ${team.name} is full (max ${team.maxMembers} member${team.maxMembers === 1 ? "" : "s"}).`,
+      );
+    }
   }
 
   return prisma.challengeParticipant.create({
     data: {
       userId: params.userId,
       challengeId: params.challengeId,
-      teamId: params.teamId,
+      teamId: hasTeam ? params.teamId! : null,
       targetSeconds: params.targetSeconds ?? 0,
       status: "NORMAL",
     },
@@ -126,4 +151,15 @@ export async function enrollParticipantInChallenge(params: {
     },
   });
 }
+
+export async function updateParticipantTargetSeconds(
+  participantId: string,
+  targetSeconds: number,
+) {
+  return prisma.challengeParticipant.update({
+    where: { id: participantId },
+    data: { targetSeconds },
+  });
+}
+
 
