@@ -4,7 +4,7 @@
 > **Repository:** `e:\Projects\HoldMeToIt-Git`  
 > **Current Branch:** `afnan-jr`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-05  
+> **Last Updated:** 2026-10-06  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**  
 
 ---
@@ -124,7 +124,7 @@ graph TD
 
 > [!IMPORTANT]  
 > **EXACT NEXT STEP FOR THE INCOMING AGENT:**  
-> Verify the newly implemented `DEV` role end-to-end: add Discord snowflake IDs into `.env` under `DEV_DISCORD_IDS='["<your-discord-id>"]'`, log in via Discord OAuth, and verify that the cozy amber `DEV` pill badge appears in `UserNav`, that the "Admin Console" link is accessible, and that all admin controls (`/admin`, `/challenge/:id?tab=manage`, inline hours override grid) function seamlessly with developer privileges. Next, proceed with Phase 1 feature evolution: Automated Yeolpumta (YPT) study log ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`).
+> Verify the newly implemented Challenge-Day bucket logging and server-side date resolution end-to-end: start `npm run dev`, navigate to `/dashboard`, open the "Log Hours" modal, verify that the toggle buttons display relative challenge day numbers ("Today" vs "Yesterday"), and verify that hours logged save correctly to canonical UTC dates without client timezone drift. Next, proceed with Phase 1 feature evolution: Automated Yeolpumta (YPT) study log ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`).
 
 ---
 
@@ -145,99 +145,7 @@ In accordance with **`AGENTS.md` Rule §9.3**:
 - **Sessions 26–28 (2026-10-04):** Streamlined enrollment modal with "hours" & "leaves" inputs and unassigned house flow; dynamic 7-variant dashboard cockpit banner matching Figma; redesigned two-tier challenge hero banner with in-place enrollment modal and 66% opacity overlay.
 
 - **Sessions 29–36 (2026-10-04 – 2026-10-05):** Pure dynamic challenge lifecycle status & countdown comparison fix; categorizable user todos decoupled from challenge enrollment with database migration; dynamic matchup share percentages and weekly targets; legacy declarations pruning & cockpit decomposition; study log upsert/pre-fill flow with conditional "Yesterday" toggle.
-
-### Session 37 — 2026-10-05
-- **Agent Role:** Participant UI & Tasks / Data & Identity Agent
-- **Changes Completed (Context Menu on Tasks and Categories for Editing & Deleting):**
-  - **Domain Validation (`features/tasks/domain/task.validation.ts` / Law L7):**
-    - Implemented `updateTaskSchema` (`{ taskId, title }`), `updateCategorySchema` (`{ categoryId, name }`), and `deleteCategorySchema` (`{ categoryId }`).
-    - Added unit test coverage for new schemas in `features/tasks/domain/task.validation.test.ts`.
-  - **Data Persistence Layer (`features/tasks/data/task.repository.ts`):**
-    - Implemented `updateTask` with user ownership verification.
-    - Implemented `updateCategory` with user ownership verification and duplicate name collision checking.
-    - Implemented `deleteCategory` which cascades deletion of all contained tasks via relational integrity.
-    - Added comprehensive unit tests in `features/tasks/data/task.repository.test.ts`.
-  - **Server Actions Layer (`features/tasks/api/task.actions.ts`):**
-    - Implemented authenticated `updateTaskAction`, `updateCategoryAction`, and `deleteCategoryAction` with session validation and revalidation of `/` and `/dashboard`.
-    - Added comprehensive unit tests in `features/tasks/api/task.actions.test.ts`.
-  - **Presentation Layer (`features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx`):**
-    - Implemented dual-trigger context menu support:
-      - **Right-Click (`onContextMenu`):** Native event handler on both category headers and task rows opening menu at click position.
-      - **3-Dots Options Trigger (`MoreVertical`):** Visible on hover for desktop and persistent on mobile (360px+ viewport) for accessibility.
-    - Added floating context menu container with click-outside and `Escape` key dismissal.
-    - Added **Edit Task Modal** with pre-filled title and instant optimistic UI update.
-    - Added **Rename Category Modal** with pre-filled name and instant optimistic UI update across both Daily and Weekly sections.
-    - Added **Delete Category Confirmation Modal** warning users before deleting a category and its tasks.
-    - Added component unit tests in `features/study-logs/presentation/cockpit/cockpit-tasks-section.test.tsx`.
-  - **Quality Gates:**
-    - `npm run test` exits 0 (42 test files, 481/481 tests green).
-    - `npm run typecheck` exits 0 (zero TypeScript errors).
-    - `npm run build` succeeds cleanly with all routes compiled.
-
-### Session 38 — 2026-10-05
-- **Agent Role:** Data & Identity / Participant UI Agent
-- **Changes Completed (Segregating Daily and Weekly Categories):**
-  - **Prisma Schema & PostgreSQL Migration (`prisma/`):**
-    - Added `taskType TaskType @default(DAILY) @map("task_type")` to `model Category` in `prisma/schema.prisma`.
-    - Updated unique constraint to `@@unique([userId, name, taskType])` and added index `@@index([userId, taskType])`.
-    - Generated and executed migration `20261005010000_add_task_type_to_categories` on Supabase PostgreSQL, gracefully migrating existing categories and duplicating any mixed categories to maintain referential integrity.
-  - **Domain Layer (`features/tasks/domain/` / Law L7):**
-    - Added `taskType: TaskType` to `CategoryItem` and `CategoryGroup` in `task.types.ts`.
-    - Added `taskType: taskTypeSchema.default("DAILY")` to `createCategorySchema` and optional `taskType` to `updateCategorySchema` in `task.validation.ts`.
-    - Set `CreateCategoryInput = z.input<typeof createCategorySchema>`.
-    - Verified pure domain validations in `task.validation.test.ts`.
-  - **Data Persistence Layer (`features/tasks/data/task.repository.ts`):**
-    - Updated `getUserCategorizedTasks` to populate `dailyCategories` strictly with `taskType === "DAILY"` and `weeklyCategories` strictly with `taskType === "WEEKLY"`, eliminating cross-contamination.
-    - Added automatic seeding of default `Category 1` for both `DAILY` and `WEEKLY` if missing.
-    - Updated `createTask` and `createCategory` to associate new categories with their respective `taskType`.
-    - Scoped `updateCategory` collision checks to `taskType`.
-    - Updated unit test suite in `task.repository.test.ts`.
-  - **Server Actions Layer (`features/tasks/api/task.actions.ts`):**
-    - Updated `createCategoryAction` to pass `taskType` to repository.
-    - Updated test suite in `task.actions.test.ts`.
-  - **Presentation Layer (`features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx`):**
-    - Segregated dropdown options: `dailyCategoryOptions` vs `weeklyCategoryOptions`.
-    - Filtered category selector inside Add Todo modal to strictly show categories matching `addModalType` (`daily` vs `weekly`).
-    - Initialized modal default `selectedCategory` to the first category of that specific type.
-    - Scoped context menu operations (rename and delete) to the active category type.
-    - Added unit test in `cockpit-tasks-section.test.tsx` asserting complete isolation between daily and weekly categories.
-  - **Quality Gates:**
-    - `npx prisma migrate status`: Database schema is fully migrated and in sync.
-    - `npm run test` exits 0 (42 test files, 485/485 tests green).
-    - `npm run typecheck` exits 0 (zero TypeScript errors).
-    - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
-
-### Session 39 — 2026-10-05
-- **Agent Role:** Data & Identity / Admin Operations Agent
-- **Changes Completed (`DEV` Role & Environment Discord Snowflake ID Gating):**
-  - **Prisma Schema & PostgreSQL Migration (`prisma/`):**
-    - Updated `enum UserRole` in `prisma/schema.prisma` to include `DEV` (`PARTICIPANT`, `ADMIN`, `DEV`).
-    - Created and deployed migration `20261005020000_add_dev_user_role` (`ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'DEV';`) to Supabase PostgreSQL.
-    - Generated updated Prisma Client types with `UserRole.DEV`.
-  - **Pure Domain Engine (`features/auth/domain/` / Law L7):**
-    - Created `features/auth/domain/auth-roles.ts` exporting:
-      - `parseDiscordSnowflakeList(raw)`: parses JSON arrays (e.g. `'["123", "456"]'`) or comma/whitespace-separated strings, trimming and filtering invalid characters.
-      - `isDevRole(role)`: type guard verifying whether a role is `DEV`.
-      - `hasAdminPrivileges(role)`: checks if role is either `ADMIN` or `DEV`, unifying administrative access control.
-    - Added 13 unit tests in `features/auth/domain/auth-roles.test.ts` (100% green).
-  - **Data Persistence & Role Sync (`features/auth/data/`, `core/auth/`):**
-    - Added `getConfiguredDevDiscordIds()` and `isDiscordDev(discordId)` to `features/auth/data/discord-guild.service.ts`.
-    - Updated `syncUserRoleFromDiscord` in `features/auth/data/user.repository.ts` to assign `DEV` when `isDiscordDev(discordId)` is true, taking precedence over guild admin status.
-    - Updated `core/auth/index.ts` session hydration callback to self-heal and assign `DEV` in the active session and database if `user.discordId` matches `DEV_DISCORD_IDS`.
-    - Added unit test coverage in `features/auth/data/discord-guild.service.test.ts` and `features/auth/data/user.repository.test.ts`.
-  - **API & Authorization Guards (`features/auth/api/`):**
-    - Updated `requireAdminUser` in `features/auth/api/require-admin.ts` to permit both `ADMIN` and `DEV` using `hasAdminPrivileges`.
-    - Added unit tests in `features/auth/api/require-admin.test.ts` verifying `DEV` access, `ADMIN` access, and rejection of `PARTICIPANT` or unauthenticated sessions.
-  - **Presentation Layer (`features/auth/presentation/`, `app/`):**
-    - Updated `features/auth/presentation/auth-nav.tsx` to render a cozy amber `DEV` pill badge (`bg-amber-500/15 text-amber-300 border-amber-500/30`) and show the "Admin Console" navigation link.
-    - Added component unit tests in `features/auth/presentation/auth-nav.test.tsx`.
-    - Updated `app/admin/layout.tsx` to authorize both `ADMIN` and `DEV` via `hasAdminPrivileges`.
-    - Updated `app/challenge/[id]/page.tsx` manage tab authorization to check `hasAdminPrivileges`.
-    - Documented `DEV_DISCORD_IDS` configuration with example formats in `.env.example`.
-  - **Quality Gates:**
-    - `npm run test` exits 0 (46 test files, 517/517 tests green).
-    - `npm run typecheck` exits 0 (zero TypeScript errors).
-    - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
+- **Sessions 37–39 (2026-10-05):** Task & category context menu actions (rename, delete, edit) with domain validations; segregation of daily and weekly category types with database migration; introduction of `DEV` role with `DEV_DISCORD_IDS` gating and admin console access.
 
 ### Session 40 — 2026-10-05
 - **Agent Role:** Data & Identity / Admin Operations Agent
@@ -270,17 +178,85 @@ In accordance with **`AGENTS.md` Rule §9.3**:
   - **Navigation & Section Layout:**
     - Placed `← Back` navigation with underline (`underline underline-offset-4`) on its own row above the action buttons.
     - Updated "Events" header to feature a matching solid underline (`border-b-2 border-white pb-1.5 inline-block`).
+### Session 42 — 2026-10-05
+- **Agent Role:** Participant UI & Scoring/Engine Agent
+- **Changes Completed (Comprehensive 360px+ Mobile Responsiveness Optimization):**
+  - **Top Navigation Header (`features/auth/presentation/auth-nav.tsx`):**
+    - Responsive user name truncation (`max-w-[45px] xs:max-w-[75px] sm:max-w-[130px]`) prevents overflow.
+    - Responsive Admin Console label (renders "Admin" on `< sm` and "Admin Console" on `sm:`).
+    - Responsive Sign Out button: hides the `"Sign Out"` text label on `< sm` (`hidden sm:inline`), collapsing to a compact square icon button with accessible `aria-label`. Total header right side width on 360px viewports reduced by ~216px, completely eliminating header clipping and sign out button truncation.
+  - **Matchup Card & Share Bar (`features/leaderboard/presentation/challenge-leaderboard-tab.tsx`):**
+    - Shortened split share bar label on mobile to `Total: {hours}h` (`sm:Total Challenge Log: {hours} hours`) with `whitespace-nowrap`, eliminating awkward multi-line line breaks.
+    - Set team weekly target and pace text to `shrink-0 text-right whitespace-nowrap pl-2 text-[11px] sm:text-xs`, keeping targets on a clean single line.
+  - **Challenge View Tab Navigation (`features/challenges/presentation/challenge-view.tsx`):**
+    - Reduced tab button padding from `px-6 py-2` to `px-3 sm:px-6 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold whitespace-nowrap`.
+    - Added an overflow guard with `overflow-x-auto` to protect the 4-tab bar on extremely narrow devices.
+  - **Cockpit Banner & Progress Card (`features/study-logs/presentation/cockpit/`):**
+    - Updated `cockpit-banner-card.tsx` action button containers across all 7 banner variants to `flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto` and buttons to `w-full sm:w-auto`, allowing comfortable full-width mobile tap targets.
+    - Updated `cockpit-progress-card.tsx` deficit badge and percentage container to `flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto` with `text-[11px] sm:text-xs`, ensuring badges never wrap awkwardly.
+  - **Challenge Manage Tab (`features/challenges/presentation/challenge-manage-tab.tsx`):**
+    - Changed outer card padding from `p-6 sm:p-8` to `p-4 sm:p-6 lg:p-8` for mobile screen breathing room.
+    - Section 2 (Team Identities): hid `#HEX` color string on mobile (`<span className="hidden sm:inline">...</span>`) while preserving the color swatch, and added `min-w-0` to team name input, eliminating the card overflow that caused full-page horizontal scrolling.
+    - Section 4 (Participant House Assignments): updated participant house dropdown container and `<select>` to `w-full sm:w-auto`, filling the card width cleanly on mobile instead of leaving awkward right empty space.
+    - Bottom Action Bar & Danger Zone: converted action buttons to `w-full sm:w-auto` stacked (`flex-col-reverse sm:flex-row`) for ergonomic mobile handling.
+### Session 43 — 2026-10-05
+- **Agent Role:** Participant UI & Scoring/Engine Agent
+- **Changes Completed (Mobile-First Card Leaderboard Design Alignment):**
+  - **Data Engine Layer (`features/leaderboard/data/leaderboard-data.ts`):**
+    - Extended `RawChallengePayload` to optionally accept `logDate?: Date | string` in `dailyStudyLogs`.
+    - Selected `logDate: true` in `getChallengeScoreboard` Prisma query.
+    - Updated `buildScoreboardViewModel` to calculate `todayLoggedSeconds` and `todayLoggedClock` (`HH:MM:SS`) by matching each participant's logs against the active UTC date key (`formatUtcDateKey(now)`).
+    - Expanded `ScoreboardStandingEntry` with `todayLoggedSeconds: number` and `todayLoggedClock: string`.
+    - Added unit test in `leaderboard-data.test.ts` verifying accurate computation of `todayLoggedSeconds` and `todayLoggedClock`.
+  - **Presentation Layer (`features/leaderboard/presentation/challenge-leaderboard-tab.tsx`):**
+    - Implemented dedicated mobile card layout (`sm:hidden`) directly matching the user's wireframe (`media_1791220333693.png`):
+      - Mobile Header Card: rounded obsidian bar (`rounded-2xl border border-[#262626] bg-[#1a1a1a]`) with columns `Rank`, `Participant`, and `Total Hours`.
+      - Participant Cards: rounded cards (`rounded-2xl border border-[#262626] p-3`) with:
+        - Rank: bold rank number (`1`, `2`, `3`...).
+        - Avatar: circular avatar (`h-9 w-9 rounded-full`) with image or capital initial fallback.
+        - Participant Info: display name with compact team pill badge (`[snake]`) and `@username` on the second line.
+        - Hours: `{totalLoggedClock}/{targetClock}` on line 1, and `+{todayLoggedClock}` in vibrant green text (`text-[#4ade80]`) on line 2.
+    - Wrapped desktop table in `hidden sm:block overflow-x-auto` to preserve the full-width desktop view on larger viewports.
+    - Updated desktop table "Today's hours" column to display `entry.todayLoggedClock`.
+    - Added component test in `challenge-leaderboard-tab.test.tsx` asserting mobile card layout and values.
   - **Quality Gates:**
     - `npm run typecheck` exits 0 (zero TypeScript errors).
-    - `npm run test` exits 0 (46 test files, 517/517 tests green).
+    - `npm run test` exits 0 (46 test files, 519/519 tests green).
+    - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
+
+### Session 44 — 2026-10-06
+- **Agent Role:** Scoring & Engine / Participant UI Agent
+- **Changes Completed (Challenge-Day Bucket System & Server-Side Date Resolution):**
+  - **Pure Domain Engine (`features/study-logs/domain/challenge-day.ts` / Law L7):**
+    - Implemented `getChallengeDayNumber(startAt, now)`: calculates 1-indexed relative day of challenge (Day 1, Day 2...) based on elapsed time from `startAt`.
+    - Implemented `getChallengeDayDateKey(startAt, dayNumber)`: derives canonical UTC `YYYY-MM-DD` date key for any challenge day number.
+    - Implemented `getChallengeDayBuckets(startAt, now)`: calculates current and previous day numbers and date keys relative to challenge schedule.
+    - Added unit test suite in `features/study-logs/domain/challenge-day.test.ts` (100% green).
+  - **API Validation & Server Action (`features/study-logs/api/log-study-time.actions.ts` / Law L7, Law L8):**
+    - Updated `logStudyTimeSchema` to validate `challengeDay` (positive integer).
+    - Enforced server-side validation restricting logs strictly to current or previous challenge day (`isCurrentDay || isPreviousDay`).
+    - Derived `logDate` canonical date key server-side from verified challenge day bucket, eliminating client timezone skew and date drift.
+    - Added unit test coverage in `features/study-logs/api/log-study-time.actions.test.ts`.
+  - **Data Hydration (`features/study-logs/data/cockpit-data.ts`, `features/leaderboard/data/leaderboard-data.ts`):**
+    - Extended `CockpitViewModel` to expose `todayDayNumber` and `yesterdayDayNumber`.
+    - Updated `getChallengeScoreboard` to derive elapsed days and calculate active day `todayDateKey` via challenge day buckets.
+  - **Presentation Layer (`features/study-logs/presentation/` / Law L9):**
+    - Refactored `DailyHoursModal` (`features/study-logs/presentation/daily-hours-modal.tsx`) to switch and submit study hours by `challengeDay` index (`todayDayNumber` vs `yesterdayDayNumber`).
+    - Wired `todayDayNumber` and `yesterdayDayNumber` through `home-cockpit-view.tsx` and `cockpit-banner-card.tsx` into modal.
+    - Updated component test suites in `daily-hours-modal.test.tsx` and `home-cockpit-view.test.tsx`.
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero TypeScript errors).
+    - `npm run test` exits 0 (47 test files, 524/524 tests green).
     - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
 
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify In-Browser Experience:** Start `npm run dev` and navigate to `/admin`:
-   - Inspect the redesigned "Create Challenge" and "Change Accent Color" squircle buttons across desktop and mobile (360px+) viewports.
-   - Verify that clicking "Create Challenge" seamlessly routes to `/admin/challenges/new`.
+1. **Verify Challenge-Day Flow in Browser:** Start `npm run dev` and navigate to `/dashboard`:
+   - Open the "Log Hours" modal, verify toggling between "Today" and "Yesterday" selects the correct challenge day numbers.
+   - Submit hours for Today and Yesterday; verify that hours save correctly to their respective challenge-day date keys without client timezone drift.
 2. **Phase 1 Feature Roadmap:** Begin implementation of Yeolpumta (YPT) automated ingestion (`FEAT-LOG-03`) or Discord bot slash commands (`FEAT-DISC-03`) per `ROADMAP.md`.
+
+
 

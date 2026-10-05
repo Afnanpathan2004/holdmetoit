@@ -355,5 +355,38 @@ describe("buildScoreboardViewModel", () => {
       expect(result.daysRemaining).toBe(4);
       expect(result.currentDayNumber).toBe(4);
     });
+
+    it("computes todayLoggedSeconds and todayLoggedClock when participant has study logs matching today", () => {
+      const today = new Date("2026-10-05T14:30:00.000Z");
+      const challengeWithTodayLogs: RawChallengePayload = {
+        ...mockChallenge,
+        participants: [
+          {
+            id: "part-1",
+            userId: "user-1",
+            teamId: "team-bees",
+            targetSeconds: 126_000,
+            status: "NORMAL",
+            user: {
+              id: "user-1",
+              displayName: "AuraStudier",
+              username: "aura",
+              name: null,
+              image: null,
+            },
+            dailyStudyLogs: [
+              { durationSeconds: 7_200, logDate: new Date("2026-10-04T10:00:00.000Z") },
+              { durationSeconds: 14_400, logDate: new Date("2026-10-05T09:00:00.000Z") },
+            ],
+          },
+        ],
+      };
+
+      const result = buildScoreboardViewModel(challengeWithTodayLogs, "user-1", today);
+      expect(result.standings[0].todayLoggedSeconds).toBe(14_400);
+      expect(result.standings[0].todayLoggedClock).toBe("04:00:00");
+      expect(result.standings[0].totalLoggedSeconds).toBe(21_600);
+      expect(result.standings[0].totalLoggedClock).toBe("06:00:00");
+    });
   });
 });

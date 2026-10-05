@@ -57,15 +57,16 @@ export function SignOutButton({
   size?: "default" | "sm" | "lg" | "icon";
 }) {
   return (
-    <form action={logoutAction} className="inline-block">
+    <form action={logoutAction} className="inline-block shrink-0">
       <Button
         type="submit"
         variant="ghost"
         size={size}
-        className={`h-8 px-2.5 text-xs text-[#ffffff] hover:text-[#d1d1d1] hover:bg-[#1c1c1c] transition-colors gap-1.5 ${className}`}
+        aria-label="Sign Out"
+        className={`h-8 px-2 sm:px-2.5 text-xs text-[#ffffff] hover:text-[#d1d1d1] hover:bg-[#1c1c1c] transition-colors gap-1.5 ${className}`}
       >
         <LogOut className="h-3.5 w-3.5" />
-        <span>Sign Out</span>
+        <span className="hidden sm:inline">Sign Out</span>
       </Button>
     </form>
   );
@@ -100,18 +101,19 @@ export function UserNav({ user, redirectTo }: UserNavProps) {
   const isDev = isDevRole(user.role);
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3">
+    <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
       {isAdmin && (
         <Link
           href="/admin"
-          className="inline-flex items-center justify-center rounded-full bg-[#1c1c1c] hover:bg-[#292929] px-3 py-1.5 text-xs font-medium text-[#f4f3f6] transition-colors border border-[#333333]"
+          className="inline-flex items-center justify-center rounded-full bg-[#1c1c1c] hover:bg-[#292929] px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-medium text-[#f4f3f6] transition-colors border border-[#333333] shrink-0"
         >
-          Admin Console
+          <span className="sm:hidden">Admin</span>
+          <span className="hidden sm:inline">Admin Console</span>
         </Link>
       )}
 
       {/* User Capsule */}
-      <div className="flex items-center gap-2 rounded-full border border-[#434343] bg-[#1c1c1c] px-2.5 py-1 text-xs">
+      <div className="flex items-center gap-1.5 sm:gap-2 rounded-full border border-[#434343] bg-[#1c1c1c] px-2 sm:px-2.5 py-1 text-xs shrink-0 max-w-[130px] sm:max-w-none">
         <div className="relative h-5 w-5 overflow-hidden rounded-full border border-[#545454] bg-[#292929] shrink-0">
           {user.image ? (
             <Image
@@ -128,7 +130,7 @@ export function UserNav({ user, redirectTo }: UserNavProps) {
           )}
         </div>
 
-        <span className="max-w-[100px] sm:max-w-[130px] truncate font-medium text-[#f4f3f6]">
+        <span className="max-w-[45px] xs:max-w-[75px] sm:max-w-[130px] truncate font-medium text-[#f4f3f6]">
           {displayName}
         </span>
 
@@ -159,13 +161,13 @@ export function AppHeader({
 }) {
   return (
     <header className="sticky top-0 z-40 h-16 border-b border-[#1f1f1f] bg-[#0d0d0d]/95 backdrop-blur-md">
-      <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#ffffff] text-[#0a080e] shadow-sm">
+      <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-3 sm:px-6">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#ffffff] text-[#0a080e] shadow-sm shrink-0">
               <Shield className="h-3.5 w-3.5 fill-current" />
             </div>
-            <span className="font-semibold text-base tracking-tight text-[#f4f3f6] group-hover:text-white transition-colors">
+            <span className="font-semibold text-sm sm:text-base tracking-tight text-[#f4f3f6] group-hover:text-white transition-colors">
               HoldMeToIt
             </span>
           </Link>

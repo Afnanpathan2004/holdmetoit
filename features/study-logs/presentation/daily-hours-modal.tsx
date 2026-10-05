@@ -15,9 +15,11 @@ export interface DailyHoursModalProps {
   isOpen: boolean;
   onClose: () => void;
   todayDate: string;
+  todayDayNumber: number;
   yesterdayDate?: string;
+  yesterdayDayNumber?: number;
   isYesterdayMissed?: boolean;
-  initialDate?: string;
+  initialDayNumber?: number;
   todayLoggedSeconds?: number;
   yesterdayLoggedSeconds?: number;
   existingLogs?: Record<string, number>;
@@ -32,9 +34,11 @@ export function DailyHoursModal({
   isOpen,
   onClose,
   todayDate,
+  todayDayNumber,
   yesterdayDate,
+  yesterdayDayNumber,
   isYesterdayMissed = false,
-  initialDate,
+  initialDayNumber,
   todayLoggedSeconds = 0,
   yesterdayLoggedSeconds = 0,
   existingLogs,
@@ -45,10 +49,12 @@ export function DailyHoursModal({
 }: DailyHoursModalProps) {
   const router = useRouter();
   const showYesterdayOption = Boolean(isYesterdayMissed && yesterdayDate);
-  const initialDateToUse: string =
-    showYesterdayOption && yesterdayDate && initialDate === yesterdayDate
-      ? yesterdayDate
-      : todayDate;
+  const initialDayNumberToUse =
+    showYesterdayOption &&
+    yesterdayDayNumber !== undefined &&
+    initialDayNumber === yesterdayDayNumber
+      ? yesterdayDayNumber
+      : todayDayNumber;
 
   const getExistingSecondsForDate = (date: string): number => {
     if (existingLogs && date in existingLogs) {
@@ -79,8 +85,14 @@ export function DailyHoursModal({
     return { hours: "", minutes: "", seconds: "" };
   };
 
+  const initialDateToUse =
+    initialDayNumberToUse === yesterdayDayNumber && yesterdayDate
+      ? yesterdayDate
+      : todayDate;
   const initialInputs = getInitialInputValues(initialDateToUse);
-  const [selectedDate, setSelectedDate] = useState(initialDateToUse);
+  const [selectedDayNumber, setSelectedDayNumber] = useState(
+    initialDayNumberToUse,
+  );
   const [hours, setHours] = useState(initialInputs.hours);
   const [minutes, setMinutes] = useState(initialInputs.minutes);
   const [seconds, setSeconds] = useState(initialInputs.seconds);
@@ -103,11 +115,17 @@ export function DailyHoursModal({
 
   useEffect(() => {
     if (isOpen) {
-      const dateToUse: string =
-        showYesterdayOption && yesterdayDate && initialDate === yesterdayDate
+      const dayNumberToUse =
+        showYesterdayOption &&
+        yesterdayDayNumber !== undefined &&
+        initialDayNumber === yesterdayDayNumber
+          ? yesterdayDayNumber
+          : todayDayNumber;
+      const dateToUse =
+        dayNumberToUse === yesterdayDayNumber && yesterdayDate
           ? yesterdayDate
           : todayDate;
-      setSelectedDate(dateToUse);
+      setSelectedDayNumber(dayNumberToUse);
       if (initialHours > 0 || initialMinutes > 0 || initialSeconds > 0) {
         setHours(initialHours > 0 ? String(initialHours) : "");
         setMinutes(initialMinutes > 0 ? String(initialMinutes) : "");
@@ -119,9 +137,11 @@ export function DailyHoursModal({
     }
   }, [
     isOpen,
-    initialDate,
+    initialDayNumber,
     todayDate,
+    todayDayNumber,
     yesterdayDate,
+    yesterdayDayNumber,
     showYesterdayOption,
     todayLoggedSeconds,
     yesterdayLoggedSeconds,
@@ -132,14 +152,23 @@ export function DailyHoursModal({
 
   if (!isOpen) return null;
 
-  const isToday = selectedDate === todayDate;
-  const isYesterday = yesterdayDate && selectedDate === yesterdayDate;
+  const selectedDate =
+    selectedDayNumber === yesterdayDayNumber && yesterdayDate
+      ? yesterdayDate
+      : todayDate;
+  const isToday = selectedDayNumber === todayDayNumber;
+  const isYesterday =
+    yesterdayDayNumber !== undefined && selectedDayNumber === yesterdayDayNumber;
   const currentLoggedSeconds = getExistingSecondsForDate(selectedDate);
   const isUpdating = currentLoggedSeconds > 0;
 
-  const handleDateChange = (newDate: string) => {
-    setSelectedDate(newDate);
-    populateInputsForDate(newDate);
+  const handleDateChange = (newDayNumber: number) => {
+    setSelectedDayNumber(newDayNumber);
+    populateInputsForDate(
+      newDayNumber === yesterdayDayNumber && yesterdayDate
+        ? yesterdayDate
+        : todayDate,
+    );
     setFeedback(null);
   };
 
@@ -148,7 +177,7 @@ export function DailyHoursModal({
     startTransition(async () => {
       const result = await logStudyTimeAction({
         challengeId,
-        logDate: selectedDate,
+        challengeDay: selectedDayNumber,
         hours: h,
         minutes: m,
         seconds: s,
@@ -206,7 +235,7 @@ export function DailyHoursModal({
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => handleDateChange(todayDate)}
+              onClick={() => handleDateChange(todayDayNumber)}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
                 isToday
                   ? "bg-[#ffffff] text-[#0d0d0d]"
@@ -217,7 +246,7 @@ export function DailyHoursModal({
             </button>
             <button
               type="button"
-              onClick={() => handleDateChange(yesterdayDate!)}
+              onClick={() => handleDateChange(yesterdayDayNumber!)}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-colors ${
                 isYesterday
                   ? "bg-[#ffffff] text-[#0d0d0d]"

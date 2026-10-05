@@ -11,6 +11,7 @@ import {
   sumLoggedSeconds,
 } from "@/features/leaderboard/domain/catch-up-presentation";
 import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
+import { getChallengeDayBuckets } from "@/features/study-logs/domain/challenge-day";
 import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-data";
 import { getUserCategorizedTasks } from "@/features/tasks/data/task.repository";
 import type { UserCategorizedTasks } from "@/features/tasks/domain/task.types";
@@ -48,9 +49,11 @@ export interface CockpitViewModel {
   logs: CockpitLogDay[];
   catchUp: ReturnType<typeof buildCatchUpSummary>;
   todayDate: string;
+  todayDayNumber: number;
   todayLoggedSeconds: number;
   todayLoggedClock: string;
-  yesterdayDate: string;
+  yesterdayDate?: string;
+  yesterdayDayNumber?: number;
   yesterdayLoggedSeconds: number;
   isYesterdayMissed: boolean;
   teamRank: number | null;
@@ -72,10 +75,12 @@ export async function getParticipantCockpit(
   }
 
   const now = new Date();
-  const todayDate = formatUtcDateKey(now);
-  const yesterday = new Date(now);
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  const yesterdayDate = formatUtcDateKey(yesterday);
+  const challengeDayBuckets = getChallengeDayBuckets(
+    participant.challenge.startAt,
+    now,
+  );
+  const todayDate = challengeDayBuckets.current.dateKey;
+  const yesterdayDate = challengeDayBuckets.previous?.dateKey;
 
   const totalLoggedSeconds = sumLoggedSeconds(participant.dailyStudyLogs);
   const todayLog = participant.dailyStudyLogs.find(
@@ -87,16 +92,17 @@ export async function getParticipantCockpit(
     86_400 - todayLoggedSeconds,
   );
 
-  const yesterdayLog = participant.dailyStudyLogs.find(
-    (log) => formatUtcDateKey(log.logDate) === yesterdayDate,
-  );
+  const yesterdayLog = challengeDayBuckets.previous
+    ? participant.dailyStudyLogs.find(
+        (log) => formatUtcDateKey(log.logDate) === yesterdayDate,
+      )
+    : undefined;
   const yesterdayLoggedSeconds = yesterdayLog?.durationSeconds ?? 0;
 
   const challengeStatus = calculateChallengeStatus(participant.challenge, now);
-  const challengeStartDate = formatUtcDateKey(participant.challenge.startAt);
   const isYesterdayMissed =
     challengeStatus === "ACTIVE" &&
-    yesterdayDate >= challengeStartDate &&
+    challengeDayBuckets.previous !== null &&
     yesterdayLog === undefined;
 
   let teamRank: number | null = null;
@@ -159,9 +165,11 @@ export async function getParticipantCockpit(
       daysRemaining,
     }),
     todayDate,
+    todayDayNumber: challengeDayBuckets.current.dayNumber,
     todayLoggedSeconds,
     todayLoggedClock: formatSecondsToClock(todayLoggedSeconds),
     yesterdayDate,
+    yesterdayDayNumber: challengeDayBuckets.previous?.dayNumber,
     yesterdayLoggedSeconds,
     isYesterdayMissed,
     teamRank,

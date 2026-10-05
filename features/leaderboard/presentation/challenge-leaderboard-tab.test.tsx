@@ -109,6 +109,8 @@ describe("ChallengeLeaderboardTab", () => {
         teamIcon: "🐍",
         totalLoggedSeconds: 25_200,
         totalLoggedClock: "07:00:00",
+        todayLoggedSeconds: 14_400,
+        todayLoggedClock: "04:00:00",
         targetSeconds: 126_000,
         targetClock: "35:00:00",
         completionPercentage: 20,
@@ -167,5 +169,25 @@ describe("ChallengeLeaderboardTab", () => {
     expect(html).toContain('style="width:20%"');
     // Team Raven card has 0% completion, NOT 50%
     expect(html).toContain('style="width:0%"');
+  });
+
+  it("renders mobile-first card layout and desktop table with today's hours", () => {
+    const html = renderToStaticMarkup(
+      createElement(ChallengeLeaderboardTab, {
+        challenge: mockChallenge,
+      }),
+    );
+
+    // Mobile header elements
+    expect(html).toContain("Rank");
+    expect(html).toContain("Participant");
+    expect(html).toContain("Total Hours");
+
+    // Mobile card values
+    expect(html).toContain("+04:00:00");
+    expect(html).toContain("07:00:00");
+    expect(html).toContain("/35:00:00");
+    expect(html).toContain("Serpents");
+    expect(html).toContain("@afnan");
   });
 });

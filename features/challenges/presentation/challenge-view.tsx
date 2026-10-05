@@ -26,12 +26,12 @@ export function ChallengeView({
     <div className="space-y-8 max-w-6xl mx-auto">
       <ChallengeHeroBanner challenge={challenge} />
 
-      <div className="flex items-center justify-center">
-        <div className="flex items-center gap-1.5 rounded-xl border border-[#333333] bg-[#292929] p-1.5 shadow-md">
+      <div className="flex items-center justify-center w-full overflow-hidden">
+        <div className="flex items-center gap-1 sm:gap-1.5 rounded-xl border border-[#333333] bg-[#292929] p-1 sm:p-1.5 shadow-md max-w-full overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab("overview")}
-            className={`px-6 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all ${
               activeTab === "overview"
                 ? "bg-[#4a4a4a] text-[#ffffff] shadow"
                 : "text-[#868686] hover:text-[#ffffff] hover:bg-[#333333]"
@@ -42,7 +42,7 @@ export function ChallengeView({
           <button
             type="button"
             onClick={() => setActiveTab("leaderboard")}
-            className={`px-6 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all ${
               activeTab === "leaderboard"
                 ? "bg-[#4a4a4a] text-[#ffffff] shadow"
                 : "text-[#868686] hover:text-[#ffffff] hover:bg-[#333333]"
@@ -53,7 +53,7 @@ export function ChallengeView({
           <button
             type="button"
             onClick={() => setActiveTab("about")}
-            className={`px-6 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all ${
               activeTab === "about"
                 ? "bg-[#4a4a4a] text-[#ffffff] shadow"
                 : "text-[#868686] hover:text-[#ffffff] hover:bg-[#333333]"
@@ -65,7 +65,7 @@ export function ChallengeView({
             <button
               type="button"
               onClick={() => setActiveTab("manage")}
-              className={`px-6 py-2 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all ${
                 activeTab === "manage"
                   ? "bg-[#4a4a4a] text-[#ffffff] shadow"
                   : "text-[#868686] hover:text-[#ffffff] hover:bg-[#333333]"
