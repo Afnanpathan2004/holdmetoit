@@ -21,8 +21,10 @@ describe("DailyHoursModal", () => {
         isOpen: true,
         onClose: vi.fn(),
         todayDate: "2026-10-04",
+        todayDayNumber: 2,
         todayLoggedSeconds: 0,
         yesterdayDate: "2026-10-03",
+        yesterdayDayNumber: 1,
         yesterdayLoggedSeconds: 0,
         isYesterdayMissed: false,
       }),
@@ -43,8 +45,10 @@ describe("DailyHoursModal", () => {
         isOpen: true,
         onClose: vi.fn(),
         todayDate: "2026-10-04",
+        todayDayNumber: 2,
         todayLoggedSeconds: 9035,
         yesterdayDate: "2026-10-03",
+        yesterdayDayNumber: 1,
         yesterdayLoggedSeconds: 0,
       }),
     );
@@ -58,7 +62,7 @@ describe("DailyHoursModal", () => {
     expect(html).not.toContain("02:30:35");
   });
 
-  it("shows 'Yesterday' toggle when isYesterdayMissed is true and pre-populates yesterday's hours when opened with initialDate", () => {
+  it("shows 'Yesterday' toggle when isYesterdayMissed is true and pre-populates yesterday's hours when opened with initialDayNumber", () => {
     // 3,600 seconds = 1h
     const html = renderToStaticMarkup(
       createElement(DailyHoursModal, {
@@ -66,11 +70,13 @@ describe("DailyHoursModal", () => {
         isOpen: true,
         onClose: vi.fn(),
         todayDate: "2026-10-04",
+        todayDayNumber: 2,
         todayLoggedSeconds: 0,
         yesterdayDate: "2026-10-03",
+        yesterdayDayNumber: 1,
         yesterdayLoggedSeconds: 3600,
         isYesterdayMissed: true,
-        initialDate: "2026-10-03",
+        initialDayNumber: 1,
       }),
     );
 
@@ -90,11 +96,13 @@ describe("DailyHoursModal", () => {
         isOpen: true,
         onClose: vi.fn(),
         todayDate: "2026-10-04",
+        todayDayNumber: 2,
         todayLoggedSeconds: 0,
         yesterdayDate: "2026-10-03",
+        yesterdayDayNumber: 1,
         yesterdayLoggedSeconds: 3600,
         isYesterdayMissed: false,
-        initialDate: "2026-10-03",
+        initialDayNumber: 1,
       }),
     );
 
@@ -111,6 +119,7 @@ describe("DailyHoursModal", () => {
         isOpen: false,
         onClose: vi.fn(),
         todayDate: "2026-10-04",
+        todayDayNumber: 1,
       }),
     );
 

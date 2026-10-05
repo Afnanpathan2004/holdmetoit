@@ -102,6 +102,7 @@ describe("HomeCockpitView", () => {
       isYesterdayMissed: false,
       teamRank: null,
       remainingDailyAllowanceSeconds: 68400,
+      todayDayNumber: 1,
     };
 
     expect(() => {
@@ -166,6 +167,7 @@ describe("HomeCockpitView", () => {
       isYesterdayMissed: false,
       teamRank: 1,
       remainingDailyAllowanceSeconds: 86400,
+      todayDayNumber: 1,
     };
 
     const html = renderToStaticMarkup(
@@ -227,6 +229,7 @@ describe("HomeCockpitView", () => {
       isYesterdayMissed: false,
       teamRank: null,
       remainingDailyAllowanceSeconds: 86400,
+      todayDayNumber: 1,
     };
 
     const html = renderToStaticMarkup(

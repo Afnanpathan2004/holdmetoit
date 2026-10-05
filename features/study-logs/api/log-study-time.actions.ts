@@ -14,10 +14,11 @@ import {
   composeDurationSeconds,
   validateDailyLogDurationSeconds,
 } from "@/features/study-logs/domain/daily-log.validation";
+import { getChallengeDayBuckets } from "@/features/study-logs/domain/challenge-day";
 
 const logStudyTimeSchema = z.object({
   challengeId: z.string().min(1),
-  logDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  challengeDay: z.number().int().min(1),
   hours: z.number().int().min(0).max(24),
   minutes: z.number().int().min(0).max(59),
   seconds: z.number().int().min(0).max(59),
@@ -47,7 +48,8 @@ export async function logStudyTimeAction(
       parsed.data.challengeId,
     );
 
-    const challengeStatus = calculateChallengeStatus(participant.challenge);
+    const now = new Date();
+    const challengeStatus = calculateChallengeStatus(participant.challenge, now);
     if (!canLogStudyTime(challengeStatus)) {
       return {
         ok: false,
@@ -55,6 +57,27 @@ export async function logStudyTimeAction(
         message: "Study logging is only available during active challenges.",
       };
     }
+
+    const challengeDayBuckets = getChallengeDayBuckets(
+      participant.challenge.startAt,
+      now,
+    );
+    const isCurrentDay =
+      parsed.data.challengeDay === challengeDayBuckets.current.dayNumber;
+    const isPreviousDay =
+      parsed.data.challengeDay === challengeDayBuckets.previous?.dayNumber;
+
+    if (!isCurrentDay && !isPreviousDay) {
+      return {
+        ok: false,
+        code: "INVALID_CHALLENGE_DAY",
+        message: "You can only log the current or previous challenge day.",
+      };
+    }
+
+    const logDate = isCurrentDay
+      ? challengeDayBuckets.current.dateKey
+      : challengeDayBuckets.previous!.dateKey;
 
     const durationSeconds = composeDurationSeconds(
       parsed.data.hours,
@@ -73,7 +96,7 @@ export async function logStudyTimeAction(
 
     await upsertDailyStudyLog({
       participantId: participant.id,
-      logDate: parsed.data.logDate,
+      logDate,
       durationSeconds,
     });
 

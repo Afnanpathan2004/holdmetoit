@@ -17,6 +17,7 @@ import {
   formatSecondsToClock,
   formatSecondsToHuman,
 } from "@/features/study-logs/domain/duration";
+import { getChallengeDayBuckets, getChallengeDayNumber } from "@/features/study-logs/domain/challenge-day";
 import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 
 export interface ScoreboardTeam {
@@ -193,13 +194,7 @@ export function buildScoreboardViewModel(
   );
   const elapsedDays = isUpcoming
     ? 0
-    : Math.max(
-        1,
-        Math.min(
-          totalDays,
-          Math.ceil((now.getTime() - challenge.startAt.getTime()) / 86_400_000),
-        ),
-      );
+    : Math.min(totalDays, getChallengeDayNumber(challenge.startAt, now));
 
   // 1. Participant logs mapping
   const participantScores = challenge.participants.map((p) => {
@@ -321,7 +316,7 @@ export function buildScoreboardViewModel(
 
   // 4. Standings rows (FEAT-LEAD-02)
   const teamLookup = new Map(challenge.teams.map((t) => [t.id, t]));
-  const todayDateKey = formatUtcDateKey(now);
+  const todayDateKey = getChallengeDayBuckets(challenge.startAt, now).current.dateKey;
 
   const participantRows = challenge.participants.map((p) => {
     const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);

@@ -50,11 +50,11 @@ export function HomeCockpitView({
   userTasks,
 }: HomeCockpitViewProps) {
   const [isHoursModalOpen, setIsHoursModalOpen] = useState(false);
-  const [hoursModalDate, setHoursModalDate] = useState<string | undefined>(undefined);
+  const [hoursModalDayNumber, setHoursModalDayNumber] = useState<number | undefined>(undefined);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
 
-  const openHoursModal = (date?: string) => {
-    setHoursModalDate(date);
+  const openHoursModal = (dayNumber?: number) => {
+    setHoursModalDayNumber(dayNumber);
     setIsHoursModalOpen(true);
   };
 
@@ -132,17 +132,19 @@ export function HomeCockpitView({
       />
 
       <DailyHoursModal
-        key={`${hoursModalDate ?? "today"}-${isHoursModalOpen}`}
+        key={`${hoursModalDayNumber ?? "today"}-${isHoursModalOpen}`}
         challengeId={activeChallengeId}
         isOpen={isHoursModalOpen}
         onClose={() => setIsHoursModalOpen(false)}
         todayDate={cockpit?.todayDate || new Date().toISOString().slice(0, 10)}
+        todayDayNumber={cockpit?.todayDayNumber ?? 1}
         yesterdayDate={cockpit?.yesterdayDate}
+        yesterdayDayNumber={cockpit?.yesterdayDayNumber}
         isYesterdayMissed={cockpit?.isYesterdayMissed ?? false}
         todayLoggedSeconds={effectiveTodaySeconds}
         yesterdayLoggedSeconds={cockpit?.yesterdayLoggedSeconds ?? 0}
         existingLogs={existingLogsMap}
-        initialDate={hoursModalDate}
+        initialDayNumber={hoursModalDayNumber}
       />
 
       {isLoggedIn && (upcomingChallenge || cockpit) && (

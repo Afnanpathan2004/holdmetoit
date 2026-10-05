@@ -24,7 +24,7 @@ export interface CockpitBannerCardProps {
   } | null;
   effectiveTodaySeconds: number;
   activeChallengeId: string;
-  onOpenHoursModal: (date?: string) => void;
+  onOpenHoursModal: (dayNumber?: number) => void;
   onOpenEnrollModal: () => void;
 }
 
@@ -40,8 +40,8 @@ export function CockpitBannerCard({
   const hasChallenge = Boolean(cockpit || upcomingChallenge);
   const activeChallengeStatus = cockpit?.challengeStatus ?? (upcomingChallenge ? "UPCOMING" : null);
   const activeChallengeFormat = cockpit?.challengeFormat ?? upcomingChallenge?.format ?? null;
-  const todayDateString = cockpit?.todayDate || new Date().toISOString().slice(0, 10);
-  const yesterdayDateString = cockpit?.yesterdayDate;
+  const todayDayNumber = cockpit?.todayDayNumber ?? 1;
+  const yesterdayDayNumber = cockpit?.yesterdayDayNumber;
   const targetChallengeId = upcomingChallenge?.id ?? activeChallengeId;
 
   const bannerVariant = determineBannerVariant({
@@ -81,7 +81,7 @@ export function CockpitBannerCard({
           </Button>
           <Button
             type="button"
-            onClick={() => onOpenHoursModal(todayDateString)}
+            onClick={() => onOpenHoursModal(todayDayNumber)}
             className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             Log Today&apos;s Hours
@@ -115,7 +115,7 @@ export function CockpitBannerCard({
           </Button>
           <Button
             type="button"
-            onClick={() => onOpenHoursModal(todayDateString)}
+            onClick={() => onOpenHoursModal(todayDayNumber)}
             className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             Log Today&apos;s Hours
@@ -140,7 +140,7 @@ export function CockpitBannerCard({
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
           <Button
             type="button"
-            onClick={() => onOpenHoursModal(yesterdayDateString)}
+            onClick={() => onOpenHoursModal(yesterdayDayNumber)}
             className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             Log Yesterday Hours
