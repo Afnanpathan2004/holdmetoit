@@ -1,0 +1,311 @@
+// HoldMeToIt — Phase 0 persistence schema (Slice 2)
+// Authority: FEATURES.md, HANDOFF.md, AGENTS.md Law L1/L4/L5/L8
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js (Discord OAuth) — required adapter models
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  /// Discord snowflake (denormalized from Account.providerAccountId for queries / YPT ingest).
+  discordId   String?  @unique
+  username    String?
+  displayName String?
+  role        UserRole @default(PARTICIPANT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  hostedChallenges Challenge[] @relation("ChallengeHost")
+  participations ChallengeParticipant[]
+  overriddenLogs DailyStudyLog[] @relation("LogOverrideAdmin")
+  pardonsIssued  PunishmentRecord[] @relation("PardonAdmin")
+  teamMemberships    TeamMember[]
+  leaderboardEntries LeaderboardEntry[]
+  categories         Category[]
+  tasks              Task[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// Challenge operations (Law L1 — unified Team entity)
+// ---------------------------------------------------------------------------
+
+model Challenge {
+  id               String          @id @default(cuid())
+  title            String
+  format           ChallengeFormat
+  startAt          DateTime
+  endAt            DateTime
+  eventBannerUrl   String?
+  punishmentPfpUrl String?
+
+  hostId String?
+  host   User?   @relation("ChallengeHost", fields: [hostId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  challengeColor   String?
+  teams            Team[]
+  participants     ChallengeParticipant[]
+  punishments      PunishmentRecord[]
+  leaderboardEntries LeaderboardEntry[]
+
+  @@index([hostId])
+}
+
+model Team {
+  id          String @id @default(cuid())
+  challengeId String
+  name        String
+  color       String?
+  iconEmoji   String?
+  mascotUrl   String?
+  /// Law L1: Solo = 1, Duo = 2. Null for uncapped squad rosters (TEAM_VS_TEAM).
+  maxMembers  Int?
+  sortOrder   Int    @default(0)
+
+  challenge    Challenge              @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  participants ChallengeParticipant[]
+  members      TeamMember[]
+
+  @@unique([challengeId, name])
+  @@index([challengeId])
+}
+
+model ChallengeParticipant {
+  id            String            @id @default(cuid())
+  challengeId   String
+  userId        String
+  teamId        String?
+  targetSeconds Int               @default(0)
+  status        ParticipantStatus @default(NORMAL)
+
+  enrolledAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  dailyStudyLogs   DailyStudyLog[]
+  punishmentRecord PunishmentRecord?
+
+  @@unique([challengeId, userId])
+  @@index([challengeId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Study logging (Law L8 — integer seconds; Law L5 — override audit fields)
+// ---------------------------------------------------------------------------
+
+model DailyStudyLog {
+  id              String   @id @default(cuid())
+  participantId   String
+  logDate         DateTime @db.Date
+  durationSeconds Int      @default(0)
+
+  isOverride     Boolean @default(false)
+  overrideById   String?
+  overrideReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participant  ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  overrideBy   User?                @relation("LogOverrideAdmin", fields: [overrideById], references: [id], onDelete: SetNull)
+
+  @@unique([participantId, logDate])
+  @@index([participantId])
+  @@index([logDate])
+}
+
+// ---------------------------------------------------------------------------
+// Categorizable Todo List (User-scoped daily and weekly tasks)
+// ---------------------------------------------------------------------------
+
+model Category {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String   @db.VarChar(255)
+  taskType  TaskType @default(DAILY) @map("task_type")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@unique([userId, name, taskType])
+  @@index([userId, taskType])
+  @@map("categories")
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  userId      String
+  categoryId  String
+  title       String    @db.VarChar(255)
+  taskType    TaskType  @map("task_type")
+  isComplete  Boolean   @default(false) @map("is_complete")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId, taskType])
+  @@index([categoryId])
+  @@map("tasks")
+}
+
+// ---------------------------------------------------------------------------
+// Accountability (Law L6 — dual-failure evaluation outcomes)
+// ---------------------------------------------------------------------------
+
+model PunishmentRecord {
+  id                   String  @id @default(cuid())
+  challengeId          String
+  participantId        String  @unique
+  isPunished           Boolean
+  hoursDeficitSeconds  Int     @default(0)
+  incompleteGoalsCount Int     @default(0)
+
+  isPardoned   Boolean @default(false)
+  pardonReason String?
+  pardonedById String?
+
+  evaluatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  challenge   Challenge            @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  participant ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  pardonedBy  User?                @relation("PardonAdmin", fields: [pardonedById], references: [id], onDelete: SetNull)
+
+  @@index([challengeId])
+  @@index([isPunished])
+}
+
+// ---------------------------------------------------------------------------
+// Manual Weekly Leaderboard (Slice: Manual Weekly Challenge Leaderboard)
+// ---------------------------------------------------------------------------
+
+model TeamMember {
+  teamId    String   @map("team_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+  @@index([teamId])
+  @@map("team_members")
+}
+
+model LeaderboardEntry {
+  id           String   @id @default(cuid()) @map("entry_id")
+  challengeId  String   @map("challenge_id")
+  userId       String   @map("user_id")
+  sessionHours Decimal  @map("session_hours") @db.Decimal(6, 2)
+  slotDate     DateTime @map("slot_date") @db.Date
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("last_updated_at")
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId, slotDate])
+  @@index([challengeId, slotDate])
+  @@index([userId])
+  @@map("leaderboard_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  PARTICIPANT
+  ADMIN
+  DEV
+}
+
+enum ChallengeFormat {
+  TEAM_VS_TEAM
+  DUOS
+  SOLOS
+}
+
+enum ParticipantStatus {
+  NORMAL
+  DEFICIT
+  EXCUSED
+  PUNISHED
+}
+
+enum TaskType {
+  DAILY
+  WEEKLY
+}
+

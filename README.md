@@ -39,7 +39,7 @@ The technology stack is locked to guarantee high velocity, zero CORS overhead, a
 
 ## 📚 Core Documentation Suite (Sources of Truth)
 
-The project maintains a lean, highly focused 5-document suite:
+The project maintains a lean, highly focused documentation and specification suite:
 
 | Document | Primary Authority & Purpose |
 | :--- | :--- |
@@ -47,9 +47,11 @@ The project maintains a lean, highly focused 5-document suite:
 | **[DESIGN.md](DESIGN.md)** | Absolute source of truth for **visual identity, cozy theme, color tokens, typography, and mobile responsive rules**. |
 | **[AGENTS.md](AGENTS.md)** | Absolute source of truth for **agent protocol, locked stack, stack laws L1–L9, git safety, and quality matrix**. |
 | **[ROADMAP.md](ROADMAP.md)** | Product and technical evolution trajectory across phases (`[P0]` MVP $\rightarrow$ `[P1]` $\rightarrow$ `[V1]` $\rightarrow$ `[V2]`). |
+| **[HANDOFF.md](HANDOFF.md)** | Living operational relay, active feature completion matrix, and next step between engineering sessions. |
 | **[README.md](README.md)** | Developer onboarding, mission overview, locked stack matrix, and local dev setup. |
 
-*(Historical background specifications and legacy plans are safely preserved under [`.archive/`](.archive/)).*
+- **Interactive UI Prototype:** View the standalone cozy study café mockup at [`prototype/index.html`](prototype/index.html).
+- **Historical Archive:** Legacy reference notes are safely preserved under [`.archive/`](.archive/).
 
 ---
 
@@ -84,12 +86,24 @@ npm install
 cp .env.example .env.local
 ```
 
-### 3. Local Development
+Event header and punishment PFP uploads use separate directories in the same public Supabase Storage bucket (server-only variables, never prefix with `NEXT_PUBLIC_`):
 ```bash
-# Run database migrations
-npx prisma db push
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_STORAGE_BUCKET=holdmetoit-bucket  # use your actual public bucket name
+SUPABASE_EVENT_BANNERS_FOLDER=event-banners
+SUPABASE_PUNISHMENT_PFPS_FOLDER=punishment-pfps
+```
 
-# Start Next.js development server
+### 3. Database Setup and Local Development
+
+Review [`prisma/migrations/README.md`](prisma/migrations/README.md) before applying migrations. For a fresh, empty database:
+```bash
+npx prisma migrate deploy
 npm run dev
 ```
+
+Existing databases previously created using `db push` must first be backed up and verified against the baseline before marking it applied. Then deploy the banner migration as documented in the migration README. Do not run the baseline SQL against a populated database or use `db push` to bypass the backfill.
+
+The banner migration adds `Challenge.eventBannerUrl` and copies existing punishment image URLs into it without changing the punishment PFP or deleting storage files. New challenges require two images; existing challenges may keep their saved legacy values until independently replaced. Configure both storage directories and apply the migration before running the updated application.
 Open [http://localhost:3000](http://localhost:3000) in your browser.

@@ -1,0 +1,463 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+import {
+  AdminAccessError,
+  requireAdminUser,
+} from "@/features/auth/api/require-admin";
+import {
+  adminEnrollParticipant,
+  createAdminChallenge,
+  deleteAdminChallenge,
+  kickoffChallenge,
+  lockChallengeResults,
+  reassignParticipantTeam,
+  updateAdminChallenge,
+} from "@/features/challenges/data/challenge-admin.repository";
+import { getStorageUrlConfig } from "@/core/storage/supabase-storage";
+import { findChallengeImageUrls } from "@/features/challenges/data/punishment-pfp.repository";
+import { cleanupUnreferencedChallengeImages } from "@/features/challenges/data/challenge-image-cleanup";
+import { validateChallengeCreation } from "@/features/challenges/domain/challenge-lifecycle";
+import {
+  extractManagedObjectPath,
+  type ChallengeImagePurpose,
+} from "@/features/challenges/domain/punishment-pfp";
+
+const BANNER_REQUIRED_MESSAGE = "Please upload an event header image.";
+const PFP_REQUIRED_MESSAGE = "Please upload a punishment PFP.";
+
+function isImageUrlAllowed(url: string | null, purpose: ChallengeImagePurpose): boolean {
+  try {
+    return extractManagedObjectPath(url, getStorageUrlConfig(purpose)) !== null;
+  } catch {
+    return false;
+  }
+}
+
+const createChallengeSchema = z.object({
+  title: z.string().min(3).max(80),
+  format: z.enum(["TEAM_VS_TEAM", "DUOS", "SOLOS"]),
+  startAt: z.string().min(1),
+  endAt: z.string().min(1),
+  eventBannerUrl: z.string().trim().min(1, BANNER_REQUIRED_MESSAGE),
+  punishmentPfpUrl: z.string().trim().min(1, PFP_REQUIRED_MESSAGE),
+  teams: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        color: z.string().optional().nullable(),
+        iconEmoji: z.string().optional().nullable(),
+        mascotUrl: z.string().optional().nullable(),
+      }),
+    )
+    .min(1),
+});
+
+export type AdminActionResult<T = undefined> =
+  | { ok: true; data?: T }
+  | { ok: false; code: string; message: string };
+
+export async function createChallengeAction(
+  input: z.infer<typeof createChallengeSchema>,
+): Promise<AdminActionResult<{ challengeId: string }>> {
+  try {
+    const admin = await requireAdminUser();
+    const parsed = createChallengeSchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: "INVALID_INPUT",
+        message: parsed.error.issues.some((issue) => issue.path[0] === "eventBannerUrl")
+          ? BANNER_REQUIRED_MESSAGE
+          : parsed.error.issues.some((issue) => issue.path[0] === "punishmentPfpUrl")
+            ? PFP_REQUIRED_MESSAGE
+            : "Please ensure all challenge fields and dates are filled properly.",
+      };
+    }
+
+    if (!isImageUrlAllowed(parsed.data.eventBannerUrl, "event-banner")) {
+      return { ok: false, code: "INVALID_EVENT_BANNER", message: "Please upload an event header image through its image picker." };
+    }
+    if (!isImageUrlAllowed(parsed.data.punishmentPfpUrl, "punishment-pfp")) {
+      return { ok: false, code: "INVALID_PUNISHMENT_PFP", message: "Please upload a punishment PFP through its image picker." };
+    }
+
+    const validation = validateChallengeCreation(parsed.data);
+    if (!validation.valid) {
+      const firstError = Object.values(validation.errors)[0] ?? "Validation error.";
+      return {
+        ok: false,
+        code: "VALIDATION_FAILED",
+        message: firstError,
+      };
+    }
+
+    const challenge = await createAdminChallenge(parsed.data, {
+      id: admin.id,
+      username: admin.username,
+    });
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/challenges");
+
+    return {
+      ok: true,
+      data: { challengeId: challenge.id },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      code: "CREATION_FAILED",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to create challenge event.",
+    };
+  }
+}
+
+export async function kickoffChallengeAction(
+  challengeId: string,
+): Promise<AdminActionResult> {
+  try {
+    const admin = await requireAdminUser();
+    await kickoffChallenge(challengeId, {
+      id: admin.id,
+      username: admin.username,
+    });
+
+    revalidatePath(`/challenge/${challengeId}`);
+    revalidatePath(`/admin/challenges/${challengeId}`);
+    revalidatePath("/admin");
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      code: "KICKOFF_FAILED",
+      message:
+        error instanceof Error ? error.message : "Failed to start event.",
+    };
+  }
+}
+
+export async function lockChallengeResultsAction(
+  challengeId: string,
+): Promise<AdminActionResult> {
+  try {
+    const admin = await requireAdminUser();
+    await lockChallengeResults(challengeId, {
+      id: admin.id,
+      username: admin.username,
+    });
+
+    revalidatePath(`/challenge/${challengeId}`);
+    revalidatePath(`/admin/challenges/${challengeId}`);
+    revalidatePath("/admin");
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      code: "LOCK_FAILED",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to finalize and lock results.",
+    };
+  }
+}
+
+const adminEnrollParticipantSchema = z.object({
+  challengeId: z.string().min(1),
+  userId: z.string().min(1),
+  teamId: z.string().min(1),
+  targetSeconds: z.number().int().min(0).default(126000),
+  reason: z.string().min(3, "Audit reason must be at least 3 characters."),
+});
+
+export async function adminEnrollParticipantAction(
+  input: z.infer<typeof adminEnrollParticipantSchema>,
+): Promise<AdminActionResult> {
+  try {
+    const admin = await requireAdminUser();
+    const parsed = adminEnrollParticipantSchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: "INVALID_INPUT",
+        message: parsed.error.issues[0]?.message ?? "Invalid enrollment data.",
+      };
+    }
+
+    await adminEnrollParticipant({
+      challengeId: parsed.data.challengeId,
+      userId: parsed.data.userId,
+      teamId: parsed.data.teamId,
+      targetSeconds: parsed.data.targetSeconds,
+      reason: parsed.data.reason,
+      admin: {
+        id: admin.id,
+        username: admin.username,
+      },
+    });
+
+    revalidatePath(`/admin/challenges/${parsed.data.challengeId}`);
+    revalidatePath(`/admin/challenges/${parsed.data.challengeId}/roster`);
+    revalidatePath(`/challenge/${parsed.data.challengeId}`);
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof AdminAccessError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
+
+    return {
+      ok: false,
+      code: "ENROLLMENT_FAILED",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to enroll member in challenge.",
+    };
+  }
+}
+
+const updateChallengeSchema = z.object({
+  challengeId: z.string().min(1),
+  title: z.string().min(3).max(80),
+  startAt: z.string().min(1),
+  endAt: z.string().min(1),
+  // Updates preserve exact legacy strings; only changed values need folder validation.
+  eventBannerUrl: z.string().nullable(),
+  punishmentPfpUrl: z.string().nullable(),
+  teams: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        name: z.string().min(1),
+        color: z.string().optional().nullable(),
+        iconEmoji: z.string().optional().nullable(),
+        mascotUrl: z.string().optional().nullable(),
+      }),
+    )
+    .min(1),
+});
+
+export async function updateChallengeAction(
+  input: z.infer<typeof updateChallengeSchema>,
+): Promise<AdminActionResult> {
+  try {
+    const parsed = updateChallengeSchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: "INVALID_INPUT",
+        message: parsed.error.issues.some((issue) => issue.path[0] === "eventBannerUrl")
+          ? BANNER_REQUIRED_MESSAGE
+          : parsed.error.issues.some((issue) => issue.path[0] === "punishmentPfpUrl")
+            ? PFP_REQUIRED_MESSAGE
+            : "Please check all required fields and team names.",
+      };
+    }
+
+    if (new Date(parsed.data.endAt) <= new Date(parsed.data.startAt)) {
+      return {
+        ok: false,
+        code: "INVALID_DATES",
+        message: "Conclusion date must be strictly after the kickoff date.",
+      };
+    }
+
+    const [admin, previousImages] = await Promise.all([
+      requireAdminUser(),
+      findChallengeImageUrls(parsed.data.challengeId),
+    ]);
+
+    if (!previousImages) {
+      return { ok: false, code: "NOT_FOUND", message: "Challenge not found." };
+    }
+
+    // Grandfather only the exact persisted values (including null); replacements
+    // must come from their designated folder, never from the other image picker.
+    if (parsed.data.eventBannerUrl !== previousImages.eventBannerUrl
+      && !isImageUrlAllowed(parsed.data.eventBannerUrl, "event-banner")) {
+      return { ok: false, code: "INVALID_EVENT_BANNER", message: "Please upload an event header image through its image picker." };
+    }
+    if (parsed.data.punishmentPfpUrl !== previousImages.punishmentPfpUrl
+      && !isImageUrlAllowed(parsed.data.punishmentPfpUrl, "punishment-pfp")) {
+      return { ok: false, code: "INVALID_PUNISHMENT_PFP", message: "Please upload a punishment PFP through its image picker." };
+    }
+
+    await updateAdminChallenge(
+      parsed.data.challengeId,
+      {
+        title: parsed.data.title,
+        startAt: parsed.data.startAt,
+        endAt: parsed.data.endAt,
+        eventBannerUrl: parsed.data.eventBannerUrl,
+        punishmentPfpUrl: parsed.data.punishmentPfpUrl,
+        teams: parsed.data.teams,
+      },
+      {
+        id: admin.id,
+        username: admin.username,
+      },
+    );
+
+    // Cleanup only after commit, and retain images still referenced by either field.
+    const replacedUrls: Array<string | null> = [];
+    if (previousImages.eventBannerUrl !== parsed.data.eventBannerUrl) {
+      replacedUrls.push(previousImages.eventBannerUrl);
+    }
+    if (previousImages.punishmentPfpUrl !== parsed.data.punishmentPfpUrl) {
+      replacedUrls.push(previousImages.punishmentPfpUrl);
+    }
+    await cleanupUnreferencedChallengeImages(replacedUrls);
+
+    revalidatePath(`/challenge/${parsed.data.challengeId}`);
+    revalidatePath("/admin");
+    revalidatePath("/");
+
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof AdminAccessError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
+
+    return {
+      ok: false,
+      code: "UPDATE_FAILED",
+      message:
+        error instanceof Error ? error.message : "Failed to update challenge.",
+    };
+  }
+}
+
+const reassignParticipantTeamSchema = z.object({
+  challengeId: z.string().min(1),
+  participantId: z.string().min(1),
+  newTeamId: z.string().min(1),
+  reason: z.string().optional(),
+});
+
+export async function reassignParticipantTeamAction(
+  input: z.infer<typeof reassignParticipantTeamSchema>,
+): Promise<AdminActionResult> {
+  try {
+    const admin = await requireAdminUser();
+    const parsed = reassignParticipantTeamSchema.safeParse(input);
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        code: "INVALID_INPUT",
+        message: "Invalid team reassignment parameters.",
+      };
+    }
+
+    await reassignParticipantTeam({
+      participantId: parsed.data.participantId,
+      newTeamId: parsed.data.newTeamId,
+      reason: parsed.data.reason,
+      admin: {
+        id: admin.id,
+        username: admin.username,
+      },
+    });
+
+    revalidatePath(`/challenge/${parsed.data.challengeId}`);
+    revalidatePath("/admin");
+    revalidatePath("/");
+
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof AdminAccessError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
+
+    return {
+      ok: false,
+      code: "REASSIGN_FAILED",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to reassign participant to team.",
+    };
+  }
+}
+
+export async function deleteChallengeAction(
+  challengeId: string,
+): Promise<AdminActionResult<{ redirectTo: string }>> {
+  try {
+    const admin = await requireAdminUser();
+    if (!challengeId || typeof challengeId !== "string") {
+      return {
+        ok: false,
+        code: "INVALID_INPUT",
+        message: "Missing challenge ID.",
+      };
+    }
+
+    const previousImages = await findChallengeImageUrls(challengeId);
+
+    await deleteAdminChallenge(challengeId, {
+      id: admin.id,
+      username: admin.username,
+    });
+
+    await cleanupUnreferencedChallengeImages([
+      previousImages?.eventBannerUrl,
+      previousImages?.punishmentPfpUrl,
+    ]);
+
+    revalidatePath("/admin");
+    revalidatePath("/");
+
+    return {
+      ok: true,
+      data: { redirectTo: "/admin" },
+    };
+  } catch (error) {
+    if (error instanceof AdminAccessError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
+
+    return {
+      ok: false,
+      code: "DELETE_FAILED",
+      message:
+        error instanceof Error ? error.message : "Failed to delete challenge.",
+    };
+  }
+}
+
+
