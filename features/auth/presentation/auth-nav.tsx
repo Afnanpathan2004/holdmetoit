@@ -1,8 +1,11 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { LogOut, Shield } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { trackLogRocketEvent } from "@/core/observability/logrocket";
 import { loginWithDiscordAction, logoutAction } from "@/features/auth/api/auth.actions";
 import { hasAdminPrivileges, isDevRole } from "@/features/auth/domain/auth-roles";
 
@@ -35,7 +38,11 @@ export function SignInWithDiscordButton({
   const handleSignIn = loginWithDiscordAction.bind(null, redirectTo);
 
   return (
-    <form action={handleSignIn} className="inline-block">
+    <form
+      action={handleSignIn}
+      className="inline-block"
+      onSubmit={() => trackLogRocketEvent("DiscordSignInClicked")}
+    >
       <Button
         type="submit"
         variant={variant}
@@ -57,7 +64,11 @@ export function SignOutButton({
   size?: "default" | "sm" | "lg" | "icon";
 }) {
   return (
-    <form action={logoutAction} className="inline-block shrink-0">
+    <form
+      action={logoutAction}
+      className="inline-block shrink-0"
+      onSubmit={() => trackLogRocketEvent("DiscordSignOutClicked")}
+    >
       <Button
         type="submit"
         variant="ghost"

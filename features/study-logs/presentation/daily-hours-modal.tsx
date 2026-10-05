@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  captureLogRocketException,
+  trackLogRocketEvent,
+} from "@/core/observability/logrocket";
 import { logStudyTimeAction } from "@/features/study-logs/api/log-study-time.actions";
 import {
   decomposeSecondsToParts,
@@ -175,20 +179,35 @@ export function DailyHoursModal({
   const handleLog = (h: number, m: number, s: number) => {
     setFeedback(null);
     startTransition(async () => {
-      const result = await logStudyTimeAction({
-        challengeId,
-        challengeDay: selectedDayNumber,
-        hours: h,
-        minutes: m,
-        seconds: s,
-      });
+      try {
+        const result = await logStudyTimeAction({
+          challengeId,
+          challengeDay: selectedDayNumber,
+          hours: h,
+          minutes: m,
+          seconds: s,
+        });
 
-      if (result.ok) {
-        router.refresh();
-        onSuccess?.();
-        onClose();
-      } else {
-        setFeedback(result.message);
+        if (result.ok) {
+          trackLogRocketEvent("StudyTimeLogged", {
+            challengeId,
+            challengeDay: selectedDayNumber,
+            hours: h,
+            minutes: m,
+            seconds: s,
+          });
+          router.refresh();
+          onSuccess?.();
+          onClose();
+        } else {
+          setFeedback(result.message);
+        }
+      } catch (error) {
+        captureLogRocketException(error, {
+          tags: { action: "log-study-time" },
+          extra: { challengeId, challengeDay: selectedDayNumber },
+        });
+        setFeedback("Could not save study time. Please try again.");
       }
     });
   };

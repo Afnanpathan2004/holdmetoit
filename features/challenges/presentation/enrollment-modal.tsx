@@ -4,6 +4,10 @@ import { useState, useTransition } from "react";
 import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  captureLogRocketException,
+  trackLogRocketEvent,
+} from "@/core/observability/logrocket";
 import { enrollInChallengeAction } from "@/features/challenges/api/enroll-participant.actions";
 
 export interface EnrollmentModalProps {
@@ -60,20 +64,34 @@ export function EnrollmentModal({
 
     setErrorMsg(null);
     startTransition(async () => {
-      const res = await enrollInChallengeAction({
-        challengeId,
-        teamId: undefined,
-        hours: h,
-        minutes: 0,
-        seconds: 0,
-        leaveDays: l,
-      });
+      try {
+        const res = await enrollInChallengeAction({
+          challengeId,
+          teamId: undefined,
+          hours: h,
+          minutes: 0,
+          seconds: 0,
+          leaveDays: l,
+        });
 
-      if (!res.ok) {
-        setErrorMsg(res.message);
-      } else {
+        if (!res.ok) {
+          setErrorMsg(res.message);
+          return;
+        }
+
+        trackLogRocketEvent("ChallengeEnrolled", {
+          challengeId,
+          hours: h,
+          leaveDays: l,
+        });
         setIsOpen(false);
         onSuccess?.();
+      } catch (error) {
+        captureLogRocketException(error, {
+          tags: { action: "enroll-challenge" },
+          extra: { challengeId },
+        });
+        setErrorMsg("Could not enroll in this challenge. Please try again.");
       }
     });
   };

@@ -224,39 +224,50 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run test` exits 0 (46 test files, 519/519 tests green).
     - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
 
-### Session 44 — 2026-10-06
-- **Agent Role:** Scoring & Engine / Participant UI Agent
-- **Changes Completed (Challenge-Day Bucket System & Server-Side Date Resolution):**
-  - **Pure Domain Engine (`features/study-logs/domain/challenge-day.ts` / Law L7):**
-    - Implemented `getChallengeDayNumber(startAt, now)`: calculates 1-indexed relative day of challenge (Day 1, Day 2...) based on elapsed time from `startAt`.
-    - Implemented `getChallengeDayDateKey(startAt, dayNumber)`: derives canonical UTC `YYYY-MM-DD` date key for any challenge day number.
-    - Implemented `getChallengeDayBuckets(startAt, now)`: calculates current and previous day numbers and date keys relative to challenge schedule.
-    - Added unit test suite in `features/study-logs/domain/challenge-day.test.ts` (100% green).
-  - **API Validation & Server Action (`features/study-logs/api/log-study-time.actions.ts` / Law L7, Law L8):**
-    - Updated `logStudyTimeSchema` to validate `challengeDay` (positive integer).
-    - Enforced server-side validation restricting logs strictly to current or previous challenge day (`isCurrentDay || isPreviousDay`).
-    - Derived `logDate` canonical date key server-side from verified challenge day bucket, eliminating client timezone skew and date drift.
-    - Added unit test coverage in `features/study-logs/api/log-study-time.actions.test.ts`.
-  - **Data Hydration (`features/study-logs/data/cockpit-data.ts`, `features/leaderboard/data/leaderboard-data.ts`):**
-    - Extended `CockpitViewModel` to expose `todayDayNumber` and `yesterdayDayNumber`.
-    - Updated `getChallengeScoreboard` to derive elapsed days and calculate active day `todayDateKey` via challenge day buckets.
-  - **Presentation Layer (`features/study-logs/presentation/` / Law L9):**
-    - Refactored `DailyHoursModal` (`features/study-logs/presentation/daily-hours-modal.tsx`) to switch and submit study hours by `challengeDay` index (`todayDayNumber` vs `yesterdayDayNumber`).
-    - Wired `todayDayNumber` and `yesterdayDayNumber` through `home-cockpit-view.tsx` and `cockpit-banner-card.tsx` into modal.
-    - Updated component test suites in `daily-hours-modal.test.tsx` and `home-cockpit-view.test.tsx`.
+### Session 45 — 2026-10-06
+- **Agent Role:** Fullstack & Observability Agent
+- **Changes Completed (Feedback & Bug Reporting System — Phase 1 Core Foundation):**
+  - **Database & Prisma Schema (`prisma/schema.prisma`):**
+    - Added `Feedback` model with auto-incrementing `feedbackNumber` (`FB-42`), `type`, `title`, `description`, `url`, `status`, `logrocketSessionId`, `discordStatus`, `discordMessageId`, `discordChannelId`, and relation to `User`.
+    - Added `FeedbackType` (`BUG`, `ENHANCEMENT`), `FeedbackStatus` (`OPEN`, `CLOSED`), and `DiscordDeliveryStatus` (`PENDING`, `SENT`, `FAILED`).
+    - Successfully pushed schema to PostgreSQL via `npx prisma db push` and generated Prisma client.
+  - **Pure Domain Engine (`features/feedback/domain/` / Law L7):**
+    - Created `feedback.types.ts`: TypeScript contracts for inputs, models, and results.
+    - Created `feedback.schema.ts`: Zod validation schema enforcing strict field constraints.
+    - Created `feedback-code.ts`: pure formatter mapping sequential numbers to codes (e.g. `FB-42`).
+    - Added unit test suites `feedback.schema.test.ts` and `feedback-code.test.ts` (100% green).
+  - **Data Layer & Discord REST Service (`features/feedback/data/`):**
+    - Created `feedback.repository.ts`: methods for creating feedback rows, updating Discord delivery status, and fetching by ID.
+    - Created `discord-feedback.service.ts`: Discord REST API v10 integration constructing rich embeds (Red for bugs, Purple for suggestions) and dispatching with error resilience. Added universal fallback channel `DEFAULT_FEEDBACK_CHANNEL_ID = "1556790638593319063"` used for both bugs and suggestions unless overridden.
+    - Verified live bot delivery into channel `1556790638593319063` (both bug & enhancement embeds received with 200 OK from Discord API).
+    - Added unit test suite in `discord-feedback.service.test.ts` (100% green, 8/8 tests).
+  - **Observability Enhancement (`core/observability/logrocket.ts`):**
+    - Added `getLogRocketSessionURL()` helper to asynchronously retrieve the active LogRocket session URL on client devices.
+  - **API Route Handler (`app/api/feedback/route.ts`):**
+    - Created `POST /api/feedback`: validates with Zod, hydrates logged-in Auth.js user, saves to DB, asynchronously notifies Discord, and returns 201 Created with `{ success: true, data: { code: "FB-XX" } }`.
+  - **Presentation Layer (`features/feedback/presentation/` / Law L9):**
+    - Created `FeedbackForm`: segmented toggle (`🐛 Bug` / `✨ Suggestion`), loading state with spinner, double-submit protection, and clean success confirmation (removed `📍 Page` indicator and `Reference: FB-XX` badge from client dialog, keeping user confirmation simple and warm while preserving full metadata in DB and Discord).
+    - Created `FeedbackDialog`: modal with backdrop blur and escape key dismissal.
+    - Created `FeedbackTriggerButton`: fixed floating bottom-right trigger pill.
+    - Mounted `<FeedbackTriggerButton />` in `app/layout.tsx`.
+    - Added component test suites in `feedback-form.test.tsx` and `feedback-dialog.test.tsx`.
   - **Quality Gates:**
-    - `npm run typecheck` exits 0 (zero TypeScript errors).
-    - `npm run test` exits 0 (47 test files, 524/524 tests green).
-    - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
+    - `npm run typecheck` exits 0 (zero TypeScript compiler errors).
+    - `npm run test` exits 0 (52 test files, 543/543 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled including `ƒ /api/feedback`.
 
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify Challenge-Day Flow in Browser:** Start `npm run dev` and navigate to `/dashboard`:
-   - Open the "Log Hours" modal, verify toggling between "Today" and "Yesterday" selects the correct challenge day numbers.
-   - Submit hours for Today and Yesterday; verify that hours save correctly to their respective challenge-day date keys without client timezone drift.
-2. **Phase 1 Feature Roadmap:** Begin implementation of Yeolpumta (YPT) automated ingestion (`FEAT-LOG-03`) or Discord bot slash commands (`FEAT-DISC-03`) per `ROADMAP.md`.
+1. **Verify Feedback Floating Widget in Browser:**
+   - Run `npm run dev` and visit `http://localhost:3000`.
+   - Click the bottom-right "Feedback" floating pill.
+   - Submit a test bug report and a test enhancement suggestion.
+   - Verify prompt confirmation in UI and inspect the live embed posted directly to channel `1556790638593319063`.
+2. **Phase 2 & 3 Verification:**
+   - Verify LogRocket session URL correlation when submitting a bug report.
+
 
 
 
