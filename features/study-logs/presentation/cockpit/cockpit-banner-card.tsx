@@ -69,11 +69,11 @@ export function CockpitBannerCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
           <Button
             asChild
             variant="outline"
-            className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+            className="w-full sm:w-auto h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
           >
             <Link href={`/challenge/${activeChallengeId}?tab=leaderboard`}>
               View Leaderboard
@@ -82,7 +82,7 @@ export function CockpitBannerCard({
           <Button
             type="button"
             onClick={() => onOpenHoursModal(todayDateString)}
-            className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+            className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             Log Today&apos;s Hours
           </Button>
@@ -103,11 +103,11 @@ export function CockpitBannerCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
           <Button
             asChild
             variant="outline"
-            className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+            className="w-full sm:w-auto h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
           >
             <Link href={`/challenge/${activeChallengeId}?tab=leaderboard`}>
               View Leaderboard
@@ -116,7 +116,7 @@ export function CockpitBannerCard({
           <Button
             type="button"
             onClick={() => onOpenHoursModal(todayDateString)}
-            className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+            className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             Log Today&apos;s Hours
           </Button>
@@ -137,11 +137,11 @@ export function CockpitBannerCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
           <Button
             type="button"
             onClick={() => onOpenHoursModal(yesterdayDateString)}
-            className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+            className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             Log Yesterday Hours
           </Button>
@@ -162,10 +162,10 @@ export function CockpitBannerCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
           <Button
             asChild
-            className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+            className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             <Link href={`/challenge/${activeChallengeId}?tab=leaderboard`}>
               View Leaderboard
@@ -188,11 +188,11 @@ export function CockpitBannerCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
           <Button
             asChild
             variant="outline"
-            className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+            className="w-full sm:w-auto h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
           >
             <Link href={`/challenge/${targetChallengeId}`}>
               View
@@ -201,7 +201,7 @@ export function CockpitBannerCard({
           <Button
             type="button"
             onClick={onOpenEnrollModal}
-            className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+            className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             Enroll
           </Button>
@@ -222,11 +222,11 @@ export function CockpitBannerCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
           <Button
             asChild
             variant="outline"
-            className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+            className="w-full sm:w-auto h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
           >
             <Link href={`/challenge/${targetChallengeId}`}>
               View
@@ -235,7 +235,7 @@ export function CockpitBannerCard({
           <Button
             type="button"
             onClick={onOpenEnrollModal}
-            className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+            className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             Enroll
           </Button>
@@ -256,11 +256,11 @@ export function CockpitBannerCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 w-full sm:w-auto">
           <Button
             asChild
             variant="outline"
-            className="h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
+            className="w-full sm:w-auto h-10 px-5 rounded-full border border-white text-white bg-transparent hover:bg-white/10 text-xs sm:text-sm font-semibold transition-colors"
           >
             <Link href={`/challenge/${targetChallengeId}`}>
               View
@@ -269,7 +269,7 @@ export function CockpitBannerCard({
           <Button
             type="button"
             onClick={onOpenEnrollModal}
-            className="h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
+            className="w-full sm:w-auto h-10 px-5 rounded-full bg-white text-black hover:bg-[#e0e0e0] text-xs sm:text-sm font-bold transition-colors shadow-sm"
           >
             Enroll
           </Button>

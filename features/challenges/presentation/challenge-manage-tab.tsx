@@ -357,7 +357,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
       )}
 
       {/* Main Container matching Figma Obsidian Frame */}
-      <div className="rounded-3xl border border-[#262626] bg-[#141414] p-6 sm:p-8 space-y-8 shadow-xl">
+      <div className="rounded-3xl border border-[#262626] bg-[#141414] p-4 sm:p-6 lg:p-8 space-y-8 shadow-xl">
         {/* Event Lifecycle Ribbon */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#262626]">
           <div className="space-y-1">
@@ -382,13 +382,13 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {challenge.status === "UPCOMING" && (
               <Button
                 type="button"
                 onClick={handleKickoff}
                 disabled={isPending}
-                className="h-10 px-4 rounded-xl bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-xs gap-2"
+                className="h-10 px-4 w-full sm:w-auto rounded-xl bg-[#22c55e] hover:bg-[#16a34a] text-black font-semibold text-xs gap-2"
               >
                 {isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -404,7 +404,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                 type="button"
                 onClick={handleLockResults}
                 disabled={isPending}
-                className="h-10 px-4 rounded-xl bg-[#eab308] hover:bg-[#ca8a04] text-black font-semibold text-xs gap-2"
+                className="h-10 px-4 w-full sm:w-auto rounded-xl bg-[#eab308] hover:bg-[#ca8a04] text-black font-semibold text-xs gap-2"
               >
                 {isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -485,7 +485,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
             {teams.map((team, idx) => (
               <div
                 key={team.id || `team-${idx}`}
-                className="flex items-center gap-3"
+                className="flex items-center gap-2 sm:gap-3 min-w-0"
               >
                 {/* Emoji Avatar Box */}
                 <div className="relative h-12 w-12 rounded-2xl bg-[#292929] border border-[#383838] flex items-center justify-center shrink-0">
@@ -501,24 +501,24 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                 </div>
 
                 {/* Team Name Input */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <Input
                     value={team.name}
                     onChange={(e) =>
                       handleUpdateTeam(idx, "name", e.target.value)
                     }
                     placeholder="Team Name"
-                    className="h-12 rounded-2xl bg-[#292929] border-[#383838] focus:border-[#545454] text-white px-4 text-sm"
+                    className="h-12 rounded-2xl bg-[#292929] border-[#383838] focus:border-[#545454] text-white px-3 sm:px-4 text-sm min-w-0"
                   />
                 </div>
 
                 {/* Color Swatch Badge */}
-                <label className="relative h-12 px-3 rounded-2xl bg-[#292929] border border-[#383838] flex items-center gap-2 cursor-pointer shrink-0 hover:bg-[#333333] transition-colors">
+                <label className="relative h-12 px-2.5 sm:px-3 rounded-2xl bg-[#292929] border border-[#383838] flex items-center gap-2 cursor-pointer shrink-0 hover:bg-[#333333] transition-colors">
                   <span
                     className="h-5 w-5 rounded-md border border-white/20 shrink-0"
                     style={{ backgroundColor: team.color || "#FFB066" }}
                   />
-                  <span className="text-xs font-sans text-[#d1d1d1] uppercase select-none">
+                  <span className="hidden sm:inline text-xs font-sans text-[#d1d1d1] uppercase select-none">
                     {team.color || "#FFB066"}
                   </span>
                   <input
@@ -644,8 +644,8 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                     </div>
 
                     {/* Team Selector Dropdown */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="relative">
+                    <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                      <div className="relative flex-1 sm:flex-initial w-full sm:w-auto">
                         <select
                           value={currentSelectedTeamId}
                           onChange={(e) =>
@@ -655,7 +655,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                             )
                           }
                           disabled={isReassigning}
-                          className="h-10 pl-3 pr-8 rounded-xl bg-[#292929] border border-[#383838] focus:border-[#545454] text-xs font-semibold text-[#ffffff] appearance-none cursor-pointer focus:outline-none disabled:opacity-50"
+                          className="h-10 w-full sm:w-auto pl-3 pr-8 rounded-xl bg-[#292929] border border-[#383838] focus:border-[#545454] text-xs font-semibold text-[#ffffff] appearance-none cursor-pointer focus:outline-none disabled:opacity-50"
                         >
                           <option
                             value="no-assigned"
@@ -688,13 +688,13 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
         </section>
 
         {/* BOTTOM ACTION BAR (Cancel & Save) */}
-        <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#262626]">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-6 border-t border-[#262626]">
           <Button
             type="button"
             variant="outline"
             onClick={handleReset}
             disabled={isBusy}
-            className="h-11 px-6 rounded-2xl border-[#383838] bg-[#1c1c1c] text-[#ffffff] hover:bg-[#292929] hover:text-[#ffffff] text-xs font-bold"
+            className="h-11 px-6 w-full sm:w-auto rounded-2xl border-[#383838] bg-[#1c1c1c] text-[#ffffff] hover:bg-[#292929] hover:text-[#ffffff] text-xs font-bold"
           >
             Cancel
           </Button>
@@ -703,7 +703,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
             type="button"
             onClick={handleSaveChallenge}
             disabled={isBusy}
-            className="h-11 px-6 rounded-2xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold shadow-sm gap-2"
+            className="h-11 px-6 w-full sm:w-auto rounded-2xl bg-[#ffffff] text-[#0d0d0d] hover:bg-[#e0e0e0] text-xs font-bold shadow-sm gap-2"
           >
             {(isPending || isSaving) && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Save & Update Event
@@ -712,7 +712,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
       </div>
 
       {/* SECTION 5: DANGER ZONE (Delete Event) */}
-      <div className="rounded-3xl border border-red-900/40 bg-red-950/10 p-6 sm:p-8 space-y-4">
+      <div className="rounded-3xl border border-red-900/40 bg-red-950/10 p-4 sm:p-6 lg:p-8 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h4 className="text-xs font-extrabold uppercase tracking-wider text-red-400">
@@ -729,7 +729,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
             type="button"
             onClick={() => setShowDeleteModal(true)}
             disabled={isBusy}
-            className="h-11 px-5 rounded-2xl border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs shrink-0 gap-2"
+            className="h-11 px-5 w-full sm:w-auto rounded-2xl border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs shrink-0 gap-2"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Delete Event
@@ -757,13 +757,13 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
               historical standings will be erased forever.
             </p>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
-                className="h-11 px-5 rounded-2xl border-[#383838] bg-[#1c1c1c] text-white hover:bg-[#292929] text-xs font-semibold"
+                className="h-11 px-5 w-full sm:w-auto rounded-2xl border-[#383838] bg-[#1c1c1c] text-white hover:bg-[#292929] text-xs font-semibold"
               >
                 Cancel
               </Button>
@@ -772,7 +772,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                 type="button"
                 onClick={handleDeleteChallenge}
                 disabled={isDeleting}
-                className="h-11 px-5 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold gap-2"
+                className="h-11 px-5 w-full sm:w-auto rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold gap-2"
               >
                 {isDeleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 Yes, Delete Event

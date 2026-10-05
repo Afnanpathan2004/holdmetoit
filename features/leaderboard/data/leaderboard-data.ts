@@ -69,6 +69,8 @@ export interface ScoreboardStandingEntry {
   teamIcon: string | null;
   totalLoggedSeconds: number;
   totalLoggedClock: string;
+  todayLoggedSeconds: number;
+  todayLoggedClock: string;
   targetSeconds: number;
   targetClock: string;
   completionPercentage: number;
@@ -158,6 +160,7 @@ export interface RawChallengePayload {
     };
     dailyStudyLogs: Array<{
       durationSeconds: number;
+      logDate?: Date | string;
     }>;
     punishmentRecord?: {
       isPunished: boolean;
@@ -167,6 +170,10 @@ export interface RawChallengePayload {
       incompleteGoalsCount: number;
     } | null;
   }>;
+}
+
+function formatUtcDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
 export function buildScoreboardViewModel(
@@ -314,9 +321,18 @@ export function buildScoreboardViewModel(
 
   // 4. Standings rows (FEAT-LEAD-02)
   const teamLookup = new Map(challenge.teams.map((t) => [t.id, t]));
+  const todayDateKey = formatUtcDateKey(now);
 
   const participantRows = challenge.participants.map((p) => {
     const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
+    const todayLog = p.dailyStudyLogs.find((log) => {
+      if (!log.logDate) return false;
+      const logDateObj =
+        log.logDate instanceof Date ? log.logDate : new Date(log.logDate);
+      return formatUtcDateKey(logDateObj) === todayDateKey;
+    });
+    const todayLoggedSeconds = todayLog?.durationSeconds ?? 0;
+    const todayLoggedClock = formatSecondsToClock(todayLoggedSeconds);
     const goalsCompletedCount = 0;
     const goalsTotalCount = 0;
     const deficitSeconds = Math.max(0, p.targetSeconds - totalLoggedSeconds);
@@ -372,6 +388,8 @@ export function buildScoreboardViewModel(
       teamIcon: team?.iconEmoji ?? "⏳",
       totalLoggedSeconds,
       totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
+      todayLoggedSeconds,
+      todayLoggedClock,
       targetSeconds: p.targetSeconds,
       targetClock: formatSecondsToClock(p.targetSeconds),
       completionPercentage,
@@ -548,6 +566,7 @@ export async function getChallengeScoreboard(
           dailyStudyLogs: {
             select: {
               durationSeconds: true,
+              logDate: true,
             },
           },
           punishmentRecord: {

@@ -270,17 +270,60 @@ In accordance with **`AGENTS.md` Rule §9.3**:
   - **Navigation & Section Layout:**
     - Placed `← Back` navigation with underline (`underline underline-offset-4`) on its own row above the action buttons.
     - Updated "Events" header to feature a matching solid underline (`border-b-2 border-white pb-1.5 inline-block`).
+### Session 42 — 2026-10-05
+- **Agent Role:** Participant UI & Scoring/Engine Agent
+- **Changes Completed (Comprehensive 360px+ Mobile Responsiveness Optimization):**
+  - **Top Navigation Header (`features/auth/presentation/auth-nav.tsx`):**
+    - Responsive user name truncation (`max-w-[45px] xs:max-w-[75px] sm:max-w-[130px]`) prevents overflow.
+    - Responsive Admin Console label (renders "Admin" on `< sm` and "Admin Console" on `sm:`).
+    - Responsive Sign Out button: hides the `"Sign Out"` text label on `< sm` (`hidden sm:inline`), collapsing to a compact square icon button with accessible `aria-label`. Total header right side width on 360px viewports reduced by ~216px, completely eliminating header clipping and sign out button truncation.
+  - **Matchup Card & Share Bar (`features/leaderboard/presentation/challenge-leaderboard-tab.tsx`):**
+    - Shortened split share bar label on mobile to `Total: {hours}h` (`sm:Total Challenge Log: {hours} hours`) with `whitespace-nowrap`, eliminating awkward multi-line line breaks.
+    - Set team weekly target and pace text to `shrink-0 text-right whitespace-nowrap pl-2 text-[11px] sm:text-xs`, keeping targets on a clean single line.
+  - **Challenge View Tab Navigation (`features/challenges/presentation/challenge-view.tsx`):**
+    - Reduced tab button padding from `px-6 py-2` to `px-3 sm:px-6 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold whitespace-nowrap`.
+    - Added an overflow guard with `overflow-x-auto` to protect the 4-tab bar on extremely narrow devices.
+  - **Cockpit Banner & Progress Card (`features/study-logs/presentation/cockpit/`):**
+    - Updated `cockpit-banner-card.tsx` action button containers across all 7 banner variants to `flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto` and buttons to `w-full sm:w-auto`, allowing comfortable full-width mobile tap targets.
+    - Updated `cockpit-progress-card.tsx` deficit badge and percentage container to `flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto` with `text-[11px] sm:text-xs`, ensuring badges never wrap awkwardly.
+  - **Challenge Manage Tab (`features/challenges/presentation/challenge-manage-tab.tsx`):**
+    - Changed outer card padding from `p-6 sm:p-8` to `p-4 sm:p-6 lg:p-8` for mobile screen breathing room.
+    - Section 2 (Team Identities): hid `#HEX` color string on mobile (`<span className="hidden sm:inline">...</span>`) while preserving the color swatch, and added `min-w-0` to team name input, eliminating the card overflow that caused full-page horizontal scrolling.
+    - Section 4 (Participant House Assignments): updated participant house dropdown container and `<select>` to `w-full sm:w-auto`, filling the card width cleanly on mobile instead of leaving awkward right empty space.
+    - Bottom Action Bar & Danger Zone: converted action buttons to `w-full sm:w-auto` stacked (`flex-col-reverse sm:flex-row`) for ergonomic mobile handling.
+### Session 43 — 2026-10-05
+- **Agent Role:** Participant UI & Scoring/Engine Agent
+- **Changes Completed (Mobile-First Card Leaderboard Design Alignment):**
+  - **Data Engine Layer (`features/leaderboard/data/leaderboard-data.ts`):**
+    - Extended `RawChallengePayload` to optionally accept `logDate?: Date | string` in `dailyStudyLogs`.
+    - Selected `logDate: true` in `getChallengeScoreboard` Prisma query.
+    - Updated `buildScoreboardViewModel` to calculate `todayLoggedSeconds` and `todayLoggedClock` (`HH:MM:SS`) by matching each participant's logs against the active UTC date key (`formatUtcDateKey(now)`).
+    - Expanded `ScoreboardStandingEntry` with `todayLoggedSeconds: number` and `todayLoggedClock: string`.
+    - Added unit test in `leaderboard-data.test.ts` verifying accurate computation of `todayLoggedSeconds` and `todayLoggedClock`.
+  - **Presentation Layer (`features/leaderboard/presentation/challenge-leaderboard-tab.tsx`):**
+    - Implemented dedicated mobile card layout (`sm:hidden`) directly matching the user's wireframe (`media_1791220333693.png`):
+      - Mobile Header Card: rounded obsidian bar (`rounded-2xl border border-[#262626] bg-[#1a1a1a]`) with columns `Rank`, `Participant`, and `Total Hours`.
+      - Participant Cards: rounded cards (`rounded-2xl border border-[#262626] p-3`) with:
+        - Rank: bold rank number (`1`, `2`, `3`...).
+        - Avatar: circular avatar (`h-9 w-9 rounded-full`) with image or capital initial fallback.
+        - Participant Info: display name with compact team pill badge (`[snake]`) and `@username` on the second line.
+        - Hours: `{totalLoggedClock}/{targetClock}` on line 1, and `+{todayLoggedClock}` in vibrant green text (`text-[#4ade80]`) on line 2.
+    - Wrapped desktop table in `hidden sm:block overflow-x-auto` to preserve the full-width desktop view on larger viewports.
+    - Updated desktop table "Today's hours" column to display `entry.todayLoggedClock`.
+    - Added component test in `challenge-leaderboard-tab.test.tsx` asserting mobile card layout and values.
   - **Quality Gates:**
     - `npm run typecheck` exits 0 (zero TypeScript errors).
-    - `npm run test` exits 0 (46 test files, 517/517 tests green).
+    - `npm run test` exits 0 (46 test files, 519/519 tests green).
     - `npm run build` succeeds cleanly with all 6 static/dynamic routes compiled.
 
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify In-Browser Experience:** Start `npm run dev` and navigate to `/admin`:
-   - Inspect the redesigned "Create Challenge" and "Change Accent Color" squircle buttons across desktop and mobile (360px+) viewports.
-   - Verify that clicking "Create Challenge" seamlessly routes to `/admin/challenges/new`.
+1. **Verify In-Browser Mobile Leaderboard:** Start `npm run dev` and navigate to a challenge page (e.g. `/challenge/[id]`):
+   - In mobile view (< 640px), verify the header card (`Rank`, `Participant`, `Total Hours`) and participant cards render with avatar, name, team pill badge, `@username`, and `+todayLoggedClock` in vibrant green.
+   - In desktop view (>= 640px), verify the full-width table renders with all columns intact.
 2. **Phase 1 Feature Roadmap:** Begin implementation of Yeolpumta (YPT) automated ingestion (`FEAT-LOG-03`) or Discord bot slash commands (`FEAT-DISC-03`) per `ROADMAP.md`.
+
+
 
