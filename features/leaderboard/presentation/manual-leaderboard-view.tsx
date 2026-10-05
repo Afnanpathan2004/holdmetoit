@@ -4,6 +4,10 @@ import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  captureLogRocketException,
+  trackLogRocketEvent,
+} from "@/core/observability/logrocket";
 import { logManualSessionHoursAction } from "@/features/leaderboard/api/manual-leaderboard.actions";
 import type { ManualLeaderboardViewModel } from "@/features/leaderboard/data/manual-leaderboard.repository";
 import { Button } from "@/components/ui/button";
@@ -45,22 +49,36 @@ export function ManualLeaderboardView({
     }
 
     startTransition(async () => {
-      const res = await logManualSessionHoursAction({
-        challengeId: challenge.id,
-        userId: currentUserId,
-        slotDate: selectedDate,
-        sessionHours: hours,
-      });
+      try {
+        const res = await logManualSessionHoursAction({
+          challengeId: challenge.id,
+          userId: currentUserId,
+          slotDate: selectedDate,
+          sessionHours: hours,
+        });
 
-      if (!res.ok) {
-        setErrorMessage(res.message);
-      } else {
+        if (!res.ok) {
+          setErrorMessage(res.message);
+          return;
+        }
+
+        trackLogRocketEvent("ManualSessionHoursLogged", {
+          challengeId: challenge.id,
+          slotDate: selectedDate,
+          sessionHours: hours,
+        });
         setSuccessMessage(`Logged ${hours} hrs for ${selectedDate}!`);
         setTimeout(() => {
           setIsModalOpen(false);
           setSuccessMessage(null);
           router.refresh();
         }, 800);
+      } catch (error) {
+        captureLogRocketException(error, {
+          tags: { action: "log-manual-session" },
+          extra: { challengeId: challenge.id, slotDate: selectedDate },
+        });
+        setErrorMessage("Could not log session hours. Please try again.");
       }
     });
   };

@@ -13,6 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  captureLogRocketException,
+  trackLogRocketEvent,
+} from "@/core/observability/logrocket";
+import {
   createTaskAction,
   deleteCategoryAction,
   deleteTaskAction,
@@ -227,7 +231,19 @@ export function CockpitTasksSection({
 
     if (isLoggedIn) {
       startTransition(async () => {
-        await toggleTaskAction({ taskId, isComplete: nextCompleted });
+        try {
+          await toggleTaskAction({ taskId, isComplete: nextCompleted });
+          trackLogRocketEvent("TaskToggled", {
+            taskId,
+            taskType: "daily",
+            isComplete: nextCompleted,
+          });
+        } catch (error) {
+          captureLogRocketException(error, {
+            tags: { action: "toggle-task" },
+            extra: { taskId, taskType: "daily" },
+          });
+        }
       });
     }
   };
@@ -252,7 +268,19 @@ export function CockpitTasksSection({
 
     if (isLoggedIn) {
       startTransition(async () => {
-        await toggleTaskAction({ taskId, isComplete: nextCompleted });
+        try {
+          await toggleTaskAction({ taskId, isComplete: nextCompleted });
+          trackLogRocketEvent("TaskToggled", {
+            taskId,
+            taskType: "weekly",
+            isComplete: nextCompleted,
+          });
+        } catch (error) {
+          captureLogRocketException(error, {
+            tags: { action: "toggle-task" },
+            extra: { taskId, taskType: "weekly" },
+          });
+        }
       });
     }
   };
@@ -567,12 +595,23 @@ export function CockpitTasksSection({
         : undefined;
 
       startTransition(async () => {
-        await createTaskAction({
-          title: newTodoText.trim(),
-          taskType,
-          newCategoryName: isNew ? customCategory.trim() : undefined,
-          categoryId: resolvedCatId,
-        });
+        try {
+          await createTaskAction({
+            title: newTodoText.trim(),
+            taskType,
+            newCategoryName: isNew ? customCategory.trim() : undefined,
+            categoryId: resolvedCatId,
+          });
+          trackLogRocketEvent("TaskCreated", {
+            taskType,
+            isNewCategory: isNew,
+          });
+        } catch (error) {
+          captureLogRocketException(error, {
+            tags: { action: "create-task" },
+            extra: { taskType },
+          });
+        }
       });
     }
 
