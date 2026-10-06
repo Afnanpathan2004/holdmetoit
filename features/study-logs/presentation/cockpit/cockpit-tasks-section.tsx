@@ -25,6 +25,26 @@ import {
   updateTaskAction,
 } from "@/features/tasks/api/task.actions";
 import type { UserCategorizedTasks } from "@/features/tasks/domain/task.types";
+import {
+  deleteLocalCategory,
+  deleteLocalTask,
+  enqueueMutation,
+  getAllLocalCategories,
+  getAllLocalTasks,
+  logTaskSync,
+  putLocalCategories,
+  putLocalCategory,
+  putLocalTask,
+  putLocalTasks,
+} from "@/features/tasks/data/local/task-idb";
+import {
+  initTaskSync,
+  scheduleSync,
+} from "@/features/tasks/data/local/task-sync.service";
+import type {
+  LocalCategoryRecord,
+  LocalTaskRecord,
+} from "@/features/tasks/domain/task-sync.types";
 
 export interface TaskItem {
   id: string;
@@ -41,11 +61,13 @@ export interface CategoryGroup {
 
 export interface CockpitTasksSectionProps {
   isLoggedIn: boolean;
+  userId?: string | null;
   userTasks?: UserCategorizedTasks | null;
 }
 
 export function CockpitTasksSection({
   isLoggedIn,
+  userId,
   userTasks,
 }: CockpitTasksSectionProps) {
   const [, startTransition] = useTransition();
@@ -195,6 +217,103 @@ export function CockpitTasksSection({
     userTasks?.categories?.filter((c) => c.taskType === "WEEKLY").map((c) => [c.name, c.id]) ?? [],
   );
 
+  useEffect(() => {
+    const cleanup = initTaskSync(userId);
+    let isCancelled = false;
+
+    async function hydrateFromIndexedDB() {
+      try {
+        const localTasks = await getAllLocalTasks(userId ?? null);
+        const localCats = await getAllLocalCategories(userId ?? null);
+
+        if (isCancelled) return;
+
+        if (localCats.length > 0 || localTasks.length > 0) {
+          logTaskSync("Hydrated tasks from IndexedDB", {
+            cats: localCats.length,
+            tasks: localTasks.length,
+          });
+
+          const dailyCats = localCats
+            .filter((c) => c.taskType === "DAILY")
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              isCollapsed: false,
+              tasks: localTasks
+                .filter((t) => t.categoryId === c.id && t.taskType === "DAILY")
+                .map((t) => ({
+                  id: t.id,
+                  text: t.title,
+                  completed: t.isComplete,
+                })),
+            }));
+
+          const weeklyCats = localCats
+            .filter((c) => c.taskType === "WEEKLY")
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              isCollapsed: false,
+              tasks: localTasks
+                .filter((t) => t.categoryId === c.id && t.taskType === "WEEKLY")
+                .map((t) => ({
+                  id: t.id,
+                  text: t.title,
+                  completed: t.isComplete,
+                })),
+            }));
+
+          if (dailyCats.length > 0) {
+            setDailyCategories(dailyCats);
+          }
+          if (weeklyCats.length > 0) {
+            setWeeklyCategories(weeklyCats);
+          }
+        } else if (userTasks && userTasks.categories.length > 0) {
+          logTaskSync("Seeding IndexedDB from server userTasks...");
+          const seedCats: LocalCategoryRecord[] = userTasks.categories.map((c) => ({
+            id: c.id,
+            userId: userId || null,
+            name: c.name,
+            taskType: c.taskType,
+            createdAt: new Date(c.createdAt).toISOString(),
+            updatedAt: new Date(c.updatedAt).toISOString(),
+            syncState: "synced",
+          }));
+
+          const seedTasks: LocalTaskRecord[] = [
+            ...userTasks.dailyCategories.flatMap((c) => c.tasks),
+            ...userTasks.weeklyCategories.flatMap((c) => c.tasks),
+          ].map((t) => ({
+            id: t.id,
+            userId: userId || null,
+            categoryId: t.categoryId,
+            title: t.title,
+            taskType: t.taskType,
+            isComplete: t.isComplete,
+            createdAt: new Date(t.createdAt).toISOString(),
+            updatedAt: new Date(t.updatedAt).toISOString(),
+            completedAt: t.completedAt ? new Date(t.completedAt).toISOString() : null,
+            syncState: "synced",
+          }));
+
+          await putLocalCategories(seedCats);
+          await putLocalTasks(seedTasks);
+        }
+      } catch (err) {
+        logTaskSync("Error hydrating from IndexedDB:", err);
+      }
+    }
+
+    hydrateFromIndexedDB();
+
+    return () => {
+      isCancelled = true;
+      cleanup();
+    };
+  }, [userId, userTasks]);
+
   const toggleDailyCollapse = (index: number) => {
     setDailyCategories((prev) =>
       prev.map((cat, i) =>
@@ -229,23 +348,45 @@ export function CockpitTasksSection({
       )
     );
 
-    if (isLoggedIn) {
-      startTransition(async () => {
-        try {
-          await toggleTaskAction({ taskId, isComplete: nextCompleted });
-          trackLogRocketEvent("TaskToggled", {
-            taskId,
-            taskType: "daily",
-            isComplete: nextCompleted,
-          });
-        } catch (error) {
-          captureLogRocketException(error, {
-            tags: { action: "toggle-task" },
-            extra: { taskId, taskType: "daily" },
-          });
-        }
+    const nowIso = new Date().toISOString();
+    const cat = dailyCategories[catIndex];
+    if (cat?.id) {
+      putLocalTask({
+        id: taskId,
+        userId: userId ?? null,
+        categoryId: cat.id,
+        title: targetTask.text,
+        taskType: "DAILY",
+        isComplete: nextCompleted,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        completedAt: nextCompleted ? nowIso : null,
+        syncState: "pending",
+      }).catch(() => {});
+    }
+
+    if (isLoggedIn && userId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "TOGGLE",
+        payload: { taskId, isComplete: nextCompleted },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+
+      trackLogRocketEvent("TaskToggled", {
+        taskId,
+        taskType: "daily",
+        isComplete: nextCompleted,
       });
     }
+
+    logTaskSync("Task toggled", { taskId, isComplete: nextCompleted });
   };
 
   const toggleWeeklyTask = (catIndex: number, taskId: string) => {
@@ -266,23 +407,45 @@ export function CockpitTasksSection({
       )
     );
 
-    if (isLoggedIn) {
-      startTransition(async () => {
-        try {
-          await toggleTaskAction({ taskId, isComplete: nextCompleted });
-          trackLogRocketEvent("TaskToggled", {
-            taskId,
-            taskType: "weekly",
-            isComplete: nextCompleted,
-          });
-        } catch (error) {
-          captureLogRocketException(error, {
-            tags: { action: "toggle-task" },
-            extra: { taskId, taskType: "weekly" },
-          });
-        }
+    const nowIso = new Date().toISOString();
+    const cat = weeklyCategories[catIndex];
+    if (cat?.id) {
+      putLocalTask({
+        id: taskId,
+        userId: userId ?? null,
+        categoryId: cat.id,
+        title: targetTask.text,
+        taskType: "WEEKLY",
+        isComplete: nextCompleted,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        completedAt: nextCompleted ? nowIso : null,
+        syncState: "pending",
+      }).catch(() => {});
+    }
+
+    if (isLoggedIn && userId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "TOGGLE",
+        payload: { taskId, isComplete: nextCompleted },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+
+      trackLogRocketEvent("TaskToggled", {
+        taskId,
+        taskType: "weekly",
+        isComplete: nextCompleted,
       });
     }
+
+    logTaskSync("Task toggled", { taskId, isComplete: nextCompleted });
   };
 
   const handleDeleteTask = (catIndex: number, taskId: string, taskType: "daily" | "weekly") => {
@@ -310,11 +473,24 @@ export function CockpitTasksSection({
       );
     }
 
-    if (isLoggedIn) {
-      startTransition(async () => {
-        await deleteTaskAction({ taskId });
-      });
+    deleteLocalTask(taskId).catch(() => {});
+
+    if (isLoggedIn && userId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "DELETE",
+        payload: { taskId },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
     }
+
+    logTaskSync("Task deleted", { taskId });
   };
 
   useEffect(() => {
@@ -447,11 +623,38 @@ export function CockpitTasksSection({
       );
     }
 
-    if (isLoggedIn) {
-      startTransition(async () => {
-        await updateTaskAction({ taskId: id, title: trimmed });
-      });
+    const cat = taskType === "daily" ? dailyCategories[catIdx] : weeklyCategories[catIdx];
+    if (cat?.id) {
+      putLocalTask({
+        id,
+        userId: userId ?? null,
+        categoryId: cat.id,
+        title: trimmed,
+        taskType: taskType === "daily" ? "DAILY" : "WEEKLY",
+        isComplete: cat.tasks.find((t) => t.id === id)?.completed ?? false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        completedAt: null,
+        syncState: "pending",
+      }).catch(() => {});
     }
+
+    if (isLoggedIn && userId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "UPDATE",
+        payload: { taskId: id, title: trimmed },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+    }
+
+    logTaskSync("Task updated", { taskId: id, title: trimmed });
     setEditTaskModal(null);
   };
 
@@ -463,8 +666,8 @@ export function CockpitTasksSection({
     const catId =
       editCategoryModal.id ||
       (catType === "daily"
-        ? dailyCategoryNameToId.get(oldName)
-        : weeklyCategoryNameToId.get(oldName));
+        ? dailyCategoryNameToId.get(oldName) || dailyCategories.find((c) => c.name === oldName)?.id
+        : weeklyCategoryNameToId.get(oldName) || weeklyCategories.find((c) => c.name === oldName)?.id);
 
     if (oldName === trimmed) {
       setEditCategoryModal(null);
@@ -485,11 +688,34 @@ export function CockpitTasksSection({
       );
     }
 
-    if (isLoggedIn && catId) {
-      startTransition(async () => {
-        await updateCategoryAction({ categoryId: catId, name: trimmed });
-      });
+    if (catId) {
+      putLocalCategory({
+        id: catId,
+        userId: userId ?? null,
+        name: trimmed,
+        taskType: catType === "daily" ? "DAILY" : "WEEKLY",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        syncState: "pending",
+      }).catch(() => {});
     }
+
+    if (isLoggedIn && userId && catId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "CATEGORY",
+        action: "UPDATE",
+        payload: { categoryId: catId, name: trimmed },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+    }
+
+    logTaskSync("Category updated", { categoryId: catId, name: trimmed });
     setEditCategoryModal(null);
   };
 
@@ -500,8 +726,8 @@ export function CockpitTasksSection({
     const catId =
       deleteCategoryModal.id ||
       (catType === "daily"
-        ? dailyCategoryNameToId.get(targetName)
-        : weeklyCategoryNameToId.get(targetName));
+        ? dailyCategoryNameToId.get(targetName) || dailyCategories.find((c) => c.name === targetName)?.id
+        : weeklyCategoryNameToId.get(targetName) || weeklyCategories.find((c) => c.name === targetName)?.id);
 
     if (catType === "daily") {
       setDailyCategories((prev) =>
@@ -513,11 +739,26 @@ export function CockpitTasksSection({
       );
     }
 
-    if (isLoggedIn && catId) {
-      startTransition(async () => {
-        await deleteCategoryAction({ categoryId: catId });
-      });
+    if (catId) {
+      deleteLocalCategory(catId).catch(() => {});
     }
+
+    if (isLoggedIn && userId && catId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "CATEGORY",
+        action: "DELETE",
+        payload: { categoryId: catId },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+    }
+
+    logTaskSync("Category deleted", { categoryId: catId, name: targetName });
     setDeleteCategoryModal(null);
   };
 
@@ -547,73 +788,126 @@ export function CockpitTasksSection({
     const targetCategoryName = isNew ? customCategory.trim() : selectedCategory;
     const taskType = addModalType === "daily" ? "DAILY" : "WEEKLY";
 
+    const newTaskId = crypto.randomUUID();
     const newTask: TaskItem = {
-      id: `task_${Date.now()}`,
+      id: newTaskId,
       text: newTodoText.trim(),
       completed: false,
     };
 
+    let targetCatId: string | undefined = undefined;
+
     if (addModalType === "daily") {
+      const existing = dailyCategories.find((c) => c.name === targetCategoryName);
+      targetCatId = existing?.id || (isNew ? crypto.randomUUID() : dailyCategoryNameToId.get(targetCategoryName) || crypto.randomUUID());
+
       setDailyCategories((prev) => {
         const existingIndex = prev.findIndex((c) => c.name === targetCategoryName);
         if (existingIndex >= 0) {
           return prev.map((cat, i) =>
             i === existingIndex
-              ? { ...cat, isCollapsed: false, tasks: [...cat.tasks, newTask] }
+              ? { ...cat, id: cat.id || targetCatId, isCollapsed: false, tasks: [...cat.tasks, newTask] }
               : cat
           );
         } else {
           return [
             ...prev,
-            { name: targetCategoryName, isCollapsed: false, tasks: [newTask] },
+            { id: targetCatId, name: targetCategoryName, isCollapsed: false, tasks: [newTask] },
           ];
         }
       });
     } else {
+      const existing = weeklyCategories.find((c) => c.name === targetCategoryName);
+      targetCatId = existing?.id || (isNew ? crypto.randomUUID() : weeklyCategoryNameToId.get(targetCategoryName) || crypto.randomUUID());
+
       setWeeklyCategories((prev) => {
         const existingIndex = prev.findIndex((c) => c.name === targetCategoryName);
         if (existingIndex >= 0) {
           return prev.map((cat, i) =>
             i === existingIndex
-              ? { ...cat, isCollapsed: false, tasks: [...cat.tasks, newTask] }
+              ? { ...cat, id: cat.id || targetCatId, isCollapsed: false, tasks: [...cat.tasks, newTask] }
               : cat
           );
         } else {
           return [
             ...prev,
-            { name: targetCategoryName, isCollapsed: false, tasks: [newTask] },
+            { id: targetCatId, name: targetCategoryName, isCollapsed: false, tasks: [newTask] },
           ];
         }
       });
     }
 
-    if (isLoggedIn) {
-      const resolvedCatId = !isNew
-        ? (taskType === "DAILY"
-            ? dailyCategories.find((c) => c.name === targetCategoryName)?.id || dailyCategoryNameToId.get(targetCategoryName)
-            : weeklyCategories.find((c) => c.name === targetCategoryName)?.id || weeklyCategoryNameToId.get(targetCategoryName))
-        : undefined;
+    const nowIso = new Date().toISOString();
 
-      startTransition(async () => {
-        try {
-          await createTaskAction({
-            title: newTodoText.trim(),
+    if (isNew && targetCatId) {
+      putLocalCategory({
+        id: targetCatId,
+        userId: userId ?? null,
+        name: targetCategoryName,
+        taskType,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        syncState: "pending",
+      }).catch(() => {});
+    }
+
+    if (targetCatId) {
+      putLocalTask({
+        id: newTaskId,
+        userId: userId ?? null,
+        categoryId: targetCatId,
+        title: newTodoText.trim(),
+        taskType,
+        isComplete: false,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        completedAt: null,
+        syncState: "pending",
+      }).catch(() => {});
+    }
+
+    if (isLoggedIn && userId) {
+      if (isNew && targetCatId) {
+        enqueueMutation({
+          id: crypto.randomUUID(),
+          entityType: "CATEGORY",
+          action: "CREATE",
+          payload: {
+            id: targetCatId,
+            name: targetCategoryName,
             taskType,
-            newCategoryName: isNew ? customCategory.trim() : undefined,
-            categoryId: resolvedCatId,
-          });
-          trackLogRocketEvent("TaskCreated", {
-            taskType,
-            isNewCategory: isNew,
-          });
-        } catch (error) {
-          captureLogRocketException(error, {
-            tags: { action: "create-task" },
-            extra: { taskType },
-          });
-        }
+          },
+          createdAt: Date.now(),
+          retryCount: 0,
+        }).catch(() => {});
+      }
+
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "CREATE",
+        payload: {
+          id: newTaskId,
+          categoryId: targetCatId,
+          title: newTodoText.trim(),
+          taskType,
+          isComplete: false,
+        },
+        createdAt: Date.now() + 1,
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+
+      trackLogRocketEvent("TaskCreated", {
+        taskType,
+        isNewCategory: isNew,
       });
     }
+
+    logTaskSync("Task created", { id: newTaskId, title: newTodoText.trim() });
 
     setNewTodoText("");
     setCustomCategory("");

@@ -249,24 +249,55 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - Created `FeedbackForm`: segmented toggle (`🐛 Bug` / `✨ Suggestion`), loading state with spinner, double-submit protection, and clean success confirmation (removed `📍 Page` indicator and `Reference: FB-XX` badge from client dialog, keeping user confirmation simple and warm while preserving full metadata in DB and Discord).
     - Created `FeedbackDialog`: modal with backdrop blur and escape key dismissal.
     - Created `FeedbackTriggerButton`: fixed floating bottom-right trigger pill.
-    - Mounted `<FeedbackTriggerButton />` in `app/layout.tsx`.
-    - Added component test suites in `feedback-form.test.tsx` and `feedback-dialog.test.tsx`.
+### Session 46 — 2026-10-06
+- **Agent Role:** Fullstack & Participant UI Agent
+- **Changes Completed (Offline-First To-Do List with IndexedDB & Cloud Sync):**
+  - **Pure Domain Engine (`features/tasks/domain/` / Law L7):**
+    - Created `task-sync.types.ts`: TypeScript contracts for `LocalTaskRecord`, `LocalCategoryRecord`, `QueuedMutation`, `BatchSyncRequest`, and `BatchSyncResponse`.
+    - Created `task-sync.schema.ts`: Zod validation schemas for `queuedMutationSchema` and `batchSyncSchema`. Implemented pure queue utilities: `sortMutationsChronologically` (FIFO ordering) and `compactMutationQueue` (pruning transient creates/deletes before sync).
+    - Created unit tests in `task-sync.test.ts` (100% green, 5/5 tests).
+  - **IndexedDB Layer (`features/tasks/data/local/`):**
+    - Created `task-idb.ts`: Browser-safe IndexedDB wrapper (`holdmetoit_db`, version 1) managing object stores `tasks`, `categories`, and `queued_mutations`.
+    - Implemented guest data migration (`migrateGuestDataToUser`): automatically transfers unauthenticated local tasks to the authenticated user ID upon Discord OAuth login.
+    - Uses native `crypto.randomUUID()` matching Prisma's `@id @default(uuid())` primary keys natively.
+    - Integrated direct `console.log("[TaskSync] ...")` and `LogRocket.log("[TaskSync] ...")` for transparent online/offline observability.
+  - **Background Sync Service (`features/tasks/data/local/task-sync.service.ts`):**
+    - Created `TaskSyncService`: listens to `window.online`, `window.offline`, and `document.visibilitychange` events to trigger background queue flushes without blocking the UI.
+    - Implemented debounced sync scheduler (`scheduleSync`) for local mutations.
+  - **Backend Batch Sync Endpoint (`app/api/tasks/sync/route.ts` & `features/tasks/data/task-sync.repository.ts`):**
+    - Created `POST /api/tasks/sync`: validates batch payloads with Zod, checks active session, and executes mutations inside a Prisma transaction (`prisma.$transaction`) with idempotent upserts.
+    - Returns processed mutation IDs and server changes for two-way reconciliation.
+    - Added unit test suite in `task-sync.route.test.ts` (100% green, 3/3 tests).
+  - **Presentation Layer (`features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx` / Law L9):**
+    - Passed `userId` from `HomeCockpitView` to `CockpitTasksSection`.
+    - Hydrated tasks and categories from IndexedDB on component mount.
+    - Updated toggle, create, edit, and delete handlers to write instantly (`0ms`) to IndexedDB and queue mutations for background sync.
+    - **Zero UI Indicators:** Strictly no status pills, badges, spinners, or banners in the UI per user specification.
   - **Quality Gates:**
     - `npm run typecheck` exits 0 (zero TypeScript compiler errors).
-    - `npm run test` exits 0 (52 test files, 543/543 tests green).
-    - `npm run build` succeeds cleanly with all routes compiled including `ƒ /api/feedback`.
+    - `npm run test` exits 0 (54 test files, 551/551 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled including `ƒ /api/tasks/sync`.
 
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify Feedback Floating Widget in Browser:**
-   - Run `npm run dev` and visit `http://localhost:3000`.
-   - Click the bottom-right "Feedback" floating pill.
-   - Submit a test bug report and a test enhancement suggestion.
-   - Verify prompt confirmation in UI and inspect the live embed posted directly to channel `1556790638593319063`.
-2. **Phase 2 & 3 Verification:**
-   - Verify LogRocket session URL correlation when submitting a bug report.
+1. **Verify Offline-First To-Do List in Browser:**
+   - Run `npm run dev` and navigate to `http://localhost:3000`.
+   - Open Chrome DevTools $\rightarrow$ Application $\rightarrow$ IndexedDB $\rightarrow$ `holdmetoit_db` to inspect `tasks`, `categories`, and `queued_mutations`.
+   - Toggle Chrome DevTools Network to "Offline", create/toggle tasks, and observe:
+     - 0ms instant UI updates without lag.
+     - Offline console logs: `[TaskSync] Local mutation recorded...`.
+     - Data persists across hard refreshes even when offline.
+   - Toggle Network back to "Online", observe automatic background sync flush:
+     - `[TaskSync] Device transitioned to ONLINE...`
+     - `[TaskSync] Batch sync completed successfully...`
+     - `queued_mutations` store cleanly drains.
+2. **Guest Claim Flow Verification:**
+   - Log out or open an Incognito window as guest.
+   - Create guest tasks in the Cockpit.
+   - Log in via Discord OAuth and observe automatic migration of guest tasks to the user account.
+
 
 
 

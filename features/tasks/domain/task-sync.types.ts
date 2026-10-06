@@ -1,0 +1,54 @@
+import type { CategoryItem, TaskItem, TaskType } from "./task.types";
+
+export type SyncState = "synced" | "pending";
+
+export type SyncAction = "CREATE" | "UPDATE" | "DELETE" | "TOGGLE";
+
+export type SyncEntityType = "TASK" | "CATEGORY";
+
+export interface LocalTaskRecord {
+  id: string;
+  userId: string | null;
+  categoryId: string;
+  title: string;
+  taskType: TaskType;
+  isComplete: boolean;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  syncState: SyncState;
+}
+
+export interface LocalCategoryRecord {
+  id: string;
+  userId: string | null;
+  name: string;
+  taskType: TaskType;
+  createdAt: string;
+  updatedAt: string;
+  syncState: SyncState;
+}
+
+export interface QueuedMutation<TPayload = Record<string, unknown>> {
+  id: string;
+  entityType: SyncEntityType;
+  action: SyncAction;
+  payload: TPayload;
+  createdAt: number;
+  retryCount: number;
+}
+
+export interface BatchSyncRequest {
+  lastSyncTimestamp?: string;
+  mutations: QueuedMutation[];
+}
+
+export interface BatchSyncResponse {
+  success: boolean;
+  processedMutationIds: string[];
+  serverChanges?: {
+    categories: CategoryItem[];
+    tasks: TaskItem[];
+  };
+  error?: string;
+}
