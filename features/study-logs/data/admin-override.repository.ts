@@ -43,7 +43,10 @@ export async function executeAdminHoursOverride(params: AdminOverrideInput) {
     },
     include: {
       participant: {
-        select: { challengeId: true },
+        select: {
+          challengeId: true,
+          user: { select: { displayName: true, username: true } },
+        },
       },
     },
   });
@@ -71,13 +74,20 @@ export async function executeAdminHoursOverride(params: AdminOverrideInput) {
     },
     include: {
       participant: {
-        select: { challengeId: true },
+        select: {
+          challengeId: true,
+          user: { select: { displayName: true, username: true } },
+        },
       },
     },
   });
 
   const challengeId =
     existingLog?.participant.challengeId ?? updatedLog.participant.challengeId;
+  const participantName =
+    updatedLog.participant.user?.displayName ||
+    updatedLog.participant.user?.username ||
+    "Participant";
 
   await recordAuditEvent({
     actorId: params.admin.id,
@@ -85,6 +95,7 @@ export async function executeAdminHoursOverride(params: AdminOverrideInput) {
     actionType: "HOURS_OVERRIDE",
     targetEntityId: updatedLog.id,
     targetEntityType: "DAILY_STUDY_LOG",
+    targetEntityName: participantName,
     challengeId,
     previousValue: existingLog
       ? {

@@ -8,12 +8,20 @@ export async function adminPardonParticipant(params: {
 }) {
   const participant = await prisma.challengeParticipant.findUnique({
     where: { id: params.participantId },
-    include: { punishmentRecord: true },
+    include: {
+      punishmentRecord: true,
+      user: { select: { displayName: true, username: true } },
+    },
   });
 
   if (!participant) {
     throw new Error("Participant not found.");
   }
+
+  const participantName =
+    participant.user?.displayName ||
+    participant.user?.username ||
+    "Participant";
 
   return prisma.$transaction(async (tx) => {
     const updatedParticipant = await tx.challengeParticipant.update({
@@ -46,6 +54,7 @@ export async function adminPardonParticipant(params: {
       actionType: "PARTICIPANT_PARDONED",
       targetEntityId: params.participantId,
       targetEntityType: "PARTICIPANT",
+      targetEntityName: participantName,
       challengeId: participant.challengeId,
       previousValue: {
         status: participant.status,
