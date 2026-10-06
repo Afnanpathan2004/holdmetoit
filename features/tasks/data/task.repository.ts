@@ -8,6 +8,10 @@ import type {
   UserCategorizedTasks,
 } from "@/features/tasks/domain/task.types";
 
+function formatUtcDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
 export const DEFAULT_CATEGORY_NAME = "General";
 
 export async function getUserCategorizedTasks(
@@ -47,6 +51,7 @@ export async function getUserCategorizedTasks(
           sortOrder: t.sortOrder,
           isComplete: t.isComplete,
           status: (t.status as TaskStatus) ?? (t.isComplete ? "COMPLETED" : "TODO"),
+          dueDate: t.dueDate ? formatUtcDateKey(t.dueDate) : formatUtcDateKey(t.createdAt),
           createdAt: t.createdAt,
           updatedAt: t.updatedAt,
           completedAt: t.completedAt,
@@ -76,6 +81,7 @@ export async function getUserCategorizedTasks(
           sortOrder: t.sortOrder,
           isComplete: t.isComplete,
           status: (t.status as TaskStatus) ?? (t.isComplete ? "COMPLETED" : "TODO"),
+          dueDate: t.dueDate ? formatUtcDateKey(t.dueDate) : null,
           createdAt: t.createdAt,
           updatedAt: t.updatedAt,
           completedAt: t.completedAt,
@@ -114,6 +120,7 @@ export async function createTask(params: {
   newCategoryName?: string;
   isComplete?: boolean;
   status?: TaskStatus;
+  dueDate?: string | Date | null;
 }) {
   let resolvedCategoryId = params.categoryId;
 
@@ -166,6 +173,7 @@ export async function createTask(params: {
   const status: TaskStatus =
     params.status ?? (params.isComplete ? "COMPLETED" : "TODO");
   const isComplete = status === "COMPLETED";
+  const dueDate = params.dueDate ? new Date(params.dueDate) : null;
 
   return prisma.task.create({
     data: {
@@ -175,6 +183,7 @@ export async function createTask(params: {
       taskType: params.taskType,
       isComplete,
       status,
+      dueDate,
       completedAt: isComplete ? new Date() : null,
     },
     include: {
@@ -278,6 +287,7 @@ export async function updateTask(params: {
   title?: string;
   isComplete?: boolean;
   status?: TaskStatus;
+  dueDate?: string | Date | null;
 }) {
   const existing = await prisma.task.findFirst({
     where: {
@@ -294,6 +304,7 @@ export async function updateTask(params: {
     title?: string;
     isComplete?: boolean;
     status?: TaskStatus;
+    dueDate?: Date | null;
     completedAt?: Date | null;
   } = {};
 
@@ -308,6 +319,9 @@ export async function updateTask(params: {
     dataToUpdate.isComplete = params.isComplete;
     dataToUpdate.status = params.isComplete ? "COMPLETED" : "TODO";
     dataToUpdate.completedAt = params.isComplete ? new Date() : null;
+  }
+  if (params.dueDate !== undefined) {
+    dataToUpdate.dueDate = params.dueDate ? new Date(params.dueDate) : null;
   }
 
   return prisma.task.update({

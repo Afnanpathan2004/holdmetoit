@@ -6,6 +6,7 @@ import {
   getChallengeDayFromDateKey,
   getChallengeDayNumber,
   getChallengeDayOptions,
+  getCalendarWeekDayOptions,
   validateStudyLogChallengeDay,
 } from "./challenge-day";
 
@@ -102,6 +103,31 @@ describe("getChallengeDayOptions", () => {
     expect(options[3].isFuture).toBe(true);
     expect(options[4].isFuture).toBe(true);
     expect(options[5].isFuture).toBe(true);
+    expect(options[6].isFuture).toBe(true);
+  });
+});
+
+describe("getCalendarWeekDayOptions", () => {
+  it("generates 7 days of the ISO week with correct Monday start and today marker", () => {
+    // 2026-10-07 is Wednesday (Day 3 in Mon-Sun week)
+    const nowWed = new Date("2026-10-07T12:00:00.000Z");
+    const options = getCalendarWeekDayOptions(nowWed);
+
+    expect(options).toHaveLength(7);
+    expect(options[0].dateKey).toBe("2026-10-05"); // Monday
+    expect(options[0].weekday).toBe("Mon");
+    expect(options[0].dayNumber).toBe(1);
+
+    expect(options[1].dateKey).toBe("2026-10-06"); // Tuesday
+    expect(options[1].isYesterday).toBe(true);
+
+    expect(options[2].dateKey).toBe("2026-10-07"); // Wednesday (Today)
+    expect(options[2].isToday).toBe(true);
+    expect(options[2].weekday).toBe("Wed");
+
+    expect(options[6].dateKey).toBe("2026-10-11"); // Sunday
+    expect(options[6].weekday).toBe("Sun");
+    expect(options[6].dayNumber).toBe(7);
     expect(options[6].isFuture).toBe(true);
   });
 });

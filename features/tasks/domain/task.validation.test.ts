@@ -58,6 +58,29 @@ describe("task.validation", () => {
       });
       expect(result.success).toBe(false);
     });
+
+    it("accepts valid dueDate format YYYY-MM-DD", () => {
+      const result = createTaskSchema.safeParse({
+        title: "Study Chapter 4",
+        taskType: "DAILY",
+        categoryId: "cat_123",
+        dueDate: "2026-10-06",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.dueDate).toBe("2026-10-06");
+      }
+    });
+
+    it("rejects invalid dueDate format", () => {
+      const result = createTaskSchema.safeParse({
+        title: "Study Chapter 4",
+        taskType: "DAILY",
+        categoryId: "cat_123",
+        dueDate: "10-06-2026",
+      });
+      expect(result.success).toBe(false);
+    });
   });
 
   describe("toggleTaskSchema", () => {
@@ -166,7 +189,18 @@ describe("task.validation", () => {
       ).toBe(false);
     });
 
-    it("rejects when neither title nor isComplete is provided", () => {
+    it("accepts valid dueDate update without title or status", () => {
+      const result = updateTaskSchema.safeParse({
+        taskId: "task_1",
+        dueDate: "2026-10-08",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.dueDate).toBe("2026-10-08");
+      }
+    });
+
+    it("rejects when neither title, isComplete, status, nor dueDate is provided", () => {
       const result = updateTaskSchema.safeParse({
         taskId: "task_1",
       });

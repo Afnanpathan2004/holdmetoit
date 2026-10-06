@@ -206,5 +206,135 @@ describe("CockpitTasksSection", () => {
     expect(html).toContain("Crossed Out");
     expect(html).not.toContain("Incomplete");
   });
+
+  it("renders 7-day pill switcher tabs with challenge days", () => {
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-01",
+        todayDayNumber: 1,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('aria-label="Challenge Day Tabs"');
+    expect(html).toContain("D1");
+    expect(html).toContain("D2");
+    expect(html).toContain("D7");
+  });
+
+  it("filters daily tasks according to the active challenge day", () => {
+    const multiDayTasks: UserCategorizedTasks = {
+      ...mockTasks,
+      dailyCategories: [
+        {
+          id: "cat_daily_days",
+          name: "Study Blocks",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_day1",
+              userId: "user_1",
+              categoryId: "cat_daily_days",
+              title: "Day 1 Calculus Prep",
+              taskType: "DAILY",
+              isComplete: false,
+              dueDate: "2026-10-01",
+              createdAt: new Date("2026-10-01T10:00:00Z"),
+              updatedAt: new Date("2026-10-01T10:00:00Z"),
+              completedAt: null,
+            },
+            {
+              id: "t_day2",
+              userId: "user_1",
+              categoryId: "cat_daily_days",
+              title: "Day 2 Organic Chemistry",
+              taskType: "DAILY",
+              isComplete: false,
+              dueDate: "2026-10-02",
+              createdAt: new Date("2026-10-02T10:00:00Z"),
+              updatedAt: new Date("2026-10-02T10:00:00Z"),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    // When viewing Day 1 (todayDate = 2026-10-01)
+    const htmlDay1 = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: multiDayTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-01",
+        todayDayNumber: 1,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    expect(htmlDay1).toContain("Day 1 Calculus Prep");
+    expect(htmlDay1).not.toContain("Day 2 Organic Chemistry");
+  });
+
+  it("renders empty day state when no tasks are scheduled for the active day", () => {
+    const emptyDayTasks: UserCategorizedTasks = {
+      ...mockTasks,
+      dailyCategories: [
+        {
+          id: "cat_daily_days",
+          name: "Study Blocks",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_day5",
+              userId: "user_1",
+              categoryId: "cat_daily_days",
+              title: "Day 5 Biology",
+              taskType: "DAILY",
+              isComplete: false,
+              dueDate: "2026-10-05",
+              createdAt: new Date("2026-10-05T10:00:00Z"),
+              updatedAt: new Date("2026-10-05T10:00:00Z"),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    // Viewing Day 1 (2026-10-01), but task is only on Day 5
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: emptyDayTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-01",
+        todayDayNumber: 1,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    expect(html).toContain("No todos scheduled for");
+    expect(html).toContain("+ Add todo for");
+  });
+
+  it("renders onOpenHoursModal button when prop is provided", () => {
+    const openHoursModal = vi.fn();
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+        onOpenHoursModal: openHoursModal,
+      }),
+    );
+
+    expect(html).toContain('aria-label="Log study hours for');
+  });
 });
 

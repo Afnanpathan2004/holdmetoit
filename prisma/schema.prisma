@@ -42,6 +42,7 @@ model User {
   categories         Category[]
   tasks              Task[]
   feedbacks          Feedback[]
+  auditLogs          AuditLog[]
 }
 
 model Account {
@@ -107,6 +108,7 @@ model Challenge {
   participants     ChallengeParticipant[]
   punishments      PunishmentRecord[]
   leaderboardEntries LeaderboardEntry[]
+  auditLogs        AuditLog[]
 
   @@index([hostId])
 }
@@ -209,14 +211,16 @@ model Task {
   sortOrder   Int        @default(0) @map("sort_order")
   isComplete  Boolean    @default(false) @map("is_complete")
   status      TaskStatus @default(TODO)
+  dueDate     DateTime?  @map("due_date") @db.Date
   createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  completedAt DateTime? @map("completed_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  completedAt DateTime?  @map("completed_at")
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@index([userId, taskType])
+  @@index([userId, dueDate])
   @@index([categoryId])
   @@map("tasks")
 }
@@ -316,6 +320,31 @@ model Feedback {
   @@index([discordStatus])
   @@index([userId])
   @@map("feedbacks")
+}
+
+model AuditLog {
+  id               String     @id
+  challengeId      String?    @map("challenge_id")
+  actorId          String?    @map("actor_id")
+  actorUsername    String     @map("actor_username")
+  actorDisplayName String?    @map("actor_display_name")
+  actorImage       String?    @map("actor_image")
+  actionType       String     @map("action_type") @db.VarChar(64)
+  targetEntityId   String     @map("target_entity_id")
+  targetEntityType String     @map("target_entity_type") @db.VarChar(64)
+  targetEntityName String?    @map("target_entity_name") @db.VarChar(255)
+  previousValue    Json?      @map("previous_value")
+  newValue         Json?      @map("new_value")
+  auditReason      String?    @map("audit_reason")
+  createdAt        DateTime   @default(now()) @map("created_at")
+
+  actor            User?      @relation(fields: [actorId], references: [id])
+  challenge        Challenge? @relation(fields: [challengeId], references: [id])
+
+  @@index([actionType])
+  @@index([actorId])
+  @@index([challengeId, createdAt(sort: Desc)])
+  @@map("audit_logs")
 }
 
 // ---------------------------------------------------------------------------

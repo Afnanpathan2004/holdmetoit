@@ -26,6 +26,12 @@ export const createTaskSchema = z
       .optional(),
     isComplete: z.boolean().optional(),
     status: taskStatusSchema.optional(),
+    dueDate: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Due date must be in YYYY-MM-DD format.")
+      .nullable()
+      .optional(),
   })
   .refine((data) => Boolean(data.categoryId || data.newCategoryName), {
     message: "Either an existing category or a new category name must be provided.",
@@ -66,14 +72,21 @@ export const updateTaskSchema = z
       .optional(),
     isComplete: z.boolean().optional(),
     status: taskStatusSchema.optional(),
+    dueDate: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Due date must be in YYYY-MM-DD format.")
+      .nullable()
+      .optional(),
   })
   .refine(
     (data) =>
       data.title !== undefined ||
       data.isComplete !== undefined ||
-      data.status !== undefined,
+      data.status !== undefined ||
+      data.dueDate !== undefined,
     {
-      message: "Either title, isComplete, or status must be provided.",
+      message: "Either title, isComplete, status, or dueDate must be provided.",
     },
   );
 

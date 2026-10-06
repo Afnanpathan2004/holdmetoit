@@ -21,6 +21,7 @@ export interface LocalTaskRecord {
   sortOrder?: number;
   isComplete: boolean;
   status?: TaskStatus;
+  dueDate?: string | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;

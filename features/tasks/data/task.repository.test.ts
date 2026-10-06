@@ -152,6 +152,35 @@ describe("task.repository", () => {
       );
     });
 
+    it("creates task with explicit dueDate", async () => {
+      const mockCreated = {
+        id: "task_due",
+        title: "Read Chapter 6",
+        taskType: "DAILY",
+        isComplete: false,
+        dueDate: new Date("2026-10-06"),
+      };
+
+      vi.mocked(prisma.task.create).mockResolvedValue(mockCreated as never);
+
+      await createTask({
+        userId: "user_1",
+        title: "Read Chapter 6",
+        taskType: "DAILY",
+        categoryId: "cat_1",
+        dueDate: "2026-10-06",
+      });
+
+      expect(prisma.task.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            title: "Read Chapter 6",
+            dueDate: expect.any(Date),
+          }),
+        }),
+      );
+    });
+
     it("creates new category if newCategoryName is specified", async () => {
       vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.category.create).mockResolvedValue({
@@ -316,6 +345,32 @@ describe("task.repository", () => {
       expect(prisma.task.update).toHaveBeenCalledWith({
         where: { id: "task_1" },
         data: { title: "New title" },
+        include: { category: true },
+      });
+    });
+
+    it("updates task dueDate", async () => {
+      vi.mocked(prisma.task.findFirst).mockResolvedValue({
+        id: "task_1",
+        userId: "user_1",
+        title: "Current title",
+      } as never);
+      vi.mocked(prisma.task.update).mockResolvedValue({
+        id: "task_1",
+        title: "Current title",
+        dueDate: new Date("2026-10-08"),
+      } as never);
+
+      const result = await updateTask({
+        taskId: "task_1",
+        userId: "user_1",
+        dueDate: "2026-10-08",
+      });
+
+      expect(result).toBeDefined();
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: "task_1" },
+        data: { dueDate: expect.any(Date) },
         include: { category: true },
       });
     });

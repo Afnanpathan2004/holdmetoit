@@ -134,6 +134,54 @@ export function getChallengeDayOptions(
   return options;
 }
 
+export function getCalendarWeekDayOptions(
+  now: Date | string = new Date(),
+): ChallengeDayOption[] {
+  const nowDate = toDate(now);
+  const nowYear = nowDate.getUTCFullYear();
+  const nowMonth = nowDate.getUTCMonth();
+  const nowDateNum = nowDate.getUTCDate();
+  const todayUtc = Date.UTC(nowYear, nowMonth, nowDateNum);
+  const todayObj = new Date(todayUtc);
+  const todayDateKey = formatUtcDateKey(todayObj);
+
+  // ISO week: Monday = 1, Sunday = 7
+  const dayOfWeek = todayObj.getUTCDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+  const daysSinceMonday = (dayOfWeek + 6) % 7;
+  const mondayUtc = todayUtc - daysSinceMonday * MILLISECONDS_PER_DAY;
+
+  const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const options: ChallengeDayOption[] = [];
+
+  for (let i = 0; i < 7; i++) {
+    const dayUtc = mondayUtc + i * MILLISECONDS_PER_DAY;
+    const dayDate = new Date(dayUtc);
+    const dateKey = formatUtcDateKey(dayDate);
+    const weekday = WEEKDAYS[dayDate.getUTCDay()];
+    const dayNumber = i + 1;
+    const isToday = dateKey === todayDateKey;
+    const isYesterday = dayUtc === todayUtc - MILLISECONDS_PER_DAY;
+    const isFuture = dayUtc > todayUtc;
+
+    let label = `Day ${dayNumber} (${weekday})`;
+    if (isToday) label = `Today (${weekday})`;
+    else if (isYesterday) label = `Yesterday (${weekday})`;
+
+    options.push({
+      dayNumber,
+      dateKey,
+      label,
+      shortLabel: weekday,
+      weekday,
+      isToday,
+      isYesterday,
+      isFuture,
+    });
+  }
+
+  return options;
+}
+
 export type ValidateChallengeDayResult =
   | { ok: true; dayNumber: number; dateKey: string }
   | { ok: false; code: string; message: string };

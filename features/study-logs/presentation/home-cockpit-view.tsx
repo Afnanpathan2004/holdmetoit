@@ -131,6 +131,10 @@ export function HomeCockpitView({
         isLoggedIn={isLoggedIn}
         userId={user?.id || cockpit?.participant.userId || null}
         userTasks={effectiveUserTasks}
+        challengeStartDate={cockpit?.challengeStartDate}
+        todayDate={cockpit?.todayDate}
+        todayDayNumber={cockpit?.todayDayNumber}
+        onOpenHoursModal={openHoursModal}
       />
 
       <DailyHoursModal

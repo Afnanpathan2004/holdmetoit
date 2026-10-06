@@ -63,6 +63,30 @@ describe("task.actions", () => {
       );
     });
 
+    it("passes dueDate to createTask when provided", async () => {
+      vi.mocked(sessionModule.requireSessionUser).mockResolvedValue({
+        id: "user_1",
+      } as never);
+      vi.mocked(taskRepo.createTask).mockResolvedValue({
+        id: "t_1",
+        title: "Study notes",
+      } as never);
+
+      const result = await createTaskAction({
+        title: "Study notes",
+        taskType: "DAILY",
+        categoryId: "cat_1",
+        dueDate: "2026-10-06",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(taskRepo.createTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dueDate: "2026-10-06",
+        }),
+      );
+    });
+
     it("returns UNAUTHORIZED when no session", async () => {
       vi.mocked(sessionModule.requireSessionUser).mockRejectedValue(
         new AuthError("Sign in required."),
@@ -238,6 +262,29 @@ describe("task.actions", () => {
         userId: "user_1",
         isComplete: true,
       });
+    });
+
+    it("passes dueDate to updateTask when provided", async () => {
+      vi.mocked(sessionModule.requireSessionUser).mockResolvedValue({
+        id: "user_1",
+      } as never);
+      vi.mocked(taskRepo.updateTask).mockResolvedValue({
+        id: "task_1",
+        title: "Same title",
+      } as never);
+
+      const result = await updateTaskAction({
+        taskId: "task_1",
+        dueDate: "2026-10-08",
+      });
+
+      expect(result.ok).toBe(true);
+      expect(taskRepo.updateTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: "task_1",
+          dueDate: "2026-10-08",
+        }),
+      );
     });
 
     it("returns NOT_FOUND when task does not exist", async () => {

@@ -58,6 +58,7 @@ export async function createTaskAction(
       newCategoryName: parsed.data.newCategoryName,
       isComplete: parsed.data.isComplete,
       status: parsed.data.status,
+      dueDate: parsed.data.dueDate,
     });
 
     revalidatePath("/");
@@ -220,6 +221,7 @@ export async function updateTaskAction(
       title: parsed.data.title,
       isComplete: parsed.data.isComplete,
       status: parsed.data.status,
+      dueDate: parsed.data.dueDate,
     });
 
     if (!updated) {

@@ -169,6 +169,7 @@ export async function processBatchSync(
               const status: TaskStatus =
                 (payload.status as TaskStatus) || (isComplete ? "COMPLETED" : "TODO");
               const finalIsComplete = status === "COMPLETED";
+              const dueDate = payload.dueDate ? new Date(String(payload.dueDate)) : null;
 
               await tx.task.upsert({
                 where: { id: taskId },
@@ -176,6 +177,7 @@ export async function processBatchSync(
                   title,
                   isComplete: finalIsComplete,
                   status,
+                  dueDate,
                   completedAt: finalIsComplete ? new Date() : null,
                   categoryId,
                   sortOrder,
@@ -189,6 +191,7 @@ export async function processBatchSync(
                   sortOrder,
                   isComplete: finalIsComplete,
                   status,
+                  dueDate,
                   completedAt: finalIsComplete ? new Date() : null,
                 },
               });
@@ -200,6 +203,9 @@ export async function processBatchSync(
               if (categoryId) dataToUpdate.categoryId = categoryId;
               if (payload.taskType) dataToUpdate.taskType = taskType;
               if (typeof payload.sortOrder === "number") dataToUpdate.sortOrder = payload.sortOrder;
+              if (payload.dueDate !== undefined) {
+                dataToUpdate.dueDate = payload.dueDate ? new Date(String(payload.dueDate)) : null;
+              }
               if (payload.status) {
                 const status = payload.status as TaskStatus;
                 dataToUpdate.status = status;

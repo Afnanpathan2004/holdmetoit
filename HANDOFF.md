@@ -14,9 +14,9 @@
 | Gate | Result (2026-10-06, branch `krish`) |
 | :--- | :--- |
 | `npm run typecheck` | ✅ 0 errors |
-| `npm run test` | ✅ 56 files, 587/587 tests green |
+| `npm run test` | ✅ 56 files, 599/599 tests green |
 | `npm run build` | ✅ 8 routes compiled |
-| Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~65%** — the core loop works, but 5 P0 features lost their UI during the 2026-10-04 Obsidian overhaul (see §3) |
+| Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~68%** — Core daily/weekly loop and day switcher complete; 5 admin/wall P0 UIs pending restoration (see §3) |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo |
 | Phase 1 (P1) | ⏸️ Not started |
 
@@ -139,49 +139,43 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 ## 7. Session Changelog (Last 5 Sessions)
 
 ### Earlier Sessions (Summarized)
-- **Sessions 1–19 (2026-09-05 – 09-08):** Scaffolding, pure domain math, Prisma + Discord OAuth, participant cockpit, scoreboard, admin ops, mocked J1–J6 suite.
-- **Sessions 20–39 (2026-10-03 – 10-05):** Obsidian theme overhaul + home cockpit consolidation; Supabase image uploads; timestamp lifecycle; categorized user tasks; `DEV` role; manual weekly leaderboard.
-- **Sessions 40–46 (2026-10-05 – 10-06):** Removed `DISCORD_ADMIN_IDS` whitelist; mobile pass; offline-first IndexedDB task sync (`holdmetoit_db`).
-
-### Session 47 — 2026-10-06 (afnan-jr)
-- Drag & drop for tasks and categories across the Daily/Weekly boards; `sortOrder` columns (via `db push`, see D5); pure `task-reorder.ts`; sync fixes (no ack on failed mutations, `(Moved)` name disambiguation). 559/559 tests.
+- **Sessions 1–47 (2026-09-05 – 10-06):** Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`).
 
 ### Session 48 — 2026-10-06 (krish)
 - **Agent Role:** Cross-cutting audit / documentation.
-- Merged `origin/main` (29 commits) into `krish` as a fast-forward; ran `npm install`; cleared the stale `.next/` cache.
-- Audited the codebase against `FEATURES.md` / `ROADMAP.md`. Replaced the optimistic "100% P0 complete" matrix with the verified status above, and logged defects D1–D10 and open decisions.
-- Synchronized docs: `HANDOFF.md`, `ROADMAP.md`, `README.md`, `FEATURES.md`, `DESIGN.md`, `AGENTS.md`, `prisma/migrations/README.md`.
-- Gates: typecheck ✅ · test 559/559 ✅ · build ✅. No source code changed.
+- Merged `origin/main` into `krish`; audited codebase against `FEATURES.md` / `ROADMAP.md`; logged defects D1–D10.
 
 ### Session 49 — 2026-10-06 (krish)
 - **Agent Role:** Participant UI & Scoring Engine Agent.
 - **Implemented Week-Wide Study Hours Logging & Future Date Guard:**
-  - Added pure domain functions in `features/study-logs/domain/challenge-day.ts`: `validateStudyLogChallengeDay()`, `getChallengeDayOptions()`, and `getChallengeDayFromDateKey()`. Rejects future days/dates with `FUTURE_DATE_NOT_ALLOWED` and pre-start days with `DATE_BEFORE_CHALLENGE`.
-  - Updated server action `logStudyTimeAction`: accepts past or current days, rejects future dates.
-  - Overhauled `DailyHoursModal`: week day-of-the-week pills (D1..D7), native date picker input bounded with `max={todayDate}`, pre-populated hours for selected date, "Update Hours" state.
-- **Fixed Supabase Storage Image Hostname Crash:**
-  - Added wildcard `*.supabase.co`, `*.supabase.in`, and `*.supabase.net` to `next.config.mjs` remote patterns; added `unoptimized` flag to hero/card images.
-- Gates: typecheck ✅ · test 577/577 ✅ · dev server verified live.
+  - Pure domain functions in `challenge-day.ts`: `validateStudyLogChallengeDay()`, `getChallengeDayOptions()`, `getChallengeDayFromDateKey()`.
+  - Overhauled `DailyHoursModal` with D1..D7 pills, native date picker bounded with `max={todayDate}`, and pre-populated hours for selected date.
 
 ### Session 50 — 2026-10-06 (krish)
 - **Agent Role:** Participant UI Agent.
-- **Initial Todo Mechanic Overhaul (Status Controls):**
-  - Added status toggling capability for tasks, supporting both `isComplete: false` and `isComplete: true`.
-  - Added status controls to task context menu and Edit Task modal.
-  - Updated schemas and repositories (`task.repository.ts`, `task-sync.repository.ts`).
-- Gates: typecheck ✅ · test 584/584 ✅ · build ✅.
+- **Initial Todo Mechanic Overhaul:** Added status toggling for tasks, supporting both `isComplete: false` and `isComplete: true` in context menus and modals.
 
 ### Session 51 — 2026-10-06 (krish)
 - **Agent Role:** Participant UI & Data Agent.
-- **Task Status Multi-State Overhaul (To-Do, In Progress, Completed, Crossed Out):**
-  - Added `TaskStatus` enum (`TODO`, `IN_PROGRESS`, `COMPLETED`, `CROSSED_OUT`) to database via PostgreSQL migration and `prisma/schema.prisma`.
-  - Updated domain models (`TaskItem`, `LocalTaskRecord`), Zod validation schemas (`taskStatusSchema`, `createTaskSchema`, `toggleTaskSchema`, `updateTaskSchema`), and repositories/actions (`task.repository.ts`, `task-sync.repository.ts`, `task.actions.ts`).
-  - **Removed Incomplete Option & Badge:** Base `TODO` state displays a clean row with an empty checkbox and zero badge clutter (tasks are incomplete by default).
-  - **Added In Progress State:** Amber accent border (`border-amber-400/80 bg-amber-500/15`), glowing amber indicator dot, and cozy "In Progress" badge button.
-  - **Added Crossed Out State:** Rose accent border (`border-rose-400/80 bg-rose-500/15`), rose `X` icon, muted strikethrough styling, and cozy "Crossed Out" badge button.
-  - **Streamlined Checkbox Behavior:** Clicking the checkbox toggles between `COMPLETED` and reset to base `TODO`.
-  - **Context Menu & Modals:** Context menu offers quick completion toggle, status submenu (`In Progress`, `Completed`, `Crossed Out`, and `Reset to To-Do`), and Edit/Add modals offer all 4 status buttons.
-  - **Accountability Invariant Preserved (Law L6):** Only `COMPLETED` sets `isComplete = true`; `TODO`, `IN_PROGRESS`, and `CROSSED_OUT` keep `isComplete = false`.
-  - Gates: typecheck ✅ (0 errors) · test 587/587 ✅ (56 test files green) · build ✅ (all 8 routes compiled).
+- **Task Status Multi-State Overhaul (`TODO`, `IN_PROGRESS`, `COMPLETED`, `CROSSED_OUT`):**
+  - Added `TaskStatus` enum to database, domain models, Zod validation schemas, repositories, and UI.
+  - Base `TODO` has a clean row with zero badge clutter. Amber accent for `IN_PROGRESS` and rose strikethrough for `CROSSED_OUT`.
+  - Only `COMPLETED` sets `isComplete = true` (Law L6 preserved).
+
+### Session 52 — 2026-10-06 (krish)
+- **Agent Role:** Participant UI & Data Agent.
+- **Week-Wide Daily Todos & Interactive Day Switcher:**
+  - **Database & Prisma Schema:** Added `dueDate DateTime? @map("due_date") @db.Date` with `@@index([userId, dueDate])` on `Task` in `prisma/schema.prisma`. Mapped existing `audit_logs` table via `model AuditLog`. Pushed to Supabase Postgres.
+  - **Domain Layer:** Added `getCalendarWeekDayOptions()` fallback for ISO calendar week (Mon..Sun). Added `dueDate` to `TaskItem`, `LocalTaskRecord`, and Zod validation schemas (`createTaskSchema`, `updateTaskSchema`).
+  - **Data & Action Layers:** Updated `task.repository.ts`, `task-sync.repository.ts`, and `task.actions.ts` to persist, update, and batch-sync `dueDate` (with legacy fallback to `createdAt` date for existing tasks).
+  - **Presentation Layer (`cockpit-tasks-section.tsx` & `home-cockpit-view.tsx`):**
+    - Default view displays current day's todos ("like right now") on initial load alongside weekly todos.
+    - Interactive 7-Day Pill Switcher bar renders challenge days (D1..D7) with today indicator, completion counts badge (`completed/total`), and Obsidian active highlight.
+    - Header displays active day badge (`Day 1`, `Day 2`, etc.), completion tally for selected day, and a 1-click "Today" shortcut when viewing other days.
+    - Added study hours shortcut button in header calling `onOpenHoursModal`.
+    - Empty day state renders a clean card with a CTA button to schedule tasks for that specific day.
+    - Add Todo modal and Edit Task modal allow assigning/reassigning tasks to any challenge day of the week via day pill selectors.
+    - Drag & drop reordering preserves `dueDate` and assigns tasks to the proper category within the selected day.
+  - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (56 files, 599/599 tests green) · `npm run build` ✅ (all 8 routes compiled cleanly).
 
 

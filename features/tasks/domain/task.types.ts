@@ -11,6 +11,7 @@ export interface TaskItem {
   sortOrder?: number;
   isComplete: boolean;
   status?: TaskStatus;
+  dueDate?: string | null;
   createdAt: Date;
   updatedAt: Date;
   completedAt: Date | null;
