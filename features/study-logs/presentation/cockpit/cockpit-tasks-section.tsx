@@ -10,6 +10,7 @@ import {
   MoreVertical,
   Pencil,
   GripVertical,
+  RotateCcw,
 } from "lucide-react";
 import {
   moveCategoryBetweenColumns,
@@ -29,7 +30,10 @@ import {
   updateCategoryAction,
   updateTaskAction,
 } from "@/features/tasks/api/task.actions";
-import type { UserCategorizedTasks } from "@/features/tasks/domain/task.types";
+import type {
+  TaskStatus,
+  UserCategorizedTasks,
+} from "@/features/tasks/domain/task.types";
 import {
   deleteLocalCategory,
   deleteLocalTask,
@@ -55,6 +59,12 @@ export interface TaskItem {
   id: string;
   text: string;
   completed: boolean;
+  status?: TaskStatus;
+}
+
+export function getTaskStatus(task: TaskItem): TaskStatus {
+  if (task.status) return task.status;
+  return task.completed ? "COMPLETED" : "TODO";
 }
 
 export interface CategoryGroup {
@@ -81,6 +91,7 @@ export function CockpitTasksSection({
   const [selectedCategory, setSelectedCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [newTodoStatus, setNewTodoStatus] = useState<TaskStatus>("TODO");
 
   const categoryInputRef = useRef<HTMLInputElement>(null);
   const categorySelectRef = useRef<HTMLSelectElement>(null);
@@ -103,6 +114,8 @@ export function CockpitTasksSection({
     task?: {
       id: string;
       text: string;
+      completed: boolean;
+      status: TaskStatus;
       catIdx: number;
       taskType: "daily" | "weekly";
     };
@@ -113,10 +126,13 @@ export function CockpitTasksSection({
   const [editTaskModal, setEditTaskModal] = useState<{
     id: string;
     text: string;
+    completed: boolean;
+    status: TaskStatus;
     catIdx: number;
     taskType: "daily" | "weekly";
   } | null>(null);
   const [editTaskInputText, setEditTaskInputText] = useState("");
+  const [editTaskInputStatus, setEditTaskInputStatus] = useState<TaskStatus>("TODO");
 
   // Edit Category Modal State
   const [editCategoryModal, setEditCategoryModal] = useState<{
@@ -159,6 +175,7 @@ export function CockpitTasksSection({
           id: t.id,
           text: t.title,
           completed: t.isComplete,
+          status: (t.status as TaskStatus) || (t.isComplete ? "COMPLETED" : "TODO"),
         })),
       }));
     }
@@ -175,6 +192,7 @@ export function CockpitTasksSection({
           id: t.id,
           text: t.title,
           completed: t.isComplete,
+          status: (t.status as TaskStatus) || (t.isComplete ? "COMPLETED" : "TODO"),
         })),
       }));
     }
@@ -239,6 +257,7 @@ export function CockpitTasksSection({
                   id: t.id,
                   text: t.title,
                   completed: t.isComplete,
+                  status: (t.status as TaskStatus) || (t.isComplete ? "COMPLETED" : "TODO"),
                 })),
             }));
 
@@ -254,6 +273,7 @@ export function CockpitTasksSection({
                   id: t.id,
                   text: t.title,
                   completed: t.isComplete,
+                  status: (t.status as TaskStatus) || (t.isComplete ? "COMPLETED" : "TODO"),
                 })),
             }));
 
@@ -285,6 +305,7 @@ export function CockpitTasksSection({
             title: t.title,
             taskType: t.taskType,
             isComplete: t.isComplete,
+            status: (t.status as TaskStatus) || (t.isComplete ? "COMPLETED" : "TODO"),
             createdAt: new Date(t.createdAt).toISOString(),
             updatedAt: new Date(t.updatedAt).toISOString(),
             completedAt: t.completedAt ? new Date(t.completedAt).toISOString() : null,
@@ -323,122 +344,159 @@ export function CockpitTasksSection({
     );
   };
 
+  const setTaskStatus = (
+    catIndex: number,
+    taskId: string,
+    taskType: "daily" | "weekly",
+    nextStatusOrCompleted: TaskStatus | boolean,
+  ) => {
+    const nextStatus: TaskStatus =
+      typeof nextStatusOrCompleted === "boolean"
+        ? (nextStatusOrCompleted ? "COMPLETED" : "TODO")
+        : nextStatusOrCompleted;
+    const nextCompleted = nextStatus === "COMPLETED";
+
+    if (taskType === "daily") {
+      const targetTask = dailyCategories[catIndex]?.tasks.find((t) => t.id === taskId);
+      if (!targetTask) return;
+      const currentStatus = getTaskStatus(targetTask);
+      if (currentStatus === nextStatus) return;
+
+      setDailyCategories((prev) =>
+        prev.map((cat, i) =>
+          i === catIndex
+            ? {
+                ...cat,
+                tasks: cat.tasks.map((t) =>
+                  t.id === taskId
+                    ? { ...t, completed: nextCompleted, status: nextStatus }
+                    : t,
+                ),
+              }
+            : cat,
+        ),
+      );
+
+      const nowIso = new Date().toISOString();
+      const cat = dailyCategories[catIndex];
+      if (cat?.id) {
+        putLocalTask({
+          id: taskId,
+          userId: userId ?? null,
+          categoryId: cat.id,
+          title: targetTask.text,
+          taskType: "DAILY",
+          isComplete: nextCompleted,
+          status: nextStatus,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          completedAt: nextCompleted ? nowIso : null,
+          syncState: "pending",
+        }).catch(() => {});
+      }
+
+      if (isLoggedIn && userId) {
+        enqueueMutation({
+          id: crypto.randomUUID(),
+          entityType: "TASK",
+          action: "TOGGLE",
+          payload: { taskId, isComplete: nextCompleted, status: nextStatus },
+          createdAt: Date.now(),
+          retryCount: 0,
+        })
+          .then(() => {
+            scheduleSync(userId);
+          })
+          .catch(() => {});
+
+        trackLogRocketEvent("TaskStatusChanged", {
+          taskId,
+          taskType: "daily",
+          status: nextStatus,
+          isComplete: nextCompleted,
+        });
+      }
+
+      logTaskSync("Task status updated", { taskId, status: nextStatus, isComplete: nextCompleted });
+    } else {
+      const targetTask = weeklyCategories[catIndex]?.tasks.find((t) => t.id === taskId);
+      if (!targetTask) return;
+      const currentStatus = getTaskStatus(targetTask);
+      if (currentStatus === nextStatus) return;
+
+      setWeeklyCategories((prev) =>
+        prev.map((cat, i) =>
+          i === catIndex
+            ? {
+                ...cat,
+                tasks: cat.tasks.map((t) =>
+                  t.id === taskId
+                    ? { ...t, completed: nextCompleted, status: nextStatus }
+                    : t,
+                ),
+              }
+            : cat,
+        ),
+      );
+
+      const nowIso = new Date().toISOString();
+      const cat = weeklyCategories[catIndex];
+      if (cat?.id) {
+        putLocalTask({
+          id: taskId,
+          userId: userId ?? null,
+          categoryId: cat.id,
+          title: targetTask.text,
+          taskType: "WEEKLY",
+          isComplete: nextCompleted,
+          status: nextStatus,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          completedAt: nextCompleted ? nowIso : null,
+          syncState: "pending",
+        }).catch(() => {});
+      }
+
+      if (isLoggedIn && userId) {
+        enqueueMutation({
+          id: crypto.randomUUID(),
+          entityType: "TASK",
+          action: "TOGGLE",
+          payload: { taskId, isComplete: nextCompleted, status: nextStatus },
+          createdAt: Date.now(),
+          retryCount: 0,
+        })
+          .then(() => {
+            scheduleSync(userId);
+          })
+          .catch(() => {});
+
+        trackLogRocketEvent("TaskStatusChanged", {
+          taskId,
+          taskType: "weekly",
+          status: nextStatus,
+          isComplete: nextCompleted,
+        });
+      }
+
+      logTaskSync("Task status updated", { taskId, status: nextStatus, isComplete: nextCompleted });
+    }
+  };
+
   const toggleDailyTask = (catIndex: number, taskId: string) => {
     const targetTask = dailyCategories[catIndex]?.tasks.find((t) => t.id === taskId);
     if (!targetTask) return;
-    const nextCompleted = !targetTask.completed;
-
-    setDailyCategories((prev) =>
-      prev.map((cat, i) =>
-        i === catIndex
-          ? {
-              ...cat,
-              tasks: cat.tasks.map((t) =>
-                t.id === taskId ? { ...t, completed: nextCompleted } : t
-              ),
-            }
-          : cat
-      )
-    );
-
-    const nowIso = new Date().toISOString();
-    const cat = dailyCategories[catIndex];
-    if (cat?.id) {
-      putLocalTask({
-        id: taskId,
-        userId: userId ?? null,
-        categoryId: cat.id,
-        title: targetTask.text,
-        taskType: "DAILY",
-        isComplete: nextCompleted,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        completedAt: nextCompleted ? nowIso : null,
-        syncState: "pending",
-      }).catch(() => {});
-    }
-
-    if (isLoggedIn && userId) {
-      enqueueMutation({
-        id: crypto.randomUUID(),
-        entityType: "TASK",
-        action: "TOGGLE",
-        payload: { taskId, isComplete: nextCompleted },
-        createdAt: Date.now(),
-        retryCount: 0,
-      })
-        .then(() => {
-          scheduleSync(userId);
-        })
-        .catch(() => {});
-
-      trackLogRocketEvent("TaskToggled", {
-        taskId,
-        taskType: "daily",
-        isComplete: nextCompleted,
-      });
-    }
-
-    logTaskSync("Task toggled", { taskId, isComplete: nextCompleted });
+    const currentStatus = getTaskStatus(targetTask);
+    const nextStatus: TaskStatus = currentStatus === "COMPLETED" ? "TODO" : "COMPLETED";
+    setTaskStatus(catIndex, taskId, "daily", nextStatus);
   };
 
   const toggleWeeklyTask = (catIndex: number, taskId: string) => {
     const targetTask = weeklyCategories[catIndex]?.tasks.find((t) => t.id === taskId);
     if (!targetTask) return;
-    const nextCompleted = !targetTask.completed;
-
-    setWeeklyCategories((prev) =>
-      prev.map((cat, i) =>
-        i === catIndex
-          ? {
-              ...cat,
-              tasks: cat.tasks.map((t) =>
-                t.id === taskId ? { ...t, completed: nextCompleted } : t
-              ),
-            }
-          : cat
-      )
-    );
-
-    const nowIso = new Date().toISOString();
-    const cat = weeklyCategories[catIndex];
-    if (cat?.id) {
-      putLocalTask({
-        id: taskId,
-        userId: userId ?? null,
-        categoryId: cat.id,
-        title: targetTask.text,
-        taskType: "WEEKLY",
-        isComplete: nextCompleted,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        completedAt: nextCompleted ? nowIso : null,
-        syncState: "pending",
-      }).catch(() => {});
-    }
-
-    if (isLoggedIn && userId) {
-      enqueueMutation({
-        id: crypto.randomUUID(),
-        entityType: "TASK",
-        action: "TOGGLE",
-        payload: { taskId, isComplete: nextCompleted },
-        createdAt: Date.now(),
-        retryCount: 0,
-      })
-        .then(() => {
-          scheduleSync(userId);
-        })
-        .catch(() => {});
-
-      trackLogRocketEvent("TaskToggled", {
-        taskId,
-        taskType: "weekly",
-        isComplete: nextCompleted,
-      });
-    }
-
-    logTaskSync("Task toggled", { taskId, isComplete: nextCompleted });
+    const currentStatus = getTaskStatus(targetTask);
+    const nextStatus: TaskStatus = currentStatus === "COMPLETED" ? "TODO" : "COMPLETED";
+    setTaskStatus(catIndex, taskId, "weekly", nextStatus);
   };
 
   const handleDeleteTask = (catIndex: number, taskId: string, taskType: "daily" | "weekly") => {
@@ -561,7 +619,14 @@ export function CockpitTasksSection({
       type: "task",
       x,
       y,
-      task: { id: task.id, text: task.text, catIdx, taskType },
+      task: {
+        id: task.id,
+        text: task.text,
+        completed: task.completed,
+        status: getTaskStatus(task),
+        catIdx,
+        taskType,
+      },
     });
   };
 
@@ -579,14 +644,23 @@ export function CockpitTasksSection({
       type: "task",
       x,
       y,
-      task: { id: task.id, text: task.text, catIdx, taskType },
+      task: {
+        id: task.id,
+        text: task.text,
+        completed: task.completed,
+        status: getTaskStatus(task),
+        catIdx,
+        taskType,
+      },
     });
   };
 
-  const handleSaveEditTask = (newText: string) => {
+  const handleSaveEditTask = (newText: string, newStatus: TaskStatus) => {
     if (!editTaskModal || !newText.trim()) return;
     const { id, catIdx, taskType } = editTaskModal;
     const trimmed = newText.trim();
+    const nextCompleted = newStatus === "COMPLETED";
+    const nowIso = new Date().toISOString();
 
     if (taskType === "daily") {
       setDailyCategories((prev) =>
@@ -595,7 +669,7 @@ export function CockpitTasksSection({
             ? {
                 ...cat,
                 tasks: cat.tasks.map((t) =>
-                  t.id === id ? { ...t, text: trimmed } : t,
+                  t.id === id ? { ...t, text: trimmed, completed: nextCompleted, status: newStatus } : t,
                 ),
               }
             : cat,
@@ -608,7 +682,7 @@ export function CockpitTasksSection({
             ? {
                 ...cat,
                 tasks: cat.tasks.map((t) =>
-                  t.id === id ? { ...t, text: trimmed } : t,
+                  t.id === id ? { ...t, text: trimmed, completed: nextCompleted, status: newStatus } : t,
                 ),
               }
             : cat,
@@ -624,10 +698,11 @@ export function CockpitTasksSection({
         categoryId: cat.id,
         title: trimmed,
         taskType: taskType === "daily" ? "DAILY" : "WEEKLY",
-        isComplete: cat.tasks.find((t) => t.id === id)?.completed ?? false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        completedAt: null,
+        isComplete: nextCompleted,
+        status: newStatus,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        completedAt: nextCompleted ? nowIso : null,
         syncState: "pending",
       }).catch(() => {});
     }
@@ -637,7 +712,7 @@ export function CockpitTasksSection({
         id: crypto.randomUUID(),
         entityType: "TASK",
         action: "UPDATE",
-        payload: { taskId: id, title: trimmed },
+        payload: { taskId: id, title: trimmed, isComplete: nextCompleted, status: newStatus },
         createdAt: Date.now(),
         retryCount: 0,
       })
@@ -647,7 +722,7 @@ export function CockpitTasksSection({
         .catch(() => {});
     }
 
-    logTaskSync("Task updated", { taskId: id, title: trimmed });
+    logTaskSync("Task updated", { taskId: id, title: trimmed, status: newStatus, isComplete: nextCompleted });
     setEditTaskModal(null);
   };
 
@@ -783,10 +858,12 @@ export function CockpitTasksSection({
     const taskType = addModalType === "daily" ? "DAILY" : "WEEKLY";
 
     const newTaskId = crypto.randomUUID();
+    const nextCompleted = newTodoStatus === "COMPLETED";
     const newTask: TaskItem = {
       id: newTaskId,
       text: newTodoText.trim(),
-      completed: false,
+      completed: nextCompleted,
+      status: newTodoStatus,
     };
 
     let targetCatId: string | undefined = undefined;
@@ -852,10 +929,11 @@ export function CockpitTasksSection({
         categoryId: targetCatId,
         title: newTodoText.trim(),
         taskType,
-        isComplete: false,
+        isComplete: nextCompleted,
+        status: newTodoStatus,
         createdAt: nowIso,
         updatedAt: nowIso,
-        completedAt: null,
+        completedAt: nextCompleted ? nowIso : null,
         syncState: "pending",
       }).catch(() => {});
     }
@@ -885,7 +963,8 @@ export function CockpitTasksSection({
           categoryId: targetCatId,
           title: newTodoText.trim(),
           taskType,
-          isComplete: false,
+          isComplete: nextCompleted,
+          status: newTodoStatus,
         },
         createdAt: Date.now() + 1,
         retryCount: 0,
@@ -904,6 +983,7 @@ export function CockpitTasksSection({
     logTaskSync("Task created", { id: newTaskId, title: newTodoText.trim() });
 
     setNewTodoText("");
+    setNewTodoStatus("TODO");
     setCustomCategory("");
     setIsCreatingCategory(false);
     setAddModalType(null);
@@ -1640,31 +1720,103 @@ export function CockpitTasksSection({
                                 >
                                   <GripVertical className="h-3.5 w-3.5" />
                                 </div>
-                                <div
-                                  onClick={() => toggleDailyTask(catIdx, task.id)}
-                                  className="flex items-start gap-3 cursor-pointer flex-1 min-w-0"
-                                >
-                                  <div
-                                    className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 mt-0.5 ${
-                                      task.completed
-                                        ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
-                                        : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
-                                    }`}
-                                  >
-                                    {task.completed && (
-                                      <Check className="h-3.5 w-3.5 stroke-[3]" />
-                                    )}
-                                  </div>
-                                  <span
-                                    className={`text-sm line-clamp-2 break-words leading-snug ${
-                                      task.completed
-                                        ? "text-[#868686] line-through"
-                                        : "text-[#ffffff]"
-                                    }`}
-                                  >
-                                    {task.text}
-                                  </span>
-                                </div>
+                                {(() => {
+                                  const status = getTaskStatus(task);
+                                  return (
+                                    <>
+                                      <div
+                                        role="checkbox"
+                                        aria-checked={status === "COMPLETED"}
+                                        onClick={() => toggleDailyTask(catIdx, task.id)}
+                                        className="flex items-start gap-3 cursor-pointer flex-1 min-w-0"
+                                        title={
+                                          status === "COMPLETED"
+                                            ? "Status: Completed. Click to reset to To-Do"
+                                            : status === "IN_PROGRESS"
+                                              ? "Status: In Progress. Click to mark Completed"
+                                              : status === "CROSSED_OUT"
+                                                ? "Status: Crossed Out. Click to mark Completed"
+                                                : "Status: To-Do. Click to mark Completed"
+                                        }
+                                      >
+                                        <div
+                                          className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 mt-0.5 ${
+                                            status === "COMPLETED"
+                                              ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
+                                              : status === "IN_PROGRESS"
+                                                ? "border-amber-400/80 bg-amber-500/15 text-amber-400"
+                                                : status === "CROSSED_OUT"
+                                                  ? "border-rose-500/80 bg-rose-500/15 text-rose-400"
+                                                  : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
+                                          }`}
+                                        >
+                                          {status === "COMPLETED" && (
+                                            <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                          )}
+                                          {status === "IN_PROGRESS" && (
+                                            <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                                          )}
+                                          {status === "CROSSED_OUT" && (
+                                            <X className="h-3.5 w-3.5 stroke-[2.5]" />
+                                          )}
+                                        </div>
+                                        <span
+                                          className={`text-sm line-clamp-2 break-words leading-snug flex-1 ${
+                                            status === "COMPLETED"
+                                              ? "text-[#868686] line-through"
+                                              : status === "CROSSED_OUT"
+                                                ? "text-[#777777] line-through decoration-rose-500/60"
+                                                : status === "IN_PROGRESS"
+                                                  ? "text-white font-medium"
+                                                  : "text-[#ffffff]"
+                                          }`}
+                                        >
+                                          {task.text}
+                                        </span>
+                                      </div>
+
+                                      {status === "COMPLETED" && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setTaskStatus(catIdx, task.id, "daily", "TODO");
+                                          }}
+                                          title="Status: Completed. Click to reset to To-Do"
+                                          className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide uppercase transition-colors border mt-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                                        >
+                                          Completed
+                                        </button>
+                                      )}
+                                      {status === "IN_PROGRESS" && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setTaskStatus(catIdx, task.id, "daily", "COMPLETED");
+                                          }}
+                                          title="Status: In Progress. Click to mark Completed"
+                                          className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide uppercase transition-colors border mt-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+                                        >
+                                          In Progress
+                                        </button>
+                                      )}
+                                      {status === "CROSSED_OUT" && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setTaskStatus(catIdx, task.id, "daily", "TODO");
+                                          }}
+                                          title="Status: Crossed Out. Click to reset to To-Do"
+                                          className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide uppercase transition-colors border mt-0.5 bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20"
+                                        >
+                                          Crossed Out
+                                        </button>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                                 {isLoggedIn && (
                                   <button
                                     type="button"
@@ -1854,31 +2006,103 @@ export function CockpitTasksSection({
                                 >
                                   <GripVertical className="h-3.5 w-3.5" />
                                 </div>
-                                <div
-                                  onClick={() => toggleWeeklyTask(catIdx, task.id)}
-                                  className="flex items-start gap-3 cursor-pointer flex-1 min-w-0"
-                                >
-                                  <div
-                                    className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 mt-0.5 ${
-                                      task.completed
-                                        ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
-                                        : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
-                                    }`}
-                                  >
-                                    {task.completed && (
-                                      <Check className="h-3.5 w-3.5 stroke-[3]" />
-                                    )}
-                                  </div>
-                                  <span
-                                    className={`text-sm line-clamp-2 break-words leading-snug ${
-                                      task.completed
-                                        ? "text-[#868686] line-through"
-                                        : "text-[#ffffff]"
-                                    }`}
-                                  >
-                                    {task.text}
-                                  </span>
-                                </div>
+                                {(() => {
+                                  const status = getTaskStatus(task);
+                                  return (
+                                    <>
+                                      <div
+                                        role="checkbox"
+                                        aria-checked={status === "COMPLETED"}
+                                        onClick={() => toggleWeeklyTask(catIdx, task.id)}
+                                        className="flex items-start gap-3 cursor-pointer flex-1 min-w-0"
+                                        title={
+                                          status === "COMPLETED"
+                                            ? "Status: Completed. Click to reset to To-Do"
+                                            : status === "IN_PROGRESS"
+                                              ? "Status: In Progress. Click to mark Completed"
+                                              : status === "CROSSED_OUT"
+                                                ? "Status: Crossed Out. Click to mark Completed"
+                                                : "Status: To-Do. Click to mark Completed"
+                                        }
+                                      >
+                                        <div
+                                          className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 mt-0.5 ${
+                                            status === "COMPLETED"
+                                              ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
+                                              : status === "IN_PROGRESS"
+                                                ? "border-amber-400/80 bg-amber-500/15 text-amber-400"
+                                                : status === "CROSSED_OUT"
+                                                  ? "border-rose-500/80 bg-rose-500/15 text-rose-400"
+                                                  : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
+                                          }`}
+                                        >
+                                          {status === "COMPLETED" && (
+                                            <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                          )}
+                                          {status === "IN_PROGRESS" && (
+                                            <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                                          )}
+                                          {status === "CROSSED_OUT" && (
+                                            <X className="h-3.5 w-3.5 stroke-[2.5]" />
+                                          )}
+                                        </div>
+                                        <span
+                                          className={`text-sm line-clamp-2 break-words leading-snug flex-1 ${
+                                            status === "COMPLETED"
+                                              ? "text-[#868686] line-through"
+                                              : status === "CROSSED_OUT"
+                                                ? "text-[#777777] line-through decoration-rose-500/60"
+                                                : status === "IN_PROGRESS"
+                                                  ? "text-white font-medium"
+                                                  : "text-[#ffffff]"
+                                          }`}
+                                        >
+                                          {task.text}
+                                        </span>
+                                      </div>
+
+                                      {status === "COMPLETED" && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setTaskStatus(catIdx, task.id, "weekly", "TODO");
+                                          }}
+                                          title="Status: Completed. Click to reset to To-Do"
+                                          className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide uppercase transition-colors border mt-0.5 bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                                        >
+                                          Completed
+                                        </button>
+                                      )}
+                                      {status === "IN_PROGRESS" && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setTaskStatus(catIdx, task.id, "weekly", "COMPLETED");
+                                          }}
+                                          title="Status: In Progress. Click to mark Completed"
+                                          className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide uppercase transition-colors border mt-0.5 bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+                                        >
+                                          In Progress
+                                        </button>
+                                      )}
+                                      {status === "CROSSED_OUT" && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setTaskStatus(catIdx, task.id, "weekly", "TODO");
+                                          }}
+                                          title="Status: Crossed Out. Click to reset to To-Do"
+                                          className="shrink-0 px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wide uppercase transition-colors border mt-0.5 bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20"
+                                        >
+                                          Crossed Out
+                                        </button>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                                 {isLoggedIn && (
                                   <button
                                     type="button"
@@ -2025,6 +2249,78 @@ export function CockpitTasksSection({
                 )}
               </div>
 
+              <div>
+                <label className="block text-xs font-medium text-[#d1d1d1] mb-1.5">
+                  Initial Status
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewTodoStatus("TODO")}
+                    className={`flex items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                      newTodoStatus === "TODO"
+                        ? "bg-[#383838] text-white border-white/30 shadow-inner ring-1 ring-white/20"
+                        : "bg-[#1f1f1f] text-[#868686] border-[#383838] hover:text-white hover:bg-[#282828]"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        newTodoStatus === "TODO" ? "bg-white" : "bg-[#555555]"
+                      }`}
+                    />
+                    <span>To-Do</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewTodoStatus("IN_PROGRESS")}
+                    className={`flex items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                      newTodoStatus === "IN_PROGRESS"
+                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-inner ring-1 ring-amber-500/30"
+                        : "bg-[#1f1f1f] text-[#868686] border-[#383838] hover:text-white hover:bg-[#282828]"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        newTodoStatus === "IN_PROGRESS" ? "bg-amber-400" : "bg-[#555555]"
+                      }`}
+                    />
+                    <span>In Progress</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewTodoStatus("COMPLETED")}
+                    className={`flex items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                      newTodoStatus === "COMPLETED"
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-inner ring-1 ring-emerald-500/30"
+                        : "bg-[#1f1f1f] text-[#868686] border-[#383838] hover:text-white hover:bg-[#282828]"
+                    }`}
+                  >
+                    <Check
+                      className={`h-3.5 w-3.5 ${
+                        newTodoStatus === "COMPLETED" ? "text-emerald-400 stroke-[3]" : "text-[#555555]"
+                      }`}
+                    />
+                    <span>Completed</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewTodoStatus("CROSSED_OUT")}
+                    className={`flex items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                      newTodoStatus === "CROSSED_OUT"
+                        ? "bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-inner ring-1 ring-rose-500/30"
+                        : "bg-[#1f1f1f] text-[#868686] border-[#383838] hover:text-white hover:bg-[#282828]"
+                    }`}
+                  >
+                    <X
+                      className={`h-3.5 w-3.5 ${
+                        newTodoStatus === "CROSSED_OUT" ? "text-rose-400 stroke-[2.5]" : "text-[#555555]"
+                      }`}
+                    />
+                    <span>Crossed Out</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-3">
                 <Button
                   type="button"
@@ -2055,6 +2351,131 @@ export function CockpitTasksSection({
         >
           {contextMenu.type === "task" && contextMenu.task && (
             <>
+              {contextMenu.task.status === "COMPLETED" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = contextMenu.task!;
+                    setContextMenu(null);
+                    setTaskStatus(t.catIdx, t.id, t.taskType, "TODO");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#d1d1d1] rounded-lg hover:bg-[#333333] transition-colors text-left"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-[#868686]" />
+                  <span>Reset to To-Do</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = contextMenu.task!;
+                    setContextMenu(null);
+                    setTaskStatus(t.catIdx, t.id, t.taskType, "COMPLETED");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-emerald-300 rounded-lg hover:bg-emerald-500/10 transition-colors text-left"
+                >
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Mark as Completed</span>
+                </button>
+              )}
+
+              <div className="my-1 border-t border-[#333333]" />
+              <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#777777]">
+                Status
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const t = contextMenu.task!;
+                  setContextMenu(null);
+                  setTaskStatus(t.catIdx, t.id, t.taskType, "IN_PROGRESS");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors text-left ${
+                  contextMenu.task.status === "IN_PROGRESS"
+                    ? "text-[#ffffff] bg-[#2d2d2d]"
+                    : "text-[#868686] hover:bg-[#2a2a2a] hover:text-[#d1d1d1]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      contextMenu.task.status === "IN_PROGRESS" ? "bg-amber-400" : "bg-[#555555]"
+                    }`}
+                  />
+                  <span>In Progress</span>
+                </div>
+                {contextMenu.task.status === "IN_PROGRESS" && (
+                  <Check className="h-3 w-3 text-amber-400" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const t = contextMenu.task!;
+                  setContextMenu(null);
+                  setTaskStatus(t.catIdx, t.id, t.taskType, "COMPLETED");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors text-left ${
+                  contextMenu.task.status === "COMPLETED"
+                    ? "text-[#ffffff] bg-[#2d2d2d]"
+                    : "text-[#868686] hover:bg-[#2a2a2a] hover:text-[#d1d1d1]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      contextMenu.task.status === "COMPLETED" ? "bg-emerald-400" : "bg-[#555555]"
+                    }`}
+                  />
+                  <span>Completed</span>
+                </div>
+                {contextMenu.task.status === "COMPLETED" && (
+                  <Check className="h-3 w-3 text-emerald-400" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const t = contextMenu.task!;
+                  setContextMenu(null);
+                  setTaskStatus(t.catIdx, t.id, t.taskType, "CROSSED_OUT");
+                }}
+                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition-colors text-left ${
+                  contextMenu.task.status === "CROSSED_OUT"
+                    ? "text-[#ffffff] bg-[#2d2d2d]"
+                    : "text-[#868686] hover:bg-[#2a2a2a] hover:text-[#d1d1d1]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      contextMenu.task.status === "CROSSED_OUT" ? "bg-rose-400" : "bg-[#555555]"
+                    }`}
+                  />
+                  <span>Crossed Out</span>
+                </div>
+                {contextMenu.task.status === "CROSSED_OUT" && (
+                  <Check className="h-3 w-3 text-rose-400" />
+                )}
+              </button>
+
+              {contextMenu.task.status !== "TODO" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = contextMenu.task!;
+                    setContextMenu(null);
+                    setTaskStatus(t.catIdx, t.id, t.taskType, "TODO");
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#868686] hover:bg-[#2a2a2a] hover:text-[#d1d1d1] rounded-lg transition-colors text-left"
+                >
+                  <RotateCcw className="h-3 w-3 text-[#777777]" />
+                  <span>Reset to To-Do</span>
+                </button>
+              )}
+
+              <div className="my-1 border-t border-[#333333]" />
+
               <button
                 type="button"
                 onClick={() => {
@@ -2062,6 +2483,7 @@ export function CockpitTasksSection({
                   setContextMenu(null);
                   setEditTaskModal(t);
                   setEditTaskInputText(t.text);
+                  setEditTaskInputStatus(t.status);
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#f4f3f6] rounded-lg hover:bg-[#333333] transition-colors text-left"
               >
@@ -2132,7 +2554,7 @@ export function CockpitTasksSection({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                handleSaveEditTask(editTaskInputText);
+                handleSaveEditTask(editTaskInputText, editTaskInputStatus);
               }}
               className="space-y-4"
             >
@@ -2149,6 +2571,79 @@ export function CockpitTasksSection({
                   className="h-11 bg-[#545454] border-[#484848] text-[#f4f3f6] rounded-xl"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[#d1d1d1] mb-1.5">
+                  Task Status
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditTaskInputStatus("TODO")}
+                    className={`flex items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                      editTaskInputStatus === "TODO"
+                        ? "bg-[#383838] text-white border-white/30 shadow-inner ring-1 ring-white/20"
+                        : "bg-[#1f1f1f] text-[#868686] border-[#383838] hover:text-white hover:bg-[#282828]"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        editTaskInputStatus === "TODO" ? "bg-white" : "bg-[#555555]"
+                      }`}
+                    />
+                    <span>To-Do</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditTaskInputStatus("IN_PROGRESS")}
+                    className={`flex items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                      editTaskInputStatus === "IN_PROGRESS"
+                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-inner ring-1 ring-amber-500/30"
+                        : "bg-[#1f1f1f] text-[#868686] border-[#383838] hover:text-white hover:bg-[#282828]"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        editTaskInputStatus === "IN_PROGRESS" ? "bg-amber-400" : "bg-[#555555]"
+                      }`}
+                    />
+                    <span>In Progress</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditTaskInputStatus("COMPLETED")}
+                    className={`flex items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                      editTaskInputStatus === "COMPLETED"
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-inner ring-1 ring-emerald-500/30"
+                        : "bg-[#1f1f1f] text-[#868686] border-[#383838] hover:text-white hover:bg-[#282828]"
+                    }`}
+                  >
+                    <Check
+                      className={`h-3.5 w-3.5 ${
+                        editTaskInputStatus === "COMPLETED" ? "text-emerald-400 stroke-[3]" : "text-[#555555]"
+                      }`}
+                    />
+                    <span>Completed</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditTaskInputStatus("CROSSED_OUT")}
+                    className={`flex items-center justify-center gap-1.5 h-10 px-2 rounded-xl text-xs font-semibold border transition-all ${
+                      editTaskInputStatus === "CROSSED_OUT"
+                        ? "bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-inner ring-1 ring-rose-500/30"
+                        : "bg-[#1f1f1f] text-[#868686] border-[#383838] hover:text-white hover:bg-[#282828]"
+                    }`}
+                  >
+                    <X
+                      className={`h-3.5 w-3.5 ${
+                        editTaskInputStatus === "CROSSED_OUT" ? "text-rose-400 stroke-[2.5]" : "text-[#555555]"
+                      }`}
+                    />
+                    <span>Crossed Out</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-3">
                 <Button
                   type="button"

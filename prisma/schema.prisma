@@ -206,9 +206,10 @@ model Task {
   categoryId  String
   title       String    @db.VarChar(255)
   taskType    TaskType  @map("task_type")
-  sortOrder   Int       @default(0) @map("sort_order")
-  isComplete  Boolean   @default(false) @map("is_complete")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  sortOrder   Int        @default(0) @map("sort_order")
+  isComplete  Boolean    @default(false) @map("is_complete")
+  status      TaskStatus @default(TODO)
+  createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   completedAt DateTime? @map("completed_at")
 
@@ -343,6 +344,13 @@ enum ParticipantStatus {
 enum TaskType {
   DAILY
   WEEKLY
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CROSSED_OUT
 }
 
 enum FeedbackType {

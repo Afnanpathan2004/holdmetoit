@@ -4,6 +4,7 @@ import type {
   CategoryGroup,
   CategoryItem,
   TaskItem,
+  TaskStatus,
   UserCategorizedTasks,
 } from "@/features/tasks/domain/task.types";
 
@@ -45,6 +46,7 @@ export async function getUserCategorizedTasks(
           taskType: "DAILY" as const,
           sortOrder: t.sortOrder,
           isComplete: t.isComplete,
+          status: (t.status as TaskStatus) ?? (t.isComplete ? "COMPLETED" : "TODO"),
           createdAt: t.createdAt,
           updatedAt: t.updatedAt,
           completedAt: t.completedAt,
@@ -73,6 +75,7 @@ export async function getUserCategorizedTasks(
           taskType: "WEEKLY" as const,
           sortOrder: t.sortOrder,
           isComplete: t.isComplete,
+          status: (t.status as TaskStatus) ?? (t.isComplete ? "COMPLETED" : "TODO"),
           createdAt: t.createdAt,
           updatedAt: t.updatedAt,
           completedAt: t.completedAt,
@@ -109,6 +112,8 @@ export async function createTask(params: {
   taskType: TaskType;
   categoryId?: string;
   newCategoryName?: string;
+  isComplete?: boolean;
+  status?: TaskStatus;
 }) {
   let resolvedCategoryId = params.categoryId;
 
@@ -158,13 +163,19 @@ export async function createTask(params: {
     }
   }
 
+  const status: TaskStatus =
+    params.status ?? (params.isComplete ? "COMPLETED" : "TODO");
+  const isComplete = status === "COMPLETED";
+
   return prisma.task.create({
     data: {
       userId: params.userId,
       categoryId: resolvedCategoryId,
       title: params.title.trim(),
       taskType: params.taskType,
-      isComplete: false,
+      isComplete,
+      status,
+      completedAt: isComplete ? new Date() : null,
     },
     include: {
       category: true,
@@ -175,7 +186,8 @@ export async function createTask(params: {
 export async function toggleTask(params: {
   taskId: string;
   userId: string;
-  isComplete: boolean;
+  isComplete?: boolean;
+  status?: TaskStatus;
 }) {
   const existing = await prisma.task.findFirst({
     where: {
@@ -188,11 +200,23 @@ export async function toggleTask(params: {
     return null;
   }
 
+  const nextStatus: TaskStatus =
+    params.status ??
+    (params.isComplete !== undefined
+      ? params.isComplete
+        ? "COMPLETED"
+        : "TODO"
+      : existing.isComplete
+        ? "TODO"
+        : "COMPLETED");
+  const nextIsComplete = nextStatus === "COMPLETED";
+
   return prisma.task.update({
     where: { id: params.taskId },
     data: {
-      isComplete: params.isComplete,
-      completedAt: params.isComplete ? new Date() : null,
+      isComplete: nextIsComplete,
+      status: nextStatus,
+      completedAt: nextIsComplete ? new Date() : null,
     },
     include: {
       category: true,
@@ -251,7 +275,9 @@ export async function createCategory(params: {
 export async function updateTask(params: {
   taskId: string;
   userId: string;
-  title: string;
+  title?: string;
+  isComplete?: boolean;
+  status?: TaskStatus;
 }) {
   const existing = await prisma.task.findFirst({
     where: {
@@ -264,11 +290,29 @@ export async function updateTask(params: {
     return null;
   }
 
+  const dataToUpdate: {
+    title?: string;
+    isComplete?: boolean;
+    status?: TaskStatus;
+    completedAt?: Date | null;
+  } = {};
+
+  if (params.title !== undefined) {
+    dataToUpdate.title = params.title.trim();
+  }
+  if (params.status !== undefined) {
+    dataToUpdate.status = params.status;
+    dataToUpdate.isComplete = params.status === "COMPLETED";
+    dataToUpdate.completedAt = params.status === "COMPLETED" ? new Date() : null;
+  } else if (params.isComplete !== undefined) {
+    dataToUpdate.isComplete = params.isComplete;
+    dataToUpdate.status = params.isComplete ? "COMPLETED" : "TODO";
+    dataToUpdate.completedAt = params.isComplete ? new Date() : null;
+  }
+
   return prisma.task.update({
     where: { id: params.taskId },
-    data: {
-      title: params.title.trim(),
-    },
+    data: dataToUpdate,
     include: {
       category: true,
     },

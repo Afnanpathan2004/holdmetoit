@@ -10,7 +10,7 @@ import {
   DEFAULT_CATEGORY_NAME,
   getUserCategorizedTasks,
 } from "@/features/tasks/data/task.repository";
-import type { TaskType } from "@prisma/client";
+import type { TaskStatus, TaskType } from "@prisma/client";
 
 export async function processBatchSync(
   userId: string,
@@ -166,12 +166,17 @@ export async function processBatchSync(
                 categoryId = cat.id;
               }
 
+              const status: TaskStatus =
+                (payload.status as TaskStatus) || (isComplete ? "COMPLETED" : "TODO");
+              const finalIsComplete = status === "COMPLETED";
+
               await tx.task.upsert({
                 where: { id: taskId },
                 update: {
                   title,
-                  isComplete,
-                  completedAt: isComplete ? new Date() : null,
+                  isComplete: finalIsComplete,
+                  status,
+                  completedAt: finalIsComplete ? new Date() : null,
                   categoryId,
                   sortOrder,
                 },
@@ -182,8 +187,9 @@ export async function processBatchSync(
                   title,
                   taskType,
                   sortOrder,
-                  isComplete,
-                  completedAt: isComplete ? new Date() : null,
+                  isComplete: finalIsComplete,
+                  status,
+                  completedAt: finalIsComplete ? new Date() : null,
                 },
               });
             }
@@ -194,6 +200,16 @@ export async function processBatchSync(
               if (categoryId) dataToUpdate.categoryId = categoryId;
               if (payload.taskType) dataToUpdate.taskType = taskType;
               if (typeof payload.sortOrder === "number") dataToUpdate.sortOrder = payload.sortOrder;
+              if (payload.status) {
+                const status = payload.status as TaskStatus;
+                dataToUpdate.status = status;
+                dataToUpdate.isComplete = status === "COMPLETED";
+                dataToUpdate.completedAt = status === "COMPLETED" ? new Date() : null;
+              } else if (typeof payload.isComplete === "boolean") {
+                dataToUpdate.isComplete = payload.isComplete;
+                dataToUpdate.status = payload.isComplete ? "COMPLETED" : "TODO";
+                dataToUpdate.completedAt = payload.isComplete ? new Date() : null;
+              }
 
               await tx.task.updateMany({
                 where: { id: taskId, userId },
@@ -210,11 +226,16 @@ export async function processBatchSync(
             }
           } else if (m.action === "TOGGLE") {
             if (taskId) {
+              const status: TaskStatus =
+                (payload.status as TaskStatus) || (isComplete ? "COMPLETED" : "TODO");
+              const finalIsComplete = status === "COMPLETED";
+
               await tx.task.updateMany({
                 where: { id: taskId, userId },
                 data: {
-                  isComplete,
-                  completedAt: isComplete ? new Date() : null,
+                  isComplete: finalIsComplete,
+                  status,
+                  completedAt: finalIsComplete ? new Date() : null,
                 },
               });
             }

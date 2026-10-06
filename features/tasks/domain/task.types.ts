@@ -1,5 +1,7 @@
 export type TaskType = "DAILY" | "WEEKLY";
 
+export type TaskStatus = "TODO" | "IN_PROGRESS" | "COMPLETED" | "CROSSED_OUT";
+
 export interface TaskItem {
   id: string;
   userId: string;
@@ -8,6 +10,7 @@ export interface TaskItem {
   taskType: TaskType;
   sortOrder?: number;
   isComplete: boolean;
+  status?: TaskStatus;
   createdAt: Date;
   updatedAt: Date;
   completedAt: Date | null;

@@ -218,6 +218,28 @@ describe("task.actions", () => {
       });
     });
 
+    it("updates task completion status successfully", async () => {
+      vi.mocked(sessionModule.requireSessionUser).mockResolvedValue({
+        id: "user_1",
+      } as never);
+      vi.mocked(taskRepo.updateTask).mockResolvedValue({
+        id: "task_1",
+        isComplete: true,
+      } as never);
+
+      const result = await updateTaskAction({
+        taskId: "task_1",
+        isComplete: true,
+      });
+
+      expect(result.ok).toBe(true);
+      expect(taskRepo.updateTask).toHaveBeenCalledWith({
+        taskId: "task_1",
+        userId: "user_1",
+        isComplete: true,
+      });
+    });
+
     it("returns NOT_FOUND when task does not exist", async () => {
       vi.mocked(sessionModule.requireSessionUser).mockResolvedValue({
         id: "user_1",

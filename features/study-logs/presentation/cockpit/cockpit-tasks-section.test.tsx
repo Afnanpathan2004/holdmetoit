@@ -137,4 +137,74 @@ describe("CockpitTasksSection", () => {
     expect(weeklySection).toContain("Sprint Deliverables");
     expect(dailySection).not.toContain("Sprint Deliverables");
   });
+
+  it("renders status indicator badges and accessible checkbox controls for tasks", () => {
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+      }),
+    );
+
+    // Uncompleted / To-Do daily task has clean row without "Incomplete" badge
+    expect(html).toContain('role="checkbox"');
+    expect(html).toContain('aria-checked="false"');
+    expect(html).not.toContain("Incomplete");
+
+    // Completed weekly task
+    expect(html).toContain('aria-checked="true"');
+    expect(html).toContain("Completed");
+  });
+
+  it("renders In Progress and Crossed Out status badges appropriately", () => {
+    const customTasks: UserCategorizedTasks = {
+      ...mockTasks,
+      dailyCategories: [
+        {
+          id: "cat_daily_status",
+          name: "Status Tests",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_prog",
+              userId: "user_1",
+              categoryId: "cat_daily_status",
+              title: "Active Working Task",
+              taskType: "DAILY",
+              isComplete: false,
+              status: "IN_PROGRESS",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              completedAt: null,
+            },
+            {
+              id: "t_cross",
+              userId: "user_1",
+              categoryId: "cat_daily_status",
+              title: "Blocked Task",
+              taskType: "DAILY",
+              isComplete: false,
+              status: "CROSSED_OUT",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: customTasks,
+      }),
+    );
+
+    expect(html).toContain("In Progress");
+    expect(html).toContain("Crossed Out");
+    expect(html).not.toContain("Incomplete");
+  });
 });
+

@@ -20,13 +20,17 @@ describe("task.validation", () => {
       expect(result.success).toBe(true);
     });
 
-    it("accepts valid input with newCategoryName", () => {
+    it("accepts valid input with newCategoryName and optional isComplete", () => {
       const result = createTaskSchema.safeParse({
         title: "Finish physics set",
         taskType: "WEEKLY",
         newCategoryName: "Physics",
+        isComplete: true,
       });
       expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.isComplete).toBe(true);
+      }
     });
 
     it("rejects empty title", () => {
@@ -129,6 +133,30 @@ describe("task.validation", () => {
       expect(result.success).toBe(true);
     });
 
+    it("accepts valid task status update without title", () => {
+      const result = updateTaskSchema.safeParse({
+        taskId: "task_1",
+        isComplete: true,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.isComplete).toBe(true);
+      }
+    });
+
+    it("accepts valid update with both title and isComplete", () => {
+      const result = updateTaskSchema.safeParse({
+        taskId: "task_1",
+        title: "Finished essay",
+        isComplete: true,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.title).toBe("Finished essay");
+        expect(result.data.isComplete).toBe(true);
+      }
+    });
+
     it("rejects empty taskId or empty title", () => {
       expect(
         updateTaskSchema.safeParse({ taskId: "", title: "Valid title" }).success,
@@ -136,6 +164,13 @@ describe("task.validation", () => {
       expect(
         updateTaskSchema.safeParse({ taskId: "task_1", title: "   " }).success,
       ).toBe(false);
+    });
+
+    it("rejects when neither title nor isComplete is provided", () => {
+      const result = updateTaskSchema.safeParse({
+        taskId: "task_1",
+      });
+      expect(result.success).toBe(false);
     });
   });
 

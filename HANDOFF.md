@@ -11,10 +11,10 @@
 
 ## 1. Current State at a Glance
 
-| Gate | Result (2026-10-06, branch `krish` @ `c174a58`) |
+| Gate | Result (2026-10-06, branch `krish`) |
 | :--- | :--- |
-| `npm run typecheck` | ✅ 0 errors (delete a stale `.next/` folder first if it references removed routes) |
-| `npm run test` | ✅ 56 files, 559/559 tests green |
+| `npm run typecheck` | ✅ 0 errors |
+| `npm run test` | ✅ 56 files, 587/587 tests green |
 | `npm run build` | ✅ 8 routes compiled |
 | Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~65%** — the core loop works, but 5 P0 features lost their UI during the 2026-10-04 Obsidian overhaul (see §3) |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo |
@@ -140,14 +140,8 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ### Earlier Sessions (Summarized)
 - **Sessions 1–19 (2026-09-05 – 09-08):** Scaffolding, pure domain math, Prisma + Discord OAuth, participant cockpit, scoreboard, admin ops, mocked J1–J6 suite.
-- **Sessions 20–39 (2026-10-03 – 10-05):** Obsidian theme overhaul + home cockpit consolidation (removed `/dashboard`, roster grid, pardons, and summary UIs); Supabase dual image uploads; timestamp-derived lifecycle (dropped `Challenge.status`); categorized user tasks (dropped `WeeklyGoal`); Daily/Weekly category split; `DEV` role; manual weekly leaderboard.
-- **Sessions 40–43 (2026-10-05):** Removed the `DISCORD_ADMIN_IDS` whitelist; admin console Figma alignment; 360px mobile pass; mobile card leaderboard with today's hours.
-
-### Session 45 — 2026-10-06 (afnan-jr)
-- Feedback system: `Feedback` model, Zod schema, `FB-XX` codes, Discord REST embeds, `POST /api/feedback`, floating dialog. LogRocket integration plus error boundaries.
-
-### Session 46 — 2026-10-06 (afnan-jr)
-- Offline-first tasks: IndexedDB store, `TaskSyncService` (online/visibility triggers), `POST /api/tasks/sync` with transactional batch apply, guest→user migration.
+- **Sessions 20–39 (2026-10-03 – 10-05):** Obsidian theme overhaul + home cockpit consolidation; Supabase image uploads; timestamp lifecycle; categorized user tasks; `DEV` role; manual weekly leaderboard.
+- **Sessions 40–46 (2026-10-05 – 10-06):** Removed `DISCORD_ADMIN_IDS` whitelist; mobile pass; offline-first IndexedDB task sync (`holdmetoit_db`).
 
 ### Session 47 — 2026-10-06 (afnan-jr)
 - Drag & drop for tasks and categories across the Daily/Weekly boards; `sortOrder` columns (via `db push`, see D5); pure `task-reorder.ts`; sync fixes (no ack on failed mutations, `(Moved)` name disambiguation). 559/559 tests.
@@ -156,19 +150,38 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 - **Agent Role:** Cross-cutting audit / documentation.
 - Merged `origin/main` (29 commits) into `krish` as a fast-forward; ran `npm install`; cleared the stale `.next/` cache.
 - Audited the codebase against `FEATURES.md` / `ROADMAP.md`. Replaced the optimistic "100% P0 complete" matrix with the verified status above, and logged defects D1–D10 and open decisions.
-- Synchronized docs: `HANDOFF.md` (rewritten and pruned), `ROADMAP.md` (status and timeline section, current entities), `README.md` (setup, env, structure), `FEATURES.md` (implementation notes and new feature IDs), `DESIGN.md` (Obsidian system), `AGENTS.md` (stack versions, routes, RBAC), `prisma/migrations/README.md` (drift warning).
+- Synchronized docs: `HANDOFF.md`, `ROADMAP.md`, `README.md`, `FEATURES.md`, `DESIGN.md`, `AGENTS.md`, `prisma/migrations/README.md`.
 - Gates: typecheck ✅ · test 559/559 ✅ · build ✅. No source code changed.
 
 ### Session 49 — 2026-10-06 (krish)
 - **Agent Role:** Participant UI & Scoring Engine Agent.
 - **Implemented Week-Wide Study Hours Logging & Future Date Guard:**
   - Added pure domain functions in `features/study-logs/domain/challenge-day.ts`: `validateStudyLogChallengeDay()`, `getChallengeDayOptions()`, and `getChallengeDayFromDateKey()`. Rejects future days/dates with `FUTURE_DATE_NOT_ALLOWED` and pre-start days with `DATE_BEFORE_CHALLENGE`.
-  - Updated server action `logStudyTimeAction` in `features/study-logs/api/log-study-time.actions.ts`: accepts any past or current day of the challenge week, rejects future dates with `FUTURE_DATE_NOT_ALLOWED`.
-  - Overhauled `DailyHoursModal` in `features/study-logs/presentation/daily-hours-modal.tsx`: renders week day-of-the-week pills (D1..D7), native date picker input bounded with `max={todayDate}`, pre-populates existing hours for the selected date, switches to "Update Hours" if already logged, and disables future days.
-  - Added `challengeStartDate` to `CockpitViewModel` and `home-cockpit-view.tsx`.
-  - Expanded unit test suites in `challenge-day.test.ts`, `log-study-time.actions.test.ts`, and `daily-hours-modal.test.tsx` (all 577 tests green).
+  - Updated server action `logStudyTimeAction`: accepts past or current days, rejects future dates.
+  - Overhauled `DailyHoursModal`: week day-of-the-week pills (D1..D7), native date picker input bounded with `max={todayDate}`, pre-populated hours for selected date, "Update Hours" state.
 - **Fixed Supabase Storage Image Hostname Crash:**
-  - Added wildcard `*.supabase.co`, `*.supabase.in`, and `*.supabase.net` to `next.config.mjs` remote patterns so Supabase-hosted event banners and avatars never trigger `next-image-unconfigured-host` error boundaries.
-  - Added `unoptimized` flag to `ChallengeHeroImage`, `ChallengeCardImage`, and desktop leaderboard table avatars as extra resilience against unconfigured remote hosts.
-- Gates: typecheck ✅ · test 577/577 ✅ · dev server verified live on `http://localhost:3000`.
+  - Added wildcard `*.supabase.co`, `*.supabase.in`, and `*.supabase.net` to `next.config.mjs` remote patterns; added `unoptimized` flag to hero/card images.
+- Gates: typecheck ✅ · test 577/577 ✅ · dev server verified live.
+
+### Session 50 — 2026-10-06 (krish)
+- **Agent Role:** Participant UI Agent.
+- **Initial Todo Mechanic Overhaul (Status Controls):**
+  - Added status toggling capability for tasks, supporting both `isComplete: false` and `isComplete: true`.
+  - Added status controls to task context menu and Edit Task modal.
+  - Updated schemas and repositories (`task.repository.ts`, `task-sync.repository.ts`).
+- Gates: typecheck ✅ · test 584/584 ✅ · build ✅.
+
+### Session 51 — 2026-10-06 (krish)
+- **Agent Role:** Participant UI & Data Agent.
+- **Task Status Multi-State Overhaul (To-Do, In Progress, Completed, Crossed Out):**
+  - Added `TaskStatus` enum (`TODO`, `IN_PROGRESS`, `COMPLETED`, `CROSSED_OUT`) to database via PostgreSQL migration and `prisma/schema.prisma`.
+  - Updated domain models (`TaskItem`, `LocalTaskRecord`), Zod validation schemas (`taskStatusSchema`, `createTaskSchema`, `toggleTaskSchema`, `updateTaskSchema`), and repositories/actions (`task.repository.ts`, `task-sync.repository.ts`, `task.actions.ts`).
+  - **Removed Incomplete Option & Badge:** Base `TODO` state displays a clean row with an empty checkbox and zero badge clutter (tasks are incomplete by default).
+  - **Added In Progress State:** Amber accent border (`border-amber-400/80 bg-amber-500/15`), glowing amber indicator dot, and cozy "In Progress" badge button.
+  - **Added Crossed Out State:** Rose accent border (`border-rose-400/80 bg-rose-500/15`), rose `X` icon, muted strikethrough styling, and cozy "Crossed Out" badge button.
+  - **Streamlined Checkbox Behavior:** Clicking the checkbox toggles between `COMPLETED` and reset to base `TODO`.
+  - **Context Menu & Modals:** Context menu offers quick completion toggle, status submenu (`In Progress`, `Completed`, `Crossed Out`, and `Reset to To-Do`), and Edit/Add modals offer all 4 status buttons.
+  - **Accountability Invariant Preserved (Law L6):** Only `COMPLETED` sets `isComplete = true`; `TODO`, `IN_PROGRESS`, and `CROSSED_OUT` keep `isComplete = false`.
+  - Gates: typecheck ✅ (0 errors) · test 587/587 ✅ (56 test files green) · build ✅ (all 8 routes compiled).
+
 
