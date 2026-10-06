@@ -110,13 +110,13 @@ export function ChallengeView({
               <div className="rounded-xl bg-[#1c1c1c] p-3 border border-[#292929]">
                 <p className="text-[#868686]">Kickoff Date</p>
                 <p className="font-sans font-medium text-[#ffffff] mt-1">
-                  {new Date(challenge.startAt).toUTCString()}
+                  {new Date(challenge.startAt).toUTCString().replace("GMT", "UTC")}
                 </p>
               </div>
               <div className="rounded-xl bg-[#1c1c1c] p-3 border border-[#292929]">
                 <p className="text-[#868686]">Conclusion Date</p>
                 <p className="font-sans font-medium text-[#ffffff] mt-1">
-                  {new Date(challenge.endAt).toUTCString()}
+                  {new Date(challenge.endAt).toUTCString().replace("GMT", "UTC")}
                 </p>
               </div>
             </div>

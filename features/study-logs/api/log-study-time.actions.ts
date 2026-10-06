@@ -14,15 +14,21 @@ import {
   composeDurationSeconds,
   validateDailyLogDurationSeconds,
 } from "@/features/study-logs/domain/daily-log.validation";
-import { getChallengeDayBuckets } from "@/features/study-logs/domain/challenge-day";
+import { validateStudyLogChallengeDay } from "@/features/study-logs/domain/challenge-day";
 
-const logStudyTimeSchema = z.object({
-  challengeId: z.string().min(1),
-  challengeDay: z.number().int().min(1),
-  hours: z.number().int().min(0).max(24),
-  minutes: z.number().int().min(0).max(59),
-  seconds: z.number().int().min(0).max(59),
-});
+const logStudyTimeSchema = z
+  .object({
+    challengeId: z.string().min(1),
+    challengeDay: z.number().int().min(1).optional(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    hours: z.number().int().min(0).max(24),
+    minutes: z.number().int().min(0).max(59),
+    seconds: z.number().int().min(0).max(59),
+  })
+  .refine((data) => data.challengeDay !== undefined || data.date !== undefined, {
+    message: "Either challengeDay or date must be provided.",
+    path: ["challengeDay"],
+  });
 
 export type ActionResult =
   | { ok: true }
@@ -58,26 +64,24 @@ export async function logStudyTimeAction(
       };
     }
 
-    const challengeDayBuckets = getChallengeDayBuckets(
+    const dayValidation = validateStudyLogChallengeDay(
       participant.challenge.startAt,
+      {
+        challengeDay: parsed.data.challengeDay,
+        date: parsed.data.date,
+      },
       now,
     );
-    const isCurrentDay =
-      parsed.data.challengeDay === challengeDayBuckets.current.dayNumber;
-    const isPreviousDay =
-      parsed.data.challengeDay === challengeDayBuckets.previous?.dayNumber;
 
-    if (!isCurrentDay && !isPreviousDay) {
+    if (!dayValidation.ok) {
       return {
         ok: false,
-        code: "INVALID_CHALLENGE_DAY",
-        message: "You can only log the current or previous challenge day.",
+        code: dayValidation.code,
+        message: dayValidation.message,
       };
     }
 
-    const logDate = isCurrentDay
-      ? challengeDayBuckets.current.dateKey
-      : challengeDayBuckets.previous!.dateKey;
+    const logDate = dayValidation.dateKey;
 
     const durationSeconds = composeDurationSeconds(
       parsed.data.hours,

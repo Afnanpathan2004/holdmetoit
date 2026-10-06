@@ -125,4 +125,52 @@ describe("DailyHoursModal", () => {
 
     expect(html).toBe("");
   });
+
+  it("renders day-of-the-week selector with future days disabled and date picker with max constraint", () => {
+    const html = renderToStaticMarkup(
+      createElement(DailyHoursModal, {
+        challengeId: "chal-1",
+        isOpen: true,
+        onClose: vi.fn(),
+        todayDate: "2026-10-06",
+        todayDayNumber: 2,
+        challengeStartDate: "2026-10-05",
+        totalChallengeDays: 7,
+      }),
+    );
+
+    expect(html).toContain("Challenge Week Days");
+    // Day 1 (past) and Day 2 (today)
+    expect(html).toContain("D1");
+    expect(html).toContain("Today");
+    // Date picker input with max set to today
+    expect(html).toContain('type="date"');
+    expect(html).toContain('max="2026-10-06"');
+    expect(html).toContain('min="2026-10-05"');
+    // Future days are disabled
+    expect(html).toContain('disabled=""');
+    expect(html).toContain("Future date (cannot log yet)");
+  });
+
+  it("pre-populates past day hours when opened with initialDayNumber for an earlier day of the week", () => {
+    const html = renderToStaticMarkup(
+      createElement(DailyHoursModal, {
+        challengeId: "chal-1",
+        isOpen: true,
+        onClose: vi.fn(),
+        todayDate: "2026-10-07",
+        todayDayNumber: 3,
+        initialDayNumber: 1,
+        challengeStartDate: "2026-10-05",
+        existingLogs: {
+          "2026-10-05": 7200, // 2 hours on Day 1
+        },
+      }),
+    );
+
+    expect(html).toContain("How much did you study on Day 1?");
+    expect(html).toContain('value="2"');
+    expect(html).toContain("Update Hours");
+  });
 });
+

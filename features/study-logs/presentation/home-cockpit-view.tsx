@@ -79,6 +79,7 @@ export function HomeCockpitView({
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   });
 
   const existingLogsMap = useMemo(() => {
@@ -98,7 +99,7 @@ export function HomeCockpitView({
           </h1>
           <p className="text-sm font-medium text-[#868686] mt-1 flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span>{formattedDate}</span>
+            <span>{formattedDate} (UTC)</span>
           </p>
         </div>
       </div>
@@ -146,6 +147,7 @@ export function HomeCockpitView({
         yesterdayLoggedSeconds={cockpit?.yesterdayLoggedSeconds ?? 0}
         existingLogs={existingLogsMap}
         initialDayNumber={hoursModalDayNumber}
+        challengeStartDate={cockpit?.challengeStartDate}
       />
 
       {isLoggedIn && (upcomingChallenge || cockpit) && (
