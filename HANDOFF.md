@@ -11,12 +11,12 @@
 
 ## 1. Current State at a Glance
 
-| Gate | Result (2026-10-06, branch `krish`) |
+| Gate | Result (2026-10-07, branch `krish`) |
 | :--- | :--- |
-| `npm run typecheck` | ✅ 0 errors |
-| `npm run test` | ✅ 56 files, 599/599 tests green |
+| `npm run typecheck` | ✅ 0 errors (`npx tsc --noEmit`) |
+| `npm run test` | ✅ 58 files, 610/610 tests green |
 | `npm run build` | ✅ 8 routes compiled |
-| Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~68%** — Core daily/weekly loop and day switcher complete; 5 admin/wall P0 UIs pending restoration (see §3) |
+| Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~74%** — Core daily/weekly loop, today/yesterday participant task & logging restriction, mod/dev 7-day full-week tasks & "Edit hr" options on participants views complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo |
 | Phase 1 (P1) | ⏸️ Not started |
 
@@ -57,9 +57,9 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 | `FEAT-DECL-02` | Mandatory weekly goals checklist | ⚠️ | `WeeklyGoal` was dropped (migration `20261004030000`). It was replaced by **user-scoped** Daily/Weekly categorized tasks (`features/tasks/`) that are **not linked to any challenge** |
 | `FEAT-DECL-03` | Declaration lock on `ACTIVE` | ✅ | Targets can't be edited after enrollment at all. Late enrollment is still allowed while `ACTIVE` (only `COMPLETED` blocks it) |
 | `FEAT-DECL-04` | Host goal/target edit | ❌ | No goals exist to edit, and `updateParticipantTargetSeconds` has no callers |
-| `FEAT-LOG-01` | Daily `HH:MM:SS` self-logging | ✅ | `daily-hours-modal.tsx` with week day-of-the-week pills, native date picker (`max=today`), pre-filled hours, and domain future date guard |
+| `FEAT-LOG-01` | Daily `HH:MM:SS` self-logging | ✅ | `daily-hours-modal.tsx`: participants restricted to today/yesterday self-logging (`ONLY_TODAY_OR_YESTERDAY_ALLOWED`), non-scrolling 7-day selector, native picker (`max=today`), domain guards |
 | `FEAT-LOG-02` | 24h single-day limit | ✅ | `MAX_DAILY_LOG_SECONDS` in `daily-log.validation.ts` |
-| `FEAT-LOG-04` | Admin inline hours override grid | ⚠️ | `adminOverrideStudyHoursAction` exists and is tested, but has **no UI** (`admin-roster-grid.tsx` was deleted in `364c7a1`) |
+| `FEAT-LOG-04` | Admin inline hours override UI | ✅ | `AdminHoursOverrideModal`: mods and devs (`ADMIN`, `DEV`) can override any participant's hours for any day of the week (D1..D7) with mandatory audit reason; integrated into Manage tab roster & Leaderboard tab |
 | `FEAT-LEAD-01` | Head-to-head scoreboard | ✅ | `challenge-leaderboard-tab.tsx`: matchup card with share % and team targets |
 | `FEAT-LEAD-02` | Unified standings table | ✅ | Desktop table plus mobile card layout. No "Goals Done" column (goals no longer exist) |
 | `FEAT-LEAD-03` | Catch-up deficit engine | ✅ | `deficit.ts` + `cockpit-progress-card.tsx` |
@@ -112,10 +112,10 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 | Law | Status | Note |
 | :--- | :---: | :--- |
 | L1 Mathematical Unity | ✅ | Single `Team` entity with `maxMembers` |
-| L2 Spreadsheet Exorcism | ⚠️ | The host has no override grid or summary-copy UI right now (D3) |
+| L2 Spreadsheet Exorcism | ✅ | Full-week admin override UI and auto-aggregating standings eliminate manual arithmetic |
 | L3 Catch-Up Deficit | ✅ | `deficit.ts`; no grace passes |
 | L4 Discord Identity | ✅ | OAuth only; public spectator |
-| L5 Admin Override Absolute | ⚠️ | Backend exists; no UI; audit not persisted (D2/D3) |
+| L5 Admin Override Absolute | ✅ | `adminOverrideStudyHoursAction` + `AdminHoursOverrideModal` live in Manage tab & Leaderboard tab |
 | L6 Dual-Failure | ⚠️ | Hours-only (D4) |
 | L7 Pure Domain Isolation | ✅ | `domain/` folders are framework-free |
 | L8 Second-Level Precision | ⚠️ | Main logs ✅; manual leaderboard uses `Decimal` hours (D7) |
@@ -127,55 +127,47 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 > [!IMPORTANT]
 > **EXACT NEXT STEP:** Fix **D1 + D2** together as one vertical slice (`fix/challenge-finalization`):
-> 1. Add `AuditLog` and `Challenge.resultsLockedAt DateTime?` to `prisma/schema.prisma` and create a migration. In the same change, generate the D5 catch-up migration for `feedbacks` and `sort_order`.
-> 2. Rewrite `audit-log.repository.ts` to insert-only Prisma writes, keeping `recordAuditEvent` / `getAuditTrail` signatures.
+> 1. Add `Challenge.resultsLockedAt DateTime?` to `prisma/schema.prisma` and create a migration.
+> 2. Ensure `audit-log.repository.ts` persists all audit entries into the `AuditLog` table using Prisma.
 > 3. Let `lockChallengeResults` run when status is `ACTIVE` **or** (`COMPLETED` and `resultsLockedAt IS NULL`); set `resultsLockedAt` inside the transaction.
 > 4. Update the lifecycle and lock unit tests, then run typecheck, test, and build.
 >
-> Then restore the D3 UIs (Punishment Wall + PFP download on the Overview tab; override grid, pardon, and Discord summary copy in the Manage tab).
+> Then restore the remaining P0 UIs (Punishment Wall + PFP download on the Overview tab; pardon modal and Discord summary copy in the Manage tab).
 
 ---
 
-## 7. Session Changelog (Last 5 Sessions)
+## 7. Session Changelog (Last 3–5 Sessions)
 
 ### Earlier Sessions (Summarized)
-- **Sessions 1–47 (2026-09-05 – 10-06):** Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`).
-
-### Session 48 — 2026-10-06 (krish)
-- **Agent Role:** Cross-cutting audit / documentation.
-- Merged `origin/main` into `krish`; audited codebase against `FEATURES.md` / `ROADMAP.md`; logged defects D1–D10.
-
-### Session 49 — 2026-10-06 (krish)
-- **Agent Role:** Participant UI & Scoring Engine Agent.
-- **Implemented Week-Wide Study Hours Logging & Future Date Guard:**
-  - Pure domain functions in `challenge-day.ts`: `validateStudyLogChallengeDay()`, `getChallengeDayOptions()`, `getChallengeDayFromDateKey()`.
-  - Overhauled `DailyHoursModal` with D1..D7 pills, native date picker bounded with `max={todayDate}`, and pre-populated hours for selected date.
-
-### Session 50 — 2026-10-06 (krish)
-- **Agent Role:** Participant UI Agent.
-- **Initial Todo Mechanic Overhaul:** Added status toggling for tasks, supporting both `isComplete: false` and `isComplete: true` in context menus and modals.
-
-### Session 51 — 2026-10-06 (krish)
-- **Agent Role:** Participant UI & Data Agent.
-- **Task Status Multi-State Overhaul (`TODO`, `IN_PROGRESS`, `COMPLETED`, `CROSSED_OUT`):**
-  - Added `TaskStatus` enum to database, domain models, Zod validation schemas, repositories, and UI.
-  - Base `TODO` has a clean row with zero badge clutter. Amber accent for `IN_PROGRESS` and rose strikethrough for `CROSSED_OUT`.
-  - Only `COMPLETED` sets `isComplete = true` (Law L6 preserved).
+- **Sessions 1–51 (2026-09-05 – 10-06):** Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), task multi-state overhaul (`TODO`, `IN_PROGRESS`, `COMPLETED`, `CROSSED_OUT`).
 
 ### Session 52 — 2026-10-06 (krish)
 - **Agent Role:** Participant UI & Data Agent.
 - **Week-Wide Daily Todos & Interactive Day Switcher:**
-  - **Database & Prisma Schema:** Added `dueDate DateTime? @map("due_date") @db.Date` with `@@index([userId, dueDate])` on `Task` in `prisma/schema.prisma`. Mapped existing `audit_logs` table via `model AuditLog`. Pushed to Supabase Postgres.
-  - **Domain Layer:** Added `getCalendarWeekDayOptions()` fallback for ISO calendar week (Mon..Sun). Added `dueDate` to `TaskItem`, `LocalTaskRecord`, and Zod validation schemas (`createTaskSchema`, `updateTaskSchema`).
-  - **Data & Action Layers:** Updated `task.repository.ts`, `task-sync.repository.ts`, and `task.actions.ts` to persist, update, and batch-sync `dueDate` (with legacy fallback to `createdAt` date for existing tasks).
-  - **Presentation Layer (`cockpit-tasks-section.tsx` & `home-cockpit-view.tsx`):**
-    - Default view displays current day's todos ("like right now") on initial load alongside weekly todos.
-    - Interactive 7-Day Pill Switcher bar renders challenge days (D1..D7) with today indicator, completion counts badge (`completed/total`), and Obsidian active highlight.
-    - Header displays active day badge (`Day 1`, `Day 2`, etc.), completion tally for selected day, and a 1-click "Today" shortcut when viewing other days.
-    - Added study hours shortcut button in header calling `onOpenHoursModal`.
-    - Empty day state renders a clean card with a CTA button to schedule tasks for that specific day.
-    - Add Todo modal and Edit Task modal allow assigning/reassigning tasks to any challenge day of the week via day pill selectors.
-    - Drag & drop reordering preserves `dueDate` and assigns tasks to the proper category within the selected day.
-  - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (56 files, 599/599 tests green) · `npm run build` ✅ (all 8 routes compiled cleanly).
+  - Added `dueDate` column and mapped `AuditLog` model in `schema.prisma`.
+  - Added 7-day pill switcher bar in `cockpit-tasks-section.tsx` with completion tallies (`completed/total`) and non-scrolling grid layout.
+  - Allowed assigning/scheduling tasks across the 7-day challenge week while defaulting initial view to current day's todos.
+
+### Session 53 — 2026-10-07 (krish)
+- **Agent Role:** Participant UI & Admin Operations Agent.
+- **Participant Today/Yesterday Restriction & Mod/Dev Full-Week Override UI (FEAT-LOG-04 / Law L5):**
+  - **Domain Layer (`challenge-day.ts`):** Restricted participant study hours self-logging to today or yesterday (`ONLY_TODAY_OR_YESTERDAY_ALLOWED`).
+  - **Participant UI (`daily-hours-modal.tsx`):** Locked past days D1..D7 beyond today/yesterday; date picker clamped between `min={yesterdayDate}` and `max={todayDate}`.
+  - **Admin Override UI (`admin-hours-override-modal.tsx`):** Built dedicated modal for moderators (`ADMIN`) and developers (`DEV`) allowing full 7-day week (D1..D7) hours adjustments for any participant with mandatory audit note.
+  - **Manage & Leaderboard Integration:** Added initial override triggers in Manage tab and Leaderboard tab.
+
+### Session 54 — 2026-10-07 (krish)
+- **Agent Role:** Participant UI & Admin Operations Agent.
+- **Cockpit Tasks Restriction to Today/Yesterday for Regular Users & Participant Page "Edit hr" for Mods/Devs:**
+  - **Cockpit Tasks Section (`cockpit-tasks-section.tsx`):**
+    - Regular users (`isAdmin = false`) are restricted to viewing and scheduling tasks only for Today or Yesterday in the day switcher tab bar and Add/Edit todo modals.
+    - Mods and devs (`ADMIN`, `DEV`) retain access to the full 7-day week (D1..D7) to view and manage tasks.
+    - Wired `isAdmin` from `app/page.tsx` through `HomeCockpitView` to `CockpitTasksSection`.
+  - **Participants Page / Views "Edit hr" Option for Mods and Devs:**
+    - `ChallengeOverviewTab`: Added explicit **"Edit hr"** button (with `Clock` icon) next to each participant row in the right-column "Participants" card when `isAdmin === true`. Clicking opens `AdminHoursOverrideModal` pre-populated with that participant.
+    - `ChallengeLeaderboardTab`: Updated mobile cards and desktop table rows with explicit **"Edit hr"** buttons (with `Clock` icon) for admin/dev users.
+    - `ChallengeManageTab`: Updated roster button label to **"Edit hr"**.
+  - **Automated Verification:** Added unit tests in `challenge-overview-tab.test.tsx`, updated `challenge-leaderboard-tab.test.tsx` and `cockpit-tasks-section.test.tsx`.
+  - **Quality Gates:** `npm run typecheck` (`npx tsc --noEmit`) ✅ (0 errors) · `npm run test` ✅ (58 files, 610/610 tests green).
 
 

@@ -81,23 +81,29 @@ export function DailyHoursModal({
     );
   }, [effectiveStartDate, todayDate, totalChallengeDays]);
 
-  const initialDayNumberToUse =
+  const yesterdayOption = useMemo(
+    () => dayOptions.find((d) => d.isYesterday),
+    [dayOptions],
+  );
+  const effectiveYesterdayDate = yesterdayDate || yesterdayOption?.dateKey;
+  const effectiveYesterdayDayNumber =
+    yesterdayDayNumber ?? yesterdayOption?.dayNumber;
+
+  const isAllowedInitialDay =
     initialDayNumber !== undefined &&
-    initialDayNumber !== yesterdayDayNumber &&
-    initialDayNumber <= todayDayNumber
-      ? initialDayNumber
-      : showYesterdayOption &&
-        yesterdayDayNumber !== undefined &&
-        initialDayNumber === yesterdayDayNumber
-      ? yesterdayDayNumber
-      : todayDayNumber;
+    (initialDayNumber === todayDayNumber ||
+      (showYesterdayOption &&
+        effectiveYesterdayDayNumber !== undefined &&
+        initialDayNumber === effectiveYesterdayDayNumber));
+
+  const initialDayNumberToUse = isAllowedInitialDay
+    ? initialDayNumber!
+    : todayDayNumber;
 
   const initialDateToUse =
-    initialDayNumberToUse === yesterdayDayNumber && yesterdayDate
-      ? yesterdayDate
-      : initialDayNumberToUse === todayDayNumber
-      ? todayDate
-      : dayOptions.find((d) => d.dayNumber === initialDayNumberToUse)?.dateKey || todayDate;
+    initialDayNumberToUse === effectiveYesterdayDayNumber && effectiveYesterdayDate
+      ? effectiveYesterdayDate
+      : todayDate;
 
   const getExistingSecondsForDate = (date: string): number => {
     if (existingLogs && date in existingLogs) {
@@ -155,23 +161,21 @@ export function DailyHoursModal({
 
   useEffect(() => {
     if (isOpen) {
-      const dayNumberToUse =
+      const isAllowedDay =
         initialDayNumber !== undefined &&
-        initialDayNumber !== yesterdayDayNumber &&
-        initialDayNumber <= todayDayNumber
-          ? initialDayNumber
-          : showYesterdayOption &&
-            yesterdayDayNumber !== undefined &&
-            initialDayNumber === yesterdayDayNumber
-          ? yesterdayDayNumber
-          : todayDayNumber;
+        (initialDayNumber === todayDayNumber ||
+          (showYesterdayOption &&
+            effectiveYesterdayDayNumber !== undefined &&
+            initialDayNumber === effectiveYesterdayDayNumber));
+
+      const dayNumberToUse = isAllowedDay
+        ? initialDayNumber!
+        : todayDayNumber;
 
       const dateToUse =
-        dayNumberToUse === yesterdayDayNumber && yesterdayDate
-          ? yesterdayDate
-          : dayNumberToUse === todayDayNumber
-          ? todayDate
-          : dayOptions.find((d) => d.dayNumber === dayNumberToUse)?.dateKey || todayDate;
+        dayNumberToUse === effectiveYesterdayDayNumber && effectiveYesterdayDate
+          ? effectiveYesterdayDate
+          : todayDate;
 
       setSelectedDayNumber(dayNumberToUse);
       setSelectedDate(dateToUse);
@@ -218,8 +222,14 @@ export function DailyHoursModal({
         ? yesterdayDate
         : dayOptions.find((d) => d.dayNumber === newDayNumber)?.dateKey || todayDate;
 
-    if (newDate > todayDate || newDayNumber > todayDayNumber) {
-      setFeedback("Cannot log study time for future dates.");
+    const isToday = newDayNumber === todayDayNumber;
+    const isYesterday = yesterdayDayNumber !== undefined && newDayNumber === yesterdayDayNumber;
+    if (!isToday && !isYesterday) {
+      if (newDayNumber > todayDayNumber) {
+        setFeedback("Cannot log study time for future dates.");
+      } else {
+        setFeedback("Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.");
+      }
       return;
     }
 
@@ -230,8 +240,17 @@ export function DailyHoursModal({
   };
 
   const handleSelectDay = (dayNum: number, dateKey: string) => {
-    if (dayNum > todayDayNumber || dateKey > todayDate) {
-      setFeedback("Cannot log study time for future dates.");
+    const isToday = dayNum === todayDayNumber || dateKey === todayDate;
+    const isYesterday =
+      (yesterdayDayNumber !== undefined && dayNum === yesterdayDayNumber) ||
+      (yesterdayDate !== undefined && dateKey === yesterdayDate);
+
+    if (!isToday && !isYesterday) {
+      if (dayNum > todayDayNumber || dateKey > todayDate) {
+        setFeedback("Cannot log study time for future dates.");
+      } else {
+        setFeedback("Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.");
+      }
       return;
     }
 
@@ -249,21 +268,18 @@ export function DailyHoursModal({
       return;
     }
 
-    const minDateKey = dayOptions[0]?.dateKey;
-    if (minDateKey && newDate < minDateKey) {
-      setFeedback("Cannot log study time for dates before the challenge started.");
+    const isToday = newDate === todayDate;
+    const isYesterday = yesterdayDate !== undefined && newDate === yesterdayDate;
+
+    if (!isToday && !isYesterday) {
+      setFeedback("Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.");
       return;
     }
 
-    const newDayNumber = getChallengeDayFromDateKey(effectiveStartDate, newDate);
-    if (newDayNumber < 1) {
-      setFeedback("Cannot log study time for dates before the challenge started.");
-      return;
-    }
-    if (newDayNumber > todayDayNumber) {
-      setFeedback("Cannot log study time for future dates.");
-      return;
-    }
+    const newDayNumber =
+      isToday
+        ? todayDayNumber
+        : yesterdayDayNumber ?? getChallengeDayFromDateKey(effectiveStartDate, newDate);
 
     setSelectedDate(newDate);
     setSelectedDayNumber(newDayNumber);
@@ -283,6 +299,17 @@ export function DailyHoursModal({
     // Guard: Prevent logging for dates prior to challenge start
     if (selectedDayNumber < 1) {
       setFeedback("Cannot log study time for dates before the challenge started.");
+      return;
+    }
+
+    // Guard: Participants can only log today or yesterday
+    const isToday = selectedDayNumber === todayDayNumber || selectedDate === todayDate;
+    const isYesterday =
+      (yesterdayDayNumber !== undefined && selectedDayNumber === yesterdayDayNumber) ||
+      (yesterdayDate !== undefined && selectedDate === yesterdayDate);
+
+    if (!isToday && !isYesterday) {
+      setFeedback("Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.");
       return;
     }
 
@@ -411,6 +438,7 @@ export function DailyHoursModal({
           <div className="grid grid-cols-7 gap-1 w-full pb-1">
             {dayOptions.map((opt) => {
               const isSelected = selectedDayNumber === opt.dayNumber;
+              const isAllowed = opt.isToday || opt.isYesterday;
               const hasLogged = Boolean(
                 existingLogs &&
                   opt.dateKey in existingLogs &&
@@ -421,17 +449,21 @@ export function DailyHoursModal({
                 <button
                   key={opt.dayNumber}
                   type="button"
-                  disabled={opt.isFuture}
+                  disabled={!isAllowed}
                   onClick={() => handleSelectDay(opt.dayNumber, opt.dateKey)}
                   className={`w-full min-w-0 py-1.5 px-0.5 sm:px-1 rounded-xl text-center flex flex-col items-center justify-center transition-all ${
                     isSelected
                       ? "bg-[#ffffff] text-[#0d0d0d] font-bold shadow-md"
-                      : opt.isFuture
+                      : !isAllowed
                       ? "bg-[#1c1c1c]/40 text-[#545454] cursor-not-allowed border border-transparent"
                       : "bg-[#1c1c1c] text-[#d1d1d1] hover:bg-[#2f2f2f] hover:text-[#ffffff] border border-[#383838]"
                   }`}
                   title={
-                    opt.isFuture ? "Future date (cannot log yet)" : opt.label
+                    opt.isFuture
+                      ? "Future date (cannot log yet)"
+                      : !isAllowed
+                      ? "Past date (locked - only today/yesterday editable)"
+                      : opt.label
                   }
                 >
                   <span className="text-[10px] uppercase tracking-wider opacity-75 leading-none">
@@ -440,7 +472,7 @@ export function DailyHoursModal({
                   <span className="text-xs font-semibold mt-1 leading-none">
                     {opt.isToday ? "Today" : `D${opt.dayNumber}`}
                   </span>
-                  {hasLogged && !opt.isFuture && (
+                  {hasLogged && isAllowed && (
                     <span
                       className={`h-1.5 w-1.5 rounded-full mt-1 ${
                         isSelected ? "bg-[#0d0d0d]" : "bg-[#22c55e]"
@@ -452,7 +484,7 @@ export function DailyHoursModal({
             })}
           </div>
 
-          {/* Date Picker Input (Guarded with max=todayDate) */}
+          {/* Date Picker Input (Guarded with max=todayDate, min=yesterdayDate) */}
           <div className="flex items-center justify-between gap-3 bg-[#1c1c1c] px-3 py-2 rounded-xl border border-[#383838]">
             <label
               htmlFor="log-date-picker"
@@ -464,7 +496,7 @@ export function DailyHoursModal({
             <input
               id="log-date-picker"
               type="date"
-              min={dayOptions[0]?.dateKey}
+              min={effectiveYesterdayDate || todayDate}
               max={todayDate}
               value={selectedDate}
               onChange={(e) => handleDateInputChange(e.target.value)}

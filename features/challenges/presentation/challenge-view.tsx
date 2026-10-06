@@ -78,12 +78,12 @@ export function ChallengeView({
       </div>
 
       {activeTab === "overview" && (
-        <ChallengeOverviewTab challenge={challenge} />
+        <ChallengeOverviewTab challenge={challenge} isAdmin={isAdmin} />
       )}
 
       {activeTab === "leaderboard" && (
         <div className="space-y-8">
-          <ChallengeLeaderboardTab challenge={challenge} />
+          <ChallengeLeaderboardTab challenge={challenge} isAdmin={isAdmin} />
         </div>
       )}
 

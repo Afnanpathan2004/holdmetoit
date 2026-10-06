@@ -154,12 +154,13 @@ describe("validateStudyLogChallengeDay", () => {
     });
   });
 
-  it("allows logging any past challenge day (e.g. Day 1)", () => {
+  it("rejects days before yesterday with ONLY_TODAY_OR_YESTERDAY_ALLOWED", () => {
+    // Currently on Day 3; Day 1 is before yesterday (Day 2)
     const result = validateStudyLogChallengeDay(startAt, { challengeDay: 1 }, nowDay3);
     expect(result).toEqual({
-      ok: true,
-      dayNumber: 1,
-      dateKey: "2026-10-05",
+      ok: false,
+      code: "ONLY_TODAY_OR_YESTERDAY_ALLOWED",
+      message: "Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.",
     });
   });
 

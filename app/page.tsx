@@ -1,5 +1,6 @@
 import { auth } from "@/core/auth";
 import { AppHeader } from "@/features/auth/presentation/auth-nav";
+import { hasAdminPrivileges } from "@/features/auth/domain/auth-roles";
 import { HomeCockpitView } from "@/features/study-logs/presentation/home-cockpit-view";
 import { getParticipantCockpit } from "@/features/study-logs/data/cockpit-data";
 import { findLatestAvailableChallenge } from "@/features/challenges/data/challenge.repository";
@@ -15,6 +16,7 @@ interface HomePageProps {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const session = await auth();
+  const isAdmin = hasAdminPrivileges(session?.user?.role);
 
   let cockpit = null;
   if (session?.user?.id) {
@@ -61,6 +63,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           cockpit={cockpit}
           upcomingChallenge={upcomingChallenge}
           userTasks={userTasks}
+          isAdmin={isAdmin}
         />
       </main>
     </div>

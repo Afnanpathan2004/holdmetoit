@@ -2,17 +2,45 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Search, Clock, Crown } from "lucide-react";
+import { Search, Clock, Crown, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { ChallengeScoreboardViewModel } from "../data/leaderboard-data";
+import type {
+  ChallengeScoreboardViewModel,
+  ScoreboardStandingEntry,
+} from "../data/leaderboard-data";
+import {
+  AdminHoursOverrideModal,
+  type AdminHoursOverrideParticipant,
+} from "@/features/study-logs/presentation/admin-hours-override-modal";
+
 interface ChallengeLeaderboardTabProps {
   challenge: ChallengeScoreboardViewModel;
+  isAdmin?: boolean;
 }
 
 export function ChallengeLeaderboardTab({
   challenge,
+  isAdmin = false,
 }: ChallengeLeaderboardTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [overrideParticipant, setOverrideParticipant] =
+    useState<AdminHoursOverrideParticipant | null>(null);
+  const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
+
+  const handleOpenOverride = (entry: ScoreboardStandingEntry) => {
+    setOverrideParticipant({
+      participantId: entry.participantId,
+      userId: entry.userId,
+      displayName: entry.displayName,
+      username: entry.username,
+      image: entry.image,
+      teamName: entry.teamName,
+      teamColor: entry.teamColor,
+      dailyLogs: entry.dailyLogs,
+    });
+    setIsOverrideModalOpen(true);
+  };
+
   const { matchHeader, teams, standings } = challenge;
 
   const teamA = matchHeader.teamA ?? teams[0];
@@ -325,16 +353,29 @@ export function ChallengeLeaderboardTab({
                       </div>
 
                       {/* Total hours and +Today's hours */}
-                      <div className="shrink-0 text-right font-sans font-sans-tabular space-y-0.5">
-                        <p className="text-xs font-bold text-[#ffffff]">
-                          {entry.totalLoggedClock}
-                          <span className="text-[10px] font-normal text-[#868686]">
-                            /{entry.targetClock}
-                          </span>
-                        </p>
-                        <p className="text-[11px] font-semibold text-[#4ade80]">
-                          +{entry.todayLoggedClock}
-                        </p>
+                      <div className="shrink-0 text-right font-sans font-sans-tabular space-y-0.5 flex items-center gap-2">
+                        <div>
+                          <p className="text-xs font-bold text-[#ffffff]">
+                            {entry.totalLoggedClock}
+                            <span className="text-[10px] font-normal text-[#868686]">
+                              /{entry.targetClock}
+                            </span>
+                          </p>
+                          <p className="text-[11px] font-semibold text-[#4ade80]">
+                            +{entry.todayLoggedClock}
+                          </p>
+                        </div>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenOverride(entry)}
+                            className="px-2 py-1 rounded-lg bg-[#242424] hover:bg-[#333333] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1 text-[10px] font-semibold shrink-0"
+                            title="Admin: Edit Study Hours"
+                          >
+                            <Clock className="h-3 w-3 text-[#3b82f6]" />
+                            <span>Edit hr</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -428,12 +469,25 @@ export function ChallengeLeaderboardTab({
 
                         {/* Total Hours */}
                         <td className="px-4 py-3 text-right font-sans font-sans-tabular text-sm font-bold text-[#ffffff]">
-                          <div className="inline-flex items-center gap-1.5 justify-end">
-                            <Clock className="h-3.5 w-3.5 text-[#22c55e]" />
-                            <span>{entry.totalLoggedClock}</span>
-                            <span className="text-xs text-[#868686] font-normal">
-                              / {entry.targetClock}
-                            </span>
+                          <div className="inline-flex items-center gap-2 justify-end">
+                            <div className="inline-flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-[#22c55e]" />
+                              <span>{entry.totalLoggedClock}</span>
+                              <span className="text-xs text-[#868686] font-normal">
+                                / {entry.targetClock}
+                              </span>
+                            </div>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenOverride(entry)}
+                                className="px-2.5 py-1 rounded-lg bg-[#1c1c1c] hover:bg-[#2e2e2e] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0"
+                                title="Admin: Edit Participant Study Hours"
+                              >
+                                <Clock className="h-3.5 w-3.5 text-[#3b82f6]" />
+                                <span>Edit hr</span>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -445,6 +499,19 @@ export function ChallengeLeaderboardTab({
           </>
         )}
       </div>
+
+      {/* Admin Hours Override Modal (Law L5 / FEAT-LOG-04) */}
+      {isAdmin && (
+        <AdminHoursOverrideModal
+          isOpen={isOverrideModalOpen}
+          onClose={() => setIsOverrideModalOpen(false)}
+          challengeId={challenge.id}
+          challengeStartDate={challenge.startAt}
+          totalChallengeDays={challenge.totalDays || 7}
+          participant={overrideParticipant}
+          initialDayNumber={challenge.currentDayNumber || 1}
+        />
+      )}
     </div>
   );
 }

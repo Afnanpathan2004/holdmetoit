@@ -194,6 +194,8 @@ export function validateStudyLogChallengeDay(
   const currentDayNumber = Math.max(1, getChallengeDayNumber(startAt, now));
   const todayDateKey = getChallengeDayDateKey(startAt, currentDayNumber);
   const day1DateKey = getChallengeDayDateKey(startAt, 1);
+  const yesterdayDayNumber = currentDayNumber > 1 ? currentDayNumber - 1 : null;
+  const yesterdayDateKey = yesterdayDayNumber ? getChallengeDayDateKey(startAt, yesterdayDayNumber) : null;
 
   let resolvedDayNumber: number;
   let resolvedDateKey: string;
@@ -250,6 +252,20 @@ export function validateStudyLogChallengeDay(
       ok: false,
       code: "FUTURE_DATE_NOT_ALLOWED",
       message: "Cannot log study time for future dates.",
+    };
+  }
+
+  const isToday = resolvedDayNumber === currentDayNumber && resolvedDateKey === todayDateKey;
+  const isYesterday =
+    yesterdayDayNumber !== null &&
+    resolvedDayNumber === yesterdayDayNumber &&
+    resolvedDateKey === yesterdayDateKey;
+
+  if (!isToday && !isYesterday) {
+    return {
+      ok: false,
+      code: "ONLY_TODAY_OR_YESTERDAY_ALLOWED",
+      message: "Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.",
     };
   }
 

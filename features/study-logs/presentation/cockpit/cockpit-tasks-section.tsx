@@ -107,6 +107,7 @@ export interface CockpitTasksSectionProps {
   todayDayNumber?: number;
   totalChallengeDays?: number;
   onOpenHoursModal?: (dayNumber?: number) => void;
+  isAdmin?: boolean;
 }
 
 export function CockpitTasksSection({
@@ -118,6 +119,7 @@ export function CockpitTasksSection({
   todayDayNumber,
   totalChallengeDays = 7,
   onOpenHoursModal,
+  isAdmin = false,
 }: CockpitTasksSectionProps) {
   const [, startTransition] = useTransition();
   const [addModalType, setAddModalType] = useState<"daily" | "weekly" | null>(null);
@@ -259,6 +261,14 @@ export function CockpitTasksSection({
   const todayDayOption = useMemo(() => {
     return dayOptions.find((d) => d.isToday) || dayOptions[0];
   }, [dayOptions]);
+
+  const visibleDayOptions: ChallengeDayOption[] = useMemo(() => {
+    if (isAdmin) {
+      return dayOptions;
+    }
+    const filtered = dayOptions.filter((d) => d.isToday || d.isYesterday);
+    return filtered.length > 0 ? filtered : [todayDayOption || dayOptions[0]];
+  }, [dayOptions, isAdmin, todayDayOption]);
 
   const [selectedDateKey, setSelectedDateKey] = useState<string>(
     () => todayDayOption?.dateKey || effectiveTodayDate,
@@ -1830,13 +1840,17 @@ export function CockpitTasksSection({
               </div>
             </div>
 
-            {/* 7-Day Pill Switcher (Fits all 7 days without horizontal scrolling) */}
+            {/* Day Pill Switcher (Today/Yesterday for regular users, all 7 days for mods/devs) */}
             <div
               role="tablist"
               aria-label="Challenge Day Tabs"
-              className="grid grid-cols-7 gap-1 sm:gap-1.5 w-full pt-0.5 pb-1"
+              className={
+                visibleDayOptions.length <= 2
+                  ? "flex items-center gap-2 w-full pt-0.5 pb-1 max-w-sm"
+                  : "grid grid-cols-7 gap-1 sm:gap-1.5 w-full pt-0.5 pb-1"
+              }
             >
-              {dayOptions.map((opt) => {
+              {visibleDayOptions.map((opt) => {
                 const isSelected = opt.dateKey === selectedDateKey;
                 const stats = dayTaskCounts.get(opt.dateKey) || { total: 0, completed: 0 };
                 const allDone = stats.total > 0 && stats.completed === stats.total;
@@ -1847,14 +1861,22 @@ export function CockpitTasksSection({
                     role="tab"
                     aria-selected={isSelected}
                     onClick={() => handleSelectDay(opt)}
-                    className={`w-full min-w-0 py-1.5 px-0.5 sm:px-1 rounded-xl text-center border transition-all flex flex-col items-center justify-between min-h-[54px] sm:min-h-[58px] ${
+                    className={`${
+                      visibleDayOptions.length <= 2 ? "flex-1" : "w-full"
+                    } min-w-0 py-1.5 px-1 sm:px-1.5 rounded-xl text-center border transition-all flex flex-col items-center justify-between min-h-[54px] sm:min-h-[58px] ${
                       isSelected
                         ? "bg-[#25201b] border-[#e08a32] text-white shadow-sm ring-1 ring-[#e08a32]/60"
                         : "bg-[#1c1c1c] border-[#2e2e2e] text-[#a0a0a0] hover:bg-[#262626] hover:text-white"
                     }`}
                   >
                     <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none">
-                      {opt.shortLabel.startsWith("Day ") ? `D${opt.dayNumber}` : opt.shortLabel.slice(0, 3)}
+                      {opt.isToday
+                        ? "Today"
+                        : opt.isYesterday
+                          ? "Yesterday"
+                          : opt.shortLabel.startsWith("Day ")
+                            ? `D${opt.dayNumber}`
+                            : opt.shortLabel.slice(0, 3)}
                     </span>
                     <span className="text-[8px] sm:text-[9px] opacity-75 mt-0.5 leading-none truncate max-w-full">
                       {formatDayDate(opt.dateKey)}
@@ -2558,22 +2580,36 @@ export function CockpitTasksSection({
                       {formatDayDate(addTodoDateKey || selectedDateKey)}
                     </span>
                   </label>
-                  <div className="grid grid-cols-7 gap-1 w-full pb-1">
-                    {dayOptions.map((opt) => {
+                  <div
+                    className={
+                      visibleDayOptions.length <= 2
+                        ? "flex items-center gap-2 w-full pb-1"
+                        : "grid grid-cols-7 gap-1 w-full pb-1"
+                    }
+                  >
+                    {visibleDayOptions.map((opt) => {
                       const isSelected = (addTodoDateKey || selectedDateKey) === opt.dateKey;
                       return (
                         <button
                           key={opt.dateKey}
                           type="button"
                           onClick={() => setAddTodoDateKey(opt.dateKey)}
-                          className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-xs font-semibold border transition-all ${
+                          className={`${
+                            visibleDayOptions.length <= 2 ? "flex-1 py-2 px-2" : "py-1.5 px-1"
+                          } flex flex-col items-center justify-center rounded-xl text-xs font-semibold border transition-all ${
                             isSelected
                               ? "bg-[#e08a32] text-white border-[#e08a32] shadow-sm shadow-[#e08a32]/30 ring-1 ring-[#e08a32]"
                               : "bg-[#1f1f1f] text-[#a0a0a0] border-[#383838] hover:text-white hover:bg-[#282828]"
                           }`}
                         >
                           <span className="text-[10px] uppercase font-bold tracking-wider leading-none">
-                            {opt.shortLabel.startsWith("Day ") ? `D${opt.dayNumber}` : opt.shortLabel.slice(0, 3)}
+                            {opt.isToday
+                              ? "Today"
+                              : opt.isYesterday
+                                ? "Yesterday"
+                                : opt.shortLabel.startsWith("Day ")
+                                  ? `D${opt.dayNumber}`
+                                  : opt.shortLabel.slice(0, 3)}
                           </span>
                           <span className="text-[9px] opacity-80 mt-0.5 leading-none">
                             {formatDayDate(opt.dateKey)}
@@ -2924,22 +2960,36 @@ export function CockpitTasksSection({
                       {formatDayDate(editTaskInputDueDate)}
                     </span>
                   </label>
-                  <div className="grid grid-cols-7 gap-1 w-full pb-1">
-                    {dayOptions.map((opt) => {
+                  <div
+                    className={
+                      visibleDayOptions.length <= 2
+                        ? "flex items-center gap-2 w-full pb-1"
+                        : "grid grid-cols-7 gap-1 w-full pb-1"
+                    }
+                  >
+                    {visibleDayOptions.map((opt) => {
                       const isSelected = editTaskInputDueDate === opt.dateKey;
                       return (
                         <button
                           key={opt.dateKey}
                           type="button"
                           onClick={() => setEditTaskInputDueDate(opt.dateKey)}
-                          className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl text-xs font-semibold border transition-all ${
+                          className={`${
+                            visibleDayOptions.length <= 2 ? "flex-1 py-2 px-2" : "py-1.5 px-1"
+                          } flex flex-col items-center justify-center rounded-xl text-xs font-semibold border transition-all ${
                             isSelected
                               ? "bg-[#e08a32] text-white border-[#e08a32] shadow-sm shadow-[#e08a32]/30 ring-1 ring-[#e08a32]"
                               : "bg-[#1f1f1f] text-[#a0a0a0] border-[#383838] hover:text-white hover:bg-[#282828]"
                           }`}
                         >
                           <span className="text-[10px] uppercase font-bold tracking-wider leading-none">
-                            {opt.shortLabel.startsWith("Day ") ? `D${opt.dayNumber}` : opt.shortLabel.slice(0, 3)}
+                            {opt.isToday
+                              ? "Today"
+                              : opt.isYesterday
+                                ? "Yesterday"
+                                : opt.shortLabel.startsWith("Day ")
+                                  ? `D${opt.dayNumber}`
+                                  : opt.shortLabel.slice(0, 3)}
                           </span>
                           <span className="text-[9px] opacity-80 mt-0.5 leading-none">
                             {formatDayDate(opt.dateKey)}

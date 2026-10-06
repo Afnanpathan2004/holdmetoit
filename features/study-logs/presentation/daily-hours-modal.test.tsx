@@ -152,7 +152,7 @@ describe("DailyHoursModal", () => {
     expect(html).toContain("Future date (cannot log yet)");
   });
 
-  it("pre-populates past day hours when opened with initialDayNumber for an earlier day of the week", () => {
+  it("pre-populates yesterday hours when opened with initialDayNumber for yesterday", () => {
     const html = renderToStaticMarkup(
       createElement(DailyHoursModal, {
         challengeId: "chal-1",
@@ -160,17 +160,39 @@ describe("DailyHoursModal", () => {
         onClose: vi.fn(),
         todayDate: "2026-10-07",
         todayDayNumber: 3,
-        initialDayNumber: 1,
+        yesterdayDate: "2026-10-06",
+        yesterdayDayNumber: 2,
+        isYesterdayMissed: true,
+        initialDayNumber: 2,
         challengeStartDate: "2026-10-05",
         existingLogs: {
-          "2026-10-05": 7200, // 2 hours on Day 1
+          "2026-10-06": 7200, // 2 hours on Day 2 (yesterday)
         },
       }),
     );
 
-    expect(html).toContain("How much did you study on Day 1?");
+    expect(html).toContain("How much did you study yesterday?");
     expect(html).toContain('value="2"');
     expect(html).toContain("Update Hours");
+  });
+
+  it("locks days before yesterday so participants cannot edit earlier past days", () => {
+    const html = renderToStaticMarkup(
+      createElement(DailyHoursModal, {
+        challengeId: "chal-1",
+        isOpen: true,
+        onClose: vi.fn(),
+        todayDate: "2026-10-07",
+        todayDayNumber: 3,
+        yesterdayDate: "2026-10-06",
+        yesterdayDayNumber: 2,
+        challengeStartDate: "2026-10-05",
+        totalChallengeDays: 7,
+      }),
+    );
+
+    // Day 1 (before yesterday) is disabled with past locked tooltip
+    expect(html).toContain("Past date (locked - only today/yesterday editable)");
   });
 });
 

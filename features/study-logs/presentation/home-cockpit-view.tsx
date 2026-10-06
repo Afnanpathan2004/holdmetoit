@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Calendar } from "lucide-react";
+import { hasAdminPrivileges } from "@/features/auth/domain/auth-roles";
 import { DailyHoursModal } from "./daily-hours-modal";
 import { EnrollmentModal as JoinChallengeModal } from "@/features/challenges/presentation/enrollment-modal";
 import {
@@ -23,6 +24,7 @@ export interface HomeCockpitViewProps {
     displayName?: string | null;
     username?: string | null;
     image?: string | null;
+    role?: string | null;
   } | null;
   cockpit?: CockpitViewModel | null;
   upcomingChallenge?: {
@@ -37,6 +39,7 @@ export interface HomeCockpitViewProps {
     }>;
   } | null;
   userTasks?: UserCategorizedTasks | null;
+  isAdmin?: boolean;
 }
 
 export function HomeCockpitView({
@@ -48,7 +51,9 @@ export function HomeCockpitView({
   cockpit,
   upcomingChallenge,
   userTasks,
+  isAdmin,
 }: HomeCockpitViewProps) {
+  const effectiveIsAdmin = isAdmin ?? hasAdminPrivileges(user?.role);
   const [isHoursModalOpen, setIsHoursModalOpen] = useState(false);
   const [hoursModalDayNumber, setHoursModalDayNumber] = useState<number | undefined>(undefined);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
@@ -135,6 +140,7 @@ export function HomeCockpitView({
         todayDate={cockpit?.todayDate}
         todayDayNumber={cockpit?.todayDayNumber}
         onOpenHoursModal={openHoursModal}
+        isAdmin={effectiveIsAdmin}
       />
 
       <DailyHoursModal

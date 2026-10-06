@@ -80,6 +80,7 @@ export interface ScoreboardStandingEntry {
   paceStatus: ParticipantPaceStatus;
   paceLabel: string;
   deficitSeconds: number;
+  dailyLogs?: Record<string, number>;
 }
 
 export interface FlaggedPunishmentMember {
@@ -370,6 +371,15 @@ export function buildScoreboardViewModel(
 
     const team = p.teamId ? teamLookup.get(p.teamId) : null;
 
+    const dailyLogs: Record<string, number> = {};
+    for (const log of p.dailyStudyLogs) {
+      if (log.logDate) {
+        const dObj =
+          log.logDate instanceof Date ? log.logDate : new Date(log.logDate);
+        dailyLogs[formatUtcDateKey(dObj)] = log.durationSeconds;
+      }
+    }
+
     return {
       participantId: p.id,
       userId: p.userId,
@@ -393,6 +403,7 @@ export function buildScoreboardViewModel(
       paceStatus,
       paceLabel,
       deficitSeconds,
+      dailyLogs,
     };
   });
 

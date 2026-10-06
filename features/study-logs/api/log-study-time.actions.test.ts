@@ -229,7 +229,7 @@ describe("logStudyTimeAction", () => {
     expect(dailyStudyLogRepo.upsertDailyStudyLog).not.toHaveBeenCalled();
   });
 
-  it("allows logging any past day of the week when currently on Day 4", async () => {
+  it("allows logging yesterday when currently on Day 4", async () => {
     // Fast forward to Day 4
     vi.setSystemTime(new Date("2026-10-08T20:00:00.000Z"));
 
@@ -245,10 +245,10 @@ describe("logStudyTimeAction", () => {
       },
     } as never);
 
-    // Logging Day 1 (3 days ago)
+    // Logging Day 3 (yesterday)
     const result = await logStudyTimeAction({
       challengeId: "chal_1",
-      challengeDay: 1,
+      challengeDay: 3,
       hours: 3,
       minutes: 15,
       seconds: 0,
@@ -257,12 +257,13 @@ describe("logStudyTimeAction", () => {
     expect(result).toEqual({ ok: true });
     expect(dailyStudyLogRepo.upsertDailyStudyLog).toHaveBeenCalledWith({
       participantId: "part_1",
-      logDate: "2026-10-05",
+      logDate: "2026-10-07",
       durationSeconds: 11_700,
     });
   });
 
-  it("allows logging by date string for a valid past day", async () => {
+  it("rejects logging days before yesterday with ONLY_TODAY_OR_YESTERDAY_ALLOWED", async () => {
+    // Fast forward to Day 4
     vi.setSystemTime(new Date("2026-10-08T20:00:00.000Z"));
 
     vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValue({
@@ -277,20 +278,21 @@ describe("logStudyTimeAction", () => {
       },
     } as never);
 
+    // Logging Day 1 (3 days ago - not today or yesterday)
     const result = await logStudyTimeAction({
       challengeId: "chal_1",
-      date: "2026-10-06",
+      challengeDay: 1,
       hours: 2,
       minutes: 0,
       seconds: 0,
     });
 
-    expect(result).toEqual({ ok: true });
-    expect(dailyStudyLogRepo.upsertDailyStudyLog).toHaveBeenCalledWith({
-      participantId: "part_1",
-      logDate: "2026-10-06",
-      durationSeconds: 7_200,
+    expect(result).toEqual({
+      ok: false,
+      code: "ONLY_TODAY_OR_YESTERDAY_ALLOWED",
+      message: "Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.",
     });
+    expect(dailyStudyLogRepo.upsertDailyStudyLog).not.toHaveBeenCalled();
   });
 
   it("rejects future date string with FUTURE_DATE_NOT_ALLOWED", async () => {

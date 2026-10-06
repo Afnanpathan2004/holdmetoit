@@ -207,7 +207,27 @@ describe("CockpitTasksSection", () => {
     expect(html).not.toContain("Incomplete");
   });
 
-  it("renders 7-day pill switcher tabs with challenge days", () => {
+  it("renders only today and yesterday tabs for regular users (isAdmin: false)", () => {
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-03",
+        todayDayNumber: 3,
+        totalChallengeDays: 7,
+        isAdmin: false,
+      }),
+    );
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain("Today");
+    expect(html).toContain("Yesterday");
+    expect(html).not.toContain("D1");
+    expect(html).not.toContain("D7");
+  });
+
+  it("renders full 7-day pill switcher tabs with challenge days for mods and devs (isAdmin: true)", () => {
     const html = renderToStaticMarkup(
       createElement(CockpitTasksSection, {
         isLoggedIn: true,
@@ -216,12 +236,13 @@ describe("CockpitTasksSection", () => {
         todayDate: "2026-10-01",
         todayDayNumber: 1,
         totalChallengeDays: 7,
+        isAdmin: true,
       }),
     );
 
     expect(html).toContain('role="tablist"');
     expect(html).toContain('aria-label="Challenge Day Tabs"');
-    expect(html).toContain("D1");
+    expect(html).toContain("Today");
     expect(html).toContain("D2");
     expect(html).toContain("D7");
   });
