@@ -3,7 +3,49 @@
 > **Document Type:** Product & Technical Evolution Roadmap  
 > **Audience:** Engineering Team (3–4 Developers), Community Moderators & Stakeholders  
 > **Cadence:** Milestone-Gated Evolution (Sprints planned dynamically per phase)  
-> **Reference Stack:** Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL (Supabase/Neon), Auth.js (Discord OAuth), Vitest, Vercel  
+> **Reference Stack:** Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, Prisma, PostgreSQL (Supabase/Neon), Supabase Storage, Auth.js (Discord OAuth), Vitest, LogRocket, Vercel  
+> **Last Status Review:** 2026-10-06 (see §0; detailed defect list in `HANDOFF.md` §3)  
+
+---
+
+## 0. Status vs Timeline (as of 2026-10-06)
+
+### 0.1 Planned vs Actual
+`FEATURES.md` §1 sets target windows per phase. Projected from the project start on 2026-09-05:
+
+| Phase | Planned Window | Planned Dates | Actual Status | Variance |
+| :--- | :---: | :--- | :--- | :--- |
+| `[P0]` MVP Core | ~10 days | 09-05 → ~09-15 | ⚠️ ~65% feature parity; Gate 1 not passed | **~3 weeks late** |
+| `[P1]` Automation & Bot | 2 weeks | ~09-15 → ~09-29 | ⏸️ Not started (timestamp-derived status is a partial step toward `FEAT-CHAL-03`) | **~1 week past planned finish** |
+| `[V1]` Gamification | 2–3 weeks | ~09-29 → ~10-20 | ⏸️ Not started | Should be in progress |
+| `[V2]` Duels & Scale | 2 weeks | ~10-20 → ~11-03 | ⏸️ Not started | — |
+
+### 0.2 Actual Delivery History
+```mermaid
+flowchart LR
+    S1["Sprint 1: 09-05 to 09-08<br/>21 commits<br/>Core P0 built"] --> GAP["Dormant: 09-09 to 10-02<br/>0 commits"]
+    GAP --> S2["Sprint 2: 10-03 to 10-06<br/>23 commits<br/>Obsidian UI overhaul, tasks, feedback, offline sync"]
+    S2 --> NOW["Now: 10-06<br/>P0 hardening needed"]
+```
+
+- **Sprint 1 (09-05 → 09-08):** Scaffolding, domain math, Discord OAuth, cockpit, scoreboard, and admin ops. This delivered nearly all P0 features in cozy-café styling.
+- **Sprint 2 (10-03 → 10-06):** Moved to the Obsidian design (Figma) and consolidated `/dashboard` into `/`. Status became timestamp-derived. `WeeklyGoal` was replaced by user-scoped Daily/Weekly tasks with offline sync and drag & drop. Also added: feedback system, LogRocket, Supabase image uploads, the manual weekly leaderboard, and the `DEV` role. **Side effect:** the UIs for the override grid, pardons, Discord summary, Punishment Wall, and PFP download were removed and haven't been rebuilt.
+
+### 0.3 P0 Features Blocking Gate 1
+| Blocker | Feature IDs |
+| :--- | :--- |
+| No UI for host override, pardon, or Discord summary copy | `FEAT-LOG-04`, `FEAT-PUN-04`, `FEAT-DISC-01` |
+| No Punishment Wall or PFP download | `FEAT-PUN-02`, `FEAT-PUN-03` |
+| Lock fails after natural expiry, so punishments are never evaluated | `FEAT-CHAL-05`, `FEAT-PUN-01` |
+| Audit trail not persisted (in-memory) | `FEAT-AUDIT-01` |
+| Goals decoupled from challenges, so Law L6 runs on hours only (product decision pending) | `FEAT-DECL-02`, `FEAT-DECL-04`, `FEAT-PUN-01` |
+| Duo self-naming not implemented | `FEAT-CHAL-06` |
+| Migration drift (`feedbacks`, `sort_order` not in migrations) | Deployment readiness |
+
+### 0.4 Recommended Re-Plan
+1. **P0 Hardening (~4–5 days):** fix finalization and the persisted audit log first, then rebuild the 5 missing admin/public UIs, decide on goals/L6, and repair the migrations.
+2. **Gate 1:** deploy to Vercel and run one live pilot challenge with a shadow sheet.
+3. **P1 (2 weeks):** YPT ingestion (`FEAT-LOG-03`) → automated expiry plus punishment evaluation (`FEAT-CHAL-03`) → bot (`FEAT-DISC-02/03`).
 
 ---
 
@@ -66,7 +108,7 @@ HoldMeToIt Architecture Evolution
 │
 ├── Identity & Access
 │   ├── Auth.js (Discord OAuth 2.0 Provider — `identify` scope)
-│   ├── Session-based RBAC: `SPECTATOR` → `PARTICIPANT` → `ADMIN`
+│   ├── Session-based RBAC: `SPECTATOR` (no session) → `PARTICIPANT` → `ADMIN` (Discord guild role) → `DEV` (`DEV_DISCORD_IDS`)
 │   └── Phase 3: Multi-guild permission resolver
 │
 ├── Bot & Daemon Infrastructure (Phase 1+)
@@ -102,18 +144,22 @@ Eradicate manual host labor. Deliver a robust, reliable web application capable 
 9. **Admin Manual Override Grid:** Host inline-edit capability to adjust any participant's logged hours or unlock tasks in case of emergency.
 10. **1-Click Discord Summary Generator:** Formatted markdown text generator ready to copy-paste into `#study-announcements`.
 
-### 3.3 Database Entities at Phase 0
-- `User` (Discord identity, role)
-- `Challenge` (title, timestamps, format, status)
-- `Team` (name, color, challenge relation)
-- `ParticipantEnrollment` (target seconds, status)
-- `DailyStudyLog` (date, duration seconds, override flag)
-- `WeeklyGoal` (description, completion boolean)
-- `PunishmentRecord` (flagged status, pardon notes)
+### 3.3 Database Entities at Phase 0 (as implemented in `prisma/schema.prisma`)
+- `User` (Discord identity; role `PARTICIPANT` / `ADMIN` / `DEV`) + Auth.js `Account`, `Session`, `VerificationToken`
+- `Challenge` (title, `startAt`/`endAt`, format, `eventBannerUrl`, `punishmentPfpUrl`, `challengeColor`). **No status column:** `UPCOMING`/`ACTIVE`/`COMPLETED` is derived from timestamps in `challenge-lifecycle.ts`
+- `Team` (name, color, emoji, mascot, `maxMembers`, `sortOrder`) + `TeamMember`
+- `ChallengeParticipant` (target seconds, optional team, status `NORMAL`/`DEFICIT`/`EXCUSED`/`PUNISHED`)
+- `DailyStudyLog` (date, duration seconds, `isOverride`, `overrideById`, `overrideReason`)
+- `PunishmentRecord` (punished flag, deficit seconds, incomplete goals count, pardon fields)
+- `Category` + `Task` (**user-scoped** Daily/Weekly to-dos with `sortOrder`; replaced `WeeklyGoal` on 2026-10-04 and aren't linked to challenges)
+- `LeaderboardEntry` (manual weekly slot hours, `Decimal(6,2)`: Law L8 deviation)
+- `Feedback` (bug/enhancement reports with Discord delivery status)
+- ⚠️ **Missing vs spec:** `AuditLog` (the audit trail is in-memory only)
 
 ### 3.4 Phase 0 Milestone Gate (Promotion to P1)
-- [ ] Successful deployment to staging/production on Vercel.
-- [ ] 100% test coverage on domain calculation formulas (`HH:MM:SS` parsing, deficit pacing, punishment evaluation).
+- [ ] Successful deployment to staging/production on Vercel. *(Builds cleanly; deployment not recorded in the repo.)*
+- [ ] 100% test coverage on domain calculation formulas (`HH:MM:SS` parsing, deficit pacing, punishment evaluation). *(Domain suites exist and 559 tests pass as of 2026-10-06, but coverage % isn't measured yet; add `vitest run --coverage`.)*
+- [ ] All P0 features usable end-to-end in the UI. *(5 admin/public UIs missing; see §0.3.)*
 - [ ] **Live Pilot Challenge:** Run 1 full community challenge with real users, using a shadow Google Sheet as a fallback safety net to verify zero calculation divergence.
 
 ---
