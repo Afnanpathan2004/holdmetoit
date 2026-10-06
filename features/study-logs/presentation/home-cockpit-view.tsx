@@ -128,6 +128,7 @@ export function HomeCockpitView({
       {/* Categorized Task Checklist (Daily & Weekly Todos) */}
       <CockpitTasksSection
         isLoggedIn={isLoggedIn}
+        userId={user?.id || cockpit?.participant.userId || null}
         userTasks={effectiveUserTasks}
       />
 

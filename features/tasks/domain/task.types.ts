@@ -6,6 +6,7 @@ export interface TaskItem {
   categoryId: string;
   title: string;
   taskType: TaskType;
+  sortOrder?: number;
   isComplete: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -17,6 +18,7 @@ export interface CategoryItem {
   userId: string;
   name: string;
   taskType: TaskType;
+  sortOrder?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +27,7 @@ export interface CategoryGroup {
   id: string;
   name: string;
   taskType: TaskType;
+  sortOrder?: number;
   isCollapsed: boolean;
   tasks: TaskItem[];
 }

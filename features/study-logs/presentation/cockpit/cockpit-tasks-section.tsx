@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -9,7 +9,12 @@ import {
   Trash2,
   MoreVertical,
   Pencil,
+  GripVertical,
 } from "lucide-react";
+import {
+  moveCategoryBetweenColumns,
+  moveTaskBetweenCategories,
+} from "@/features/tasks/domain/task-reorder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +30,26 @@ import {
   updateTaskAction,
 } from "@/features/tasks/api/task.actions";
 import type { UserCategorizedTasks } from "@/features/tasks/domain/task.types";
+import {
+  deleteLocalCategory,
+  deleteLocalTask,
+  enqueueMutation,
+  getAllLocalCategories,
+  getAllLocalTasks,
+  logTaskSync,
+  putLocalCategories,
+  putLocalCategory,
+  putLocalTask,
+  putLocalTasks,
+} from "@/features/tasks/data/local/task-idb";
+import {
+  initTaskSync,
+  scheduleSync,
+} from "@/features/tasks/data/local/task-sync.service";
+import type {
+  LocalCategoryRecord,
+  LocalTaskRecord,
+} from "@/features/tasks/domain/task-sync.types";
 
 export interface TaskItem {
   id: string;
@@ -41,19 +66,34 @@ export interface CategoryGroup {
 
 export interface CockpitTasksSectionProps {
   isLoggedIn: boolean;
+  userId?: string | null;
   userTasks?: UserCategorizedTasks | null;
 }
 
 export function CockpitTasksSection({
   isLoggedIn,
+  userId,
   userTasks,
 }: CockpitTasksSectionProps) {
   const [, startTransition] = useTransition();
   const [addModalType, setAddModalType] = useState<"daily" | "weekly" | null>(null);
   const [newTodoText, setNewTodoText] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Category 1");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+
+  const categoryInputRef = useRef<HTMLInputElement>(null);
+  const categorySelectRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    if (isCreatingCategory && addModalType) {
+      const timer = setTimeout(() => {
+        categoryInputRef.current?.focus();
+        categoryInputRef.current?.select();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isCreatingCategory, addModalType]);
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<{
@@ -93,6 +133,22 @@ export function CockpitTasksSection({
     taskType: "daily" | "weekly";
   } | null>(null);
 
+  // Drag and Drop State
+  const [draggedItem, setDraggedItem] = useState<{
+    type: "task" | "category";
+    id?: string;
+    sourceCatIdx: number;
+    sourceColumn: "daily" | "weekly";
+  } | null>(null);
+
+  const [dragOverInfo, setDragOverInfo] = useState<{
+    type: "task" | "category" | "column";
+    targetId?: string;
+    targetCatIdx?: number;
+    targetColumn: "daily" | "weekly";
+    position?: "above" | "below";
+  } | null>(null);
+
   const [dailyCategories, setDailyCategories] = useState<CategoryGroup[]>(() => {
     if (userTasks?.dailyCategories && userTasks.dailyCategories.length > 0) {
       return userTasks.dailyCategories.map((c) => ({
@@ -106,30 +162,7 @@ export function CockpitTasksSection({
         })),
       }));
     }
-    return [
-      {
-        name: "Category 1",
-        isCollapsed: true,
-        tasks: [
-          { id: "d1_1", text: "Read research paper summary", completed: true },
-        ],
-      },
-      {
-        name: "Category 2",
-        isCollapsed: false,
-        tasks: [
-          { id: "d2_1", text: "Task 1", completed: true },
-          { id: "d2_2", text: "Task 2", completed: false },
-        ],
-      },
-      {
-        name: "Category 3",
-        isCollapsed: true,
-        tasks: [
-          { id: "d3_1", text: "Evening flashcards review", completed: false },
-        ],
-      },
-    ];
+    return [];
   });
 
   const [weeklyCategories, setWeeklyCategories] = useState<CategoryGroup[]>(() => {
@@ -145,37 +178,13 @@ export function CockpitTasksSection({
         })),
       }));
     }
-    return [
-      {
-        name: "Category 1",
-        isCollapsed: true,
-        tasks: [
-          { id: "w1_1", text: "Finish Mathematics Problem Set 3", completed: true },
-        ],
-      },
-      {
-        name: "Category 2",
-        isCollapsed: false,
-        tasks: [
-          { id: "w2_1", text: "Task 1", completed: true },
-          { id: "w2_2", text: "Task 2", completed: false },
-        ],
-      },
-      {
-        name: "Category 3",
-        isCollapsed: true,
-        tasks: [
-          { id: "w3_1", text: "Write Lab Report Conclusion", completed: false },
-        ],
-      },
-    ];
+    return [];
   });
 
   const dailyCategoryOptions = Array.from(
     new Set([
       ...(userTasks?.categories?.filter((c) => c.taskType === "DAILY").map((c) => c.name) ?? []),
       ...dailyCategories.map((c) => c.name),
-      "Category 1",
     ]),
   );
 
@@ -183,7 +192,6 @@ export function CockpitTasksSection({
     new Set([
       ...(userTasks?.categories?.filter((c) => c.taskType === "WEEKLY").map((c) => c.name) ?? []),
       ...weeklyCategories.map((c) => c.name),
-      "Category 1",
     ]),
   );
 
@@ -194,6 +202,110 @@ export function CockpitTasksSection({
   const weeklyCategoryNameToId = new Map(
     userTasks?.categories?.filter((c) => c.taskType === "WEEKLY").map((c) => [c.name, c.id]) ?? [],
   );
+
+  useEffect(() => {
+    const cleanup = initTaskSync(userId);
+    let isCancelled = false;
+
+    async function hydrateFromIndexedDB() {
+      try {
+        const localTasks = await getAllLocalTasks(userId ?? null);
+        const localCats = await getAllLocalCategories(userId ?? null);
+
+        if (isCancelled) return;
+
+        if (localCats.length > 0 || localTasks.length > 0) {
+          logTaskSync("Hydrated tasks from IndexedDB", {
+            cats: localCats.length,
+            tasks: localTasks.length,
+          });
+
+          const sortedCats = [...localCats].sort(
+            (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+          );
+          const sortedTasks = [...localTasks].sort(
+            (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+          );
+
+          const dailyCats = sortedCats
+            .filter((c) => c.taskType === "DAILY")
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              isCollapsed: false,
+              tasks: sortedTasks
+                .filter((t) => t.categoryId === c.id)
+                .map((t) => ({
+                  id: t.id,
+                  text: t.title,
+                  completed: t.isComplete,
+                })),
+            }));
+
+          const weeklyCats = sortedCats
+            .filter((c) => c.taskType === "WEEKLY")
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              isCollapsed: false,
+              tasks: sortedTasks
+                .filter((t) => t.categoryId === c.id)
+                .map((t) => ({
+                  id: t.id,
+                  text: t.title,
+                  completed: t.isComplete,
+                })),
+            }));
+
+          if (dailyCats.length > 0) {
+            setDailyCategories(dailyCats);
+          }
+          if (weeklyCats.length > 0) {
+            setWeeklyCategories(weeklyCats);
+          }
+        } else if (userTasks && userTasks.categories.length > 0) {
+          logTaskSync("Seeding IndexedDB from server userTasks...");
+          const seedCats: LocalCategoryRecord[] = userTasks.categories.map((c) => ({
+            id: c.id,
+            userId: userId || null,
+            name: c.name,
+            taskType: c.taskType,
+            createdAt: new Date(c.createdAt).toISOString(),
+            updatedAt: new Date(c.updatedAt).toISOString(),
+            syncState: "synced",
+          }));
+
+          const seedTasks: LocalTaskRecord[] = [
+            ...userTasks.dailyCategories.flatMap((c) => c.tasks),
+            ...userTasks.weeklyCategories.flatMap((c) => c.tasks),
+          ].map((t) => ({
+            id: t.id,
+            userId: userId || null,
+            categoryId: t.categoryId,
+            title: t.title,
+            taskType: t.taskType,
+            isComplete: t.isComplete,
+            createdAt: new Date(t.createdAt).toISOString(),
+            updatedAt: new Date(t.updatedAt).toISOString(),
+            completedAt: t.completedAt ? new Date(t.completedAt).toISOString() : null,
+            syncState: "synced",
+          }));
+
+          await putLocalCategories(seedCats);
+          await putLocalTasks(seedTasks);
+        }
+      } catch (err) {
+        logTaskSync("Error hydrating from IndexedDB:", err);
+      }
+    }
+
+    hydrateFromIndexedDB();
+
+    return () => {
+      isCancelled = true;
+      cleanup();
+    };
+  }, [userId, userTasks]);
 
   const toggleDailyCollapse = (index: number) => {
     setDailyCategories((prev) =>
@@ -229,23 +341,45 @@ export function CockpitTasksSection({
       )
     );
 
-    if (isLoggedIn) {
-      startTransition(async () => {
-        try {
-          await toggleTaskAction({ taskId, isComplete: nextCompleted });
-          trackLogRocketEvent("TaskToggled", {
-            taskId,
-            taskType: "daily",
-            isComplete: nextCompleted,
-          });
-        } catch (error) {
-          captureLogRocketException(error, {
-            tags: { action: "toggle-task" },
-            extra: { taskId, taskType: "daily" },
-          });
-        }
+    const nowIso = new Date().toISOString();
+    const cat = dailyCategories[catIndex];
+    if (cat?.id) {
+      putLocalTask({
+        id: taskId,
+        userId: userId ?? null,
+        categoryId: cat.id,
+        title: targetTask.text,
+        taskType: "DAILY",
+        isComplete: nextCompleted,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        completedAt: nextCompleted ? nowIso : null,
+        syncState: "pending",
+      }).catch(() => {});
+    }
+
+    if (isLoggedIn && userId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "TOGGLE",
+        payload: { taskId, isComplete: nextCompleted },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+
+      trackLogRocketEvent("TaskToggled", {
+        taskId,
+        taskType: "daily",
+        isComplete: nextCompleted,
       });
     }
+
+    logTaskSync("Task toggled", { taskId, isComplete: nextCompleted });
   };
 
   const toggleWeeklyTask = (catIndex: number, taskId: string) => {
@@ -266,23 +400,45 @@ export function CockpitTasksSection({
       )
     );
 
-    if (isLoggedIn) {
-      startTransition(async () => {
-        try {
-          await toggleTaskAction({ taskId, isComplete: nextCompleted });
-          trackLogRocketEvent("TaskToggled", {
-            taskId,
-            taskType: "weekly",
-            isComplete: nextCompleted,
-          });
-        } catch (error) {
-          captureLogRocketException(error, {
-            tags: { action: "toggle-task" },
-            extra: { taskId, taskType: "weekly" },
-          });
-        }
+    const nowIso = new Date().toISOString();
+    const cat = weeklyCategories[catIndex];
+    if (cat?.id) {
+      putLocalTask({
+        id: taskId,
+        userId: userId ?? null,
+        categoryId: cat.id,
+        title: targetTask.text,
+        taskType: "WEEKLY",
+        isComplete: nextCompleted,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        completedAt: nextCompleted ? nowIso : null,
+        syncState: "pending",
+      }).catch(() => {});
+    }
+
+    if (isLoggedIn && userId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "TOGGLE",
+        payload: { taskId, isComplete: nextCompleted },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+
+      trackLogRocketEvent("TaskToggled", {
+        taskId,
+        taskType: "weekly",
+        isComplete: nextCompleted,
       });
     }
+
+    logTaskSync("Task toggled", { taskId, isComplete: nextCompleted });
   };
 
   const handleDeleteTask = (catIndex: number, taskId: string, taskType: "daily" | "weekly") => {
@@ -310,11 +466,24 @@ export function CockpitTasksSection({
       );
     }
 
-    if (isLoggedIn) {
-      startTransition(async () => {
-        await deleteTaskAction({ taskId });
-      });
+    deleteLocalTask(taskId).catch(() => {});
+
+    if (isLoggedIn && userId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "DELETE",
+        payload: { taskId },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
     }
+
+    logTaskSync("Task deleted", { taskId });
   };
 
   useEffect(() => {
@@ -447,11 +616,38 @@ export function CockpitTasksSection({
       );
     }
 
-    if (isLoggedIn) {
-      startTransition(async () => {
-        await updateTaskAction({ taskId: id, title: trimmed });
-      });
+    const cat = taskType === "daily" ? dailyCategories[catIdx] : weeklyCategories[catIdx];
+    if (cat?.id) {
+      putLocalTask({
+        id,
+        userId: userId ?? null,
+        categoryId: cat.id,
+        title: trimmed,
+        taskType: taskType === "daily" ? "DAILY" : "WEEKLY",
+        isComplete: cat.tasks.find((t) => t.id === id)?.completed ?? false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        completedAt: null,
+        syncState: "pending",
+      }).catch(() => {});
     }
+
+    if (isLoggedIn && userId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "UPDATE",
+        payload: { taskId: id, title: trimmed },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+    }
+
+    logTaskSync("Task updated", { taskId: id, title: trimmed });
     setEditTaskModal(null);
   };
 
@@ -463,8 +659,8 @@ export function CockpitTasksSection({
     const catId =
       editCategoryModal.id ||
       (catType === "daily"
-        ? dailyCategoryNameToId.get(oldName)
-        : weeklyCategoryNameToId.get(oldName));
+        ? dailyCategoryNameToId.get(oldName) || dailyCategories.find((c) => c.name === oldName)?.id
+        : weeklyCategoryNameToId.get(oldName) || weeklyCategories.find((c) => c.name === oldName)?.id);
 
     if (oldName === trimmed) {
       setEditCategoryModal(null);
@@ -485,11 +681,34 @@ export function CockpitTasksSection({
       );
     }
 
-    if (isLoggedIn && catId) {
-      startTransition(async () => {
-        await updateCategoryAction({ categoryId: catId, name: trimmed });
-      });
+    if (catId) {
+      putLocalCategory({
+        id: catId,
+        userId: userId ?? null,
+        name: trimmed,
+        taskType: catType === "daily" ? "DAILY" : "WEEKLY",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        syncState: "pending",
+      }).catch(() => {});
     }
+
+    if (isLoggedIn && userId && catId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "CATEGORY",
+        action: "UPDATE",
+        payload: { categoryId: catId, name: trimmed },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+    }
+
+    logTaskSync("Category updated", { categoryId: catId, name: trimmed });
     setEditCategoryModal(null);
   };
 
@@ -500,8 +719,8 @@ export function CockpitTasksSection({
     const catId =
       deleteCategoryModal.id ||
       (catType === "daily"
-        ? dailyCategoryNameToId.get(targetName)
-        : weeklyCategoryNameToId.get(targetName));
+        ? dailyCategoryNameToId.get(targetName) || dailyCategories.find((c) => c.name === targetName)?.id
+        : weeklyCategoryNameToId.get(targetName) || weeklyCategories.find((c) => c.name === targetName)?.id);
 
     if (catType === "daily") {
       setDailyCategories((prev) =>
@@ -513,11 +732,26 @@ export function CockpitTasksSection({
       );
     }
 
-    if (isLoggedIn && catId) {
-      startTransition(async () => {
-        await deleteCategoryAction({ categoryId: catId });
-      });
+    if (catId) {
+      deleteLocalCategory(catId).catch(() => {});
     }
+
+    if (isLoggedIn && userId && catId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "CATEGORY",
+        action: "DELETE",
+        payload: { categoryId: catId },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+    }
+
+    logTaskSync("Category deleted", { categoryId: catId, name: targetName });
     setDeleteCategoryModal(null);
   };
 
@@ -544,76 +778,130 @@ export function CockpitTasksSection({
     if (!newTodoText.trim()) return;
 
     const isNew = isCreatingCategory && customCategory.trim();
-    const targetCategoryName = isNew ? customCategory.trim() : selectedCategory;
+    const targetCategoryName =
+      (isNew ? customCategory.trim() : selectedCategory) || "General";
     const taskType = addModalType === "daily" ? "DAILY" : "WEEKLY";
 
+    const newTaskId = crypto.randomUUID();
     const newTask: TaskItem = {
-      id: `task_${Date.now()}`,
+      id: newTaskId,
       text: newTodoText.trim(),
       completed: false,
     };
 
+    let targetCatId: string | undefined = undefined;
+
     if (addModalType === "daily") {
+      const existing = dailyCategories.find((c) => c.name === targetCategoryName);
+      targetCatId = existing?.id || (isNew ? crypto.randomUUID() : dailyCategoryNameToId.get(targetCategoryName) || crypto.randomUUID());
+
       setDailyCategories((prev) => {
         const existingIndex = prev.findIndex((c) => c.name === targetCategoryName);
         if (existingIndex >= 0) {
           return prev.map((cat, i) =>
             i === existingIndex
-              ? { ...cat, isCollapsed: false, tasks: [...cat.tasks, newTask] }
+              ? { ...cat, id: cat.id || targetCatId, isCollapsed: false, tasks: [...cat.tasks, newTask] }
               : cat
           );
         } else {
           return [
             ...prev,
-            { name: targetCategoryName, isCollapsed: false, tasks: [newTask] },
+            { id: targetCatId, name: targetCategoryName, isCollapsed: false, tasks: [newTask] },
           ];
         }
       });
     } else {
+      const existing = weeklyCategories.find((c) => c.name === targetCategoryName);
+      targetCatId = existing?.id || (isNew ? crypto.randomUUID() : weeklyCategoryNameToId.get(targetCategoryName) || crypto.randomUUID());
+
       setWeeklyCategories((prev) => {
         const existingIndex = prev.findIndex((c) => c.name === targetCategoryName);
         if (existingIndex >= 0) {
           return prev.map((cat, i) =>
             i === existingIndex
-              ? { ...cat, isCollapsed: false, tasks: [...cat.tasks, newTask] }
+              ? { ...cat, id: cat.id || targetCatId, isCollapsed: false, tasks: [...cat.tasks, newTask] }
               : cat
           );
         } else {
           return [
             ...prev,
-            { name: targetCategoryName, isCollapsed: false, tasks: [newTask] },
+            { id: targetCatId, name: targetCategoryName, isCollapsed: false, tasks: [newTask] },
           ];
         }
       });
     }
 
-    if (isLoggedIn) {
-      const resolvedCatId = !isNew
-        ? (taskType === "DAILY"
-            ? dailyCategories.find((c) => c.name === targetCategoryName)?.id || dailyCategoryNameToId.get(targetCategoryName)
-            : weeklyCategories.find((c) => c.name === targetCategoryName)?.id || weeklyCategoryNameToId.get(targetCategoryName))
-        : undefined;
+    const nowIso = new Date().toISOString();
 
-      startTransition(async () => {
-        try {
-          await createTaskAction({
-            title: newTodoText.trim(),
+    if (isNew && targetCatId) {
+      putLocalCategory({
+        id: targetCatId,
+        userId: userId ?? null,
+        name: targetCategoryName,
+        taskType,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        syncState: "pending",
+      }).catch(() => {});
+    }
+
+    if (targetCatId) {
+      putLocalTask({
+        id: newTaskId,
+        userId: userId ?? null,
+        categoryId: targetCatId,
+        title: newTodoText.trim(),
+        taskType,
+        isComplete: false,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        completedAt: null,
+        syncState: "pending",
+      }).catch(() => {});
+    }
+
+    if (isLoggedIn && userId) {
+      if (isNew && targetCatId) {
+        enqueueMutation({
+          id: crypto.randomUUID(),
+          entityType: "CATEGORY",
+          action: "CREATE",
+          payload: {
+            id: targetCatId,
+            name: targetCategoryName,
             taskType,
-            newCategoryName: isNew ? customCategory.trim() : undefined,
-            categoryId: resolvedCatId,
-          });
-          trackLogRocketEvent("TaskCreated", {
-            taskType,
-            isNewCategory: isNew,
-          });
-        } catch (error) {
-          captureLogRocketException(error, {
-            tags: { action: "create-task" },
-            extra: { taskType },
-          });
-        }
+          },
+          createdAt: Date.now(),
+          retryCount: 0,
+        }).catch(() => {});
+      }
+
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "CREATE",
+        payload: {
+          id: newTaskId,
+          categoryId: targetCatId,
+          title: newTodoText.trim(),
+          taskType,
+          isComplete: false,
+        },
+        createdAt: Date.now() + 1,
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+
+      trackLogRocketEvent("TaskCreated", {
+        taskType,
+        isNewCategory: isNew,
       });
     }
+
+    logTaskSync("Task created", { id: newTaskId, title: newTodoText.trim() });
 
     setNewTodoText("");
     setCustomCategory("");
@@ -621,11 +909,608 @@ export function CockpitTasksSection({
     setAddModalType(null);
   };
 
+  // ---------------------------------------------------------------------------
+  // Drag and Drop Event Handlers
+  // ---------------------------------------------------------------------------
+
+  const handleTaskDragStart = (
+    e: React.DragEvent,
+    taskId: string,
+    catIdx: number,
+    column: "daily" | "weekly",
+  ) => {
+    e.stopPropagation();
+    setDraggedItem({
+      type: "task",
+      id: taskId,
+      sourceCatIdx: catIdx,
+      sourceColumn: column,
+    });
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData(
+      "application/json",
+      JSON.stringify({ type: "task", taskId, catIdx, column }),
+    );
+
+    const targetEl = e.currentTarget as HTMLElement;
+    const cardEl = targetEl.closest<HTMLElement>('[data-drag-card="task"]');
+    if (cardEl && e.dataTransfer && e.dataTransfer.setDragImage) {
+      const rect = cardEl.getBoundingClientRect();
+      const offsetX = Math.max(16, Math.min(e.clientX - rect.left, rect.width - 16));
+      const offsetY = Math.max(12, Math.min(e.clientY - rect.top, rect.height - 12));
+      e.dataTransfer.setDragImage(cardEl, offsetX, offsetY);
+    }
+  };
+
+  const handleCategoryDragStart = (
+    e: React.DragEvent,
+    catIdx: number,
+    column: "daily" | "weekly",
+  ) => {
+    e.stopPropagation();
+    setDraggedItem({
+      type: "category",
+      sourceCatIdx: catIdx,
+      sourceColumn: column,
+    });
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData(
+      "application/json",
+      JSON.stringify({ type: "category", catIdx, column }),
+    );
+
+    const targetEl = e.currentTarget as HTMLElement;
+    const cardEl = targetEl.closest<HTMLElement>('[data-drag-card="category"]');
+    if (cardEl && e.dataTransfer && e.dataTransfer.setDragImage) {
+      const rect = cardEl.getBoundingClientRect();
+      const offsetX = Math.max(20, Math.min(e.clientX - rect.left, rect.width - 20));
+      const offsetY = 20;
+      e.dataTransfer.setDragImage(cardEl, offsetX, offsetY);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverInfo(null);
+  };
+
+  const handleTaskDragOver = (
+    e: React.DragEvent,
+    targetTaskId: string,
+    targetCatIdx: number,
+    targetColumn: "daily" | "weekly",
+  ) => {
+    if (!draggedItem || draggedItem.type !== "task") return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const position = e.clientY < midY ? "above" : "below";
+
+    setDragOverInfo({
+      type: "task",
+      targetId: targetTaskId,
+      targetCatIdx,
+      targetColumn,
+      position,
+    });
+  };
+
+  const handleCategoryDragOver = (
+    e: React.DragEvent,
+    targetCatIdx: number,
+    targetColumn: "daily" | "weekly",
+  ) => {
+    if (!draggedItem) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedItem.type === "category") {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      const position = e.clientY < midY ? "above" : "below";
+      setDragOverInfo({
+        type: "category",
+        targetCatIdx,
+        targetColumn,
+        position,
+      });
+    } else if (draggedItem.type === "task") {
+      setDragOverInfo({
+        type: "category",
+        targetCatIdx,
+        targetColumn,
+      });
+    }
+  };
+
+  const handleColumnDragOver = (
+    e: React.DragEvent,
+    targetColumn: "daily" | "weekly",
+  ) => {
+    if (!draggedItem) return;
+    e.preventDefault();
+    if (!dragOverInfo || dragOverInfo.targetColumn !== targetColumn) {
+      setDragOverInfo({
+        type: "column",
+        targetColumn,
+      });
+    }
+  };
+
+  const handleTaskDrop = (
+    e: React.DragEvent,
+    targetTaskId: string,
+    targetCatIdx: number,
+    targetColumn: "daily" | "weekly",
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!draggedItem || draggedItem.type !== "task" || !draggedItem.id) {
+      handleDragEnd();
+      return;
+    }
+
+    const targetCategories =
+      targetColumn === "daily" ? dailyCategories : weeklyCategories;
+    const targetCat = targetCategories[targetCatIdx];
+    if (!targetCat) {
+      handleDragEnd();
+      return;
+    }
+
+    const targetIndexInCat = targetCat.tasks.findIndex((t) => t.id === targetTaskId);
+    const destIdx =
+      dragOverInfo?.position === "below" ? targetIndexInCat + 1 : targetIndexInCat;
+
+    const res = moveTaskBetweenCategories({
+      taskId: draggedItem.id,
+      sourceCategoryIndex: draggedItem.sourceCatIdx,
+      sourceColumn: draggedItem.sourceColumn,
+      targetCategoryIndex: targetCatIdx,
+      targetColumn,
+      targetTaskIndex: Math.max(0, destIdx),
+      dailyCategories,
+      weeklyCategories,
+    });
+
+    setDailyCategories(res.dailyCategories);
+    setWeeklyCategories(res.weeklyCategories);
+
+    if (res.movedTask && res.targetCategoryId) {
+      const nowIso = new Date().toISOString();
+      const targetCats =
+        res.targetTaskType === "DAILY" ? res.dailyCategories : res.weeklyCategories;
+      const targetCatGroup = targetCats[targetCatIdx];
+
+      if (targetCatGroup && targetCatGroup.tasks.length > 0) {
+        const tasksToUpdate: LocalTaskRecord[] = targetCatGroup.tasks.map((t, idx) => ({
+          id: t.id,
+          userId: userId ?? null,
+          categoryId: res.targetCategoryId!,
+          title: t.text,
+          taskType: res.targetTaskType,
+          sortOrder: idx,
+          isComplete: t.completed,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          completedAt: t.completed ? nowIso : null,
+          syncState: "pending",
+        }));
+        putLocalTasks(tasksToUpdate).catch(() => {});
+      } else {
+        putLocalTask({
+          id: res.movedTask.id,
+          userId: userId ?? null,
+          categoryId: res.targetCategoryId,
+          title: res.movedTask.text ?? res.movedTask.title ?? "",
+          taskType: res.targetTaskType,
+          sortOrder: destIdx,
+          isComplete: Boolean(res.movedTask.completed ?? res.movedTask.isComplete),
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          completedAt: (res.movedTask.completed ?? res.movedTask.isComplete) ? nowIso : null,
+          syncState: "pending",
+        }).catch(() => {});
+      }
+
+      if (isLoggedIn && userId) {
+        enqueueMutation({
+          id: crypto.randomUUID(),
+          entityType: "TASK",
+          action: "MOVE",
+          payload: {
+            taskId: res.movedTask.id,
+            categoryId: res.targetCategoryId,
+            taskType: res.targetTaskType,
+            sortOrder: destIdx,
+          },
+          createdAt: Date.now(),
+          retryCount: 0,
+        })
+          .then(() => {
+            scheduleSync(userId);
+          })
+          .catch(() => {});
+
+        trackLogRocketEvent("TaskMoved", {
+          taskId: res.movedTask.id,
+          targetTaskType: res.targetTaskType,
+        });
+      }
+
+      logTaskSync("Task moved via drag and drop", {
+        taskId: res.movedTask.id,
+        targetCatIdx,
+        targetColumn,
+      });
+    }
+
+    handleDragEnd();
+  };
+
+  const handleCategoryDrop = (
+    e: React.DragEvent,
+    targetCatIdx: number,
+    targetColumn: "daily" | "weekly",
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!draggedItem) {
+      handleDragEnd();
+      return;
+    }
+
+    if (draggedItem.type === "category") {
+      const destIndex =
+        dragOverInfo?.position === "below" ? targetCatIdx + 1 : targetCatIdx;
+
+      const res = moveCategoryBetweenColumns({
+        categoryIndex: draggedItem.sourceCatIdx,
+        sourceColumn: draggedItem.sourceColumn,
+        targetColumn,
+        targetIndex: destIndex,
+        dailyCategories,
+        weeklyCategories,
+      });
+
+      setDailyCategories(res.dailyCategories);
+      setWeeklyCategories(res.weeklyCategories);
+
+      if (res.movedCategory?.id) {
+        const nowIso = new Date().toISOString();
+        const catId = res.movedCategory.id;
+        const targetType = res.targetTaskType;
+
+        putLocalCategory({
+          id: catId,
+          userId: userId ?? null,
+          name: res.movedCategory.name,
+          taskType: targetType,
+          sortOrder: destIndex,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          syncState: "pending",
+        }).catch(() => {});
+
+        // Cascade taskType to all tasks inside this category in IndexedDB
+        if (res.movedCategory.tasks && res.movedCategory.tasks.length > 0) {
+          const tasksToUpdate: LocalTaskRecord[] = res.movedCategory.tasks.map((t, idx) => ({
+            id: t.id,
+            userId: userId ?? null,
+            categoryId: catId,
+            title: t.text,
+            taskType: targetType,
+            sortOrder: idx,
+            isComplete: t.completed,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            completedAt: t.completed ? nowIso : null,
+            syncState: "pending",
+          }));
+          putLocalTasks(tasksToUpdate).catch(() => {});
+        }
+
+        // Persist updated sortOrder for all categories in both columns
+        const allCatsToUpdate: LocalCategoryRecord[] = [
+          ...res.dailyCategories
+            .filter((c): c is typeof c & { id: string } => Boolean(c.id))
+            .map((c, idx) => ({
+              id: c.id,
+              userId: userId ?? null,
+              name: c.name,
+              taskType: "DAILY" as const,
+              sortOrder: idx,
+              createdAt: nowIso,
+              updatedAt: nowIso,
+              syncState: "pending" as const,
+            })),
+          ...res.weeklyCategories
+            .filter((c): c is typeof c & { id: string } => Boolean(c.id))
+            .map((c, idx) => ({
+              id: c.id,
+              userId: userId ?? null,
+              name: c.name,
+              taskType: "WEEKLY" as const,
+              sortOrder: idx,
+              createdAt: nowIso,
+              updatedAt: nowIso,
+              syncState: "pending" as const,
+            })),
+        ];
+
+        putLocalCategories(allCatsToUpdate).catch(() => {});
+
+        if (isLoggedIn && userId) {
+          enqueueMutation({
+            id: crypto.randomUUID(),
+            entityType: "CATEGORY",
+            action: "MOVE",
+            payload: {
+              categoryId: res.movedCategory.id,
+              taskType: res.targetTaskType,
+              sortOrder: destIndex,
+            },
+            createdAt: Date.now(),
+            retryCount: 0,
+          })
+            .then(() => {
+              scheduleSync(userId);
+            })
+            .catch(() => {});
+
+          trackLogRocketEvent("CategoryMoved", {
+            categoryId: res.movedCategory.id,
+            targetTaskType: res.targetTaskType,
+          });
+        }
+
+        logTaskSync("Category moved via drag and drop", {
+          categoryId: res.movedCategory.id,
+          targetColumn,
+        });
+      }
+    } else if (draggedItem.type === "task" && draggedItem.id) {
+      // Dropping a task into a category header
+      const res = moveTaskBetweenCategories({
+        taskId: draggedItem.id,
+        sourceCategoryIndex: draggedItem.sourceCatIdx,
+        sourceColumn: draggedItem.sourceColumn,
+        targetCategoryIndex: targetCatIdx,
+        targetColumn,
+        targetTaskIndex: 0,
+        dailyCategories,
+        weeklyCategories,
+      });
+
+      setDailyCategories(res.dailyCategories);
+      setWeeklyCategories(res.weeklyCategories);
+
+      if (res.movedTask && res.targetCategoryId) {
+        const nowIso = new Date().toISOString();
+        putLocalTask({
+          id: res.movedTask.id,
+          userId: userId ?? null,
+          categoryId: res.targetCategoryId,
+          title: res.movedTask.text ?? res.movedTask.title ?? "",
+          taskType: res.targetTaskType,
+          isComplete: Boolean(res.movedTask.completed ?? res.movedTask.isComplete),
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          completedAt: (res.movedTask.completed ?? res.movedTask.isComplete) ? nowIso : null,
+          syncState: "pending",
+        }).catch(() => {});
+
+        if (isLoggedIn && userId) {
+          enqueueMutation({
+            id: crypto.randomUUID(),
+            entityType: "TASK",
+            action: "MOVE",
+            payload: {
+              taskId: res.movedTask.id,
+              categoryId: res.targetCategoryId,
+              taskType: res.targetTaskType,
+              sortOrder: 0,
+            },
+            createdAt: Date.now(),
+            retryCount: 0,
+          })
+            .then(() => {
+              scheduleSync(userId);
+            })
+            .catch(() => {});
+        }
+      }
+    }
+
+    handleDragEnd();
+  };
+
+  const handleColumnDrop = (
+    e: React.DragEvent,
+    targetColumn: "daily" | "weekly",
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!draggedItem) {
+      handleDragEnd();
+      return;
+    }
+
+    const targetCategories =
+      targetColumn === "daily" ? dailyCategories : weeklyCategories;
+
+    if (draggedItem.type === "category") {
+      const destIndex = targetCategories.length;
+      const res = moveCategoryBetweenColumns({
+        categoryIndex: draggedItem.sourceCatIdx,
+        sourceColumn: draggedItem.sourceColumn,
+        targetColumn,
+        targetIndex: destIndex,
+        dailyCategories,
+        weeklyCategories,
+      });
+
+      setDailyCategories(res.dailyCategories);
+      setWeeklyCategories(res.weeklyCategories);
+
+      if (res.movedCategory?.id) {
+        const nowIso = new Date().toISOString();
+        const catId = res.movedCategory.id;
+        const targetType = res.targetTaskType;
+
+        putLocalCategory({
+          id: catId,
+          userId: userId ?? null,
+          name: res.movedCategory.name,
+          taskType: targetType,
+          sortOrder: destIndex,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          syncState: "pending",
+        }).catch(() => {});
+
+        if (res.movedCategory.tasks && res.movedCategory.tasks.length > 0) {
+          const tasksToUpdate: LocalTaskRecord[] = res.movedCategory.tasks.map((t, idx) => ({
+            id: t.id,
+            userId: userId ?? null,
+            categoryId: catId,
+            title: t.text,
+            taskType: targetType,
+            sortOrder: idx,
+            isComplete: t.completed,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            completedAt: t.completed ? nowIso : null,
+            syncState: "pending",
+          }));
+          putLocalTasks(tasksToUpdate).catch(() => {});
+        }
+
+        const allCatsToUpdate: LocalCategoryRecord[] = [
+          ...res.dailyCategories
+            .filter((c): c is typeof c & { id: string } => Boolean(c.id))
+            .map((c, idx) => ({
+              id: c.id,
+              userId: userId ?? null,
+              name: c.name,
+              taskType: "DAILY" as const,
+              sortOrder: idx,
+              createdAt: nowIso,
+              updatedAt: nowIso,
+              syncState: "pending" as const,
+            })),
+          ...res.weeklyCategories
+            .filter((c): c is typeof c & { id: string } => Boolean(c.id))
+            .map((c, idx) => ({
+              id: c.id,
+              userId: userId ?? null,
+              name: c.name,
+              taskType: "WEEKLY" as const,
+              sortOrder: idx,
+              createdAt: nowIso,
+              updatedAt: nowIso,
+              syncState: "pending" as const,
+            })),
+        ];
+
+        putLocalCategories(allCatsToUpdate).catch(() => {});
+
+        if (isLoggedIn && userId) {
+          enqueueMutation({
+            id: crypto.randomUUID(),
+            entityType: "CATEGORY",
+            action: "MOVE",
+            payload: {
+              categoryId: res.movedCategory.id,
+              taskType: res.targetTaskType,
+              sortOrder: destIndex,
+            },
+            createdAt: Date.now(),
+            retryCount: 0,
+          })
+            .then(() => {
+              scheduleSync(userId);
+            })
+            .catch(() => {});
+        }
+      }
+    } else if (draggedItem.type === "task" && draggedItem.id) {
+      // Drop task into the last category of the target column
+      if (targetCategories.length > 0) {
+        const lastCatIdx = targetCategories.length - 1;
+        const res = moveTaskBetweenCategories({
+          taskId: draggedItem.id,
+          sourceCategoryIndex: draggedItem.sourceCatIdx,
+          sourceColumn: draggedItem.sourceColumn,
+          targetCategoryIndex: lastCatIdx,
+          targetColumn,
+          targetTaskIndex: targetCategories[lastCatIdx].tasks.length,
+          dailyCategories,
+          weeklyCategories,
+        });
+
+        setDailyCategories(res.dailyCategories);
+        setWeeklyCategories(res.weeklyCategories);
+
+        if (res.movedTask && res.targetCategoryId) {
+          const nowIso = new Date().toISOString();
+          putLocalTask({
+            id: res.movedTask.id,
+            userId: userId ?? null,
+            categoryId: res.targetCategoryId,
+            title: res.movedTask.text ?? res.movedTask.title ?? "",
+            taskType: res.targetTaskType,
+            isComplete: Boolean(res.movedTask.completed ?? res.movedTask.isComplete),
+            createdAt: nowIso,
+            updatedAt: nowIso,
+            completedAt: (res.movedTask.completed ?? res.movedTask.isComplete) ? nowIso : null,
+            syncState: "pending",
+          }).catch(() => {});
+
+          if (isLoggedIn && userId) {
+            enqueueMutation({
+              id: crypto.randomUUID(),
+              entityType: "TASK",
+              action: "MOVE",
+              payload: {
+                taskId: res.movedTask.id,
+                categoryId: res.targetCategoryId,
+                taskType: res.targetTaskType,
+                sortOrder: targetCategories[lastCatIdx].tasks.length,
+              },
+              createdAt: Date.now(),
+              retryCount: 0,
+            })
+              .then(() => {
+                scheduleSync(userId);
+              })
+              .catch(() => {});
+          }
+        }
+      }
+    }
+
+    handleDragEnd();
+  };
+
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Daily Todos */}
-        <div className="rounded-2xl border border-[#262626] bg-[#141414] p-6 shadow-md flex flex-col justify-between space-y-5">
+        <div
+          onDragOver={(e) => handleColumnDragOver(e, "daily")}
+          onDrop={(e) => handleColumnDrop(e, "daily")}
+          className={`rounded-2xl border bg-[#141414] p-6 shadow-md flex flex-col justify-between space-y-5 transition-all ${
+            dragOverInfo?.type === "column" && dragOverInfo.targetColumn === "daily"
+              ? "border-[#e08a32] ring-1 ring-[#e08a32]/50 bg-[#1a1816]"
+              : "border-[#262626]"
+          }`}
+        >
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-[#ffffff]">Daily Todos</h3>
@@ -635,100 +1520,178 @@ export function CockpitTasksSection({
             </div>
 
             <div className="space-y-3">
-              {dailyCategories.map((cat, catIdx) => (
-                <div
-                  key={cat.name}
-                  className="rounded-xl bg-[#292929] overflow-hidden border border-[#333333]"
-                >
-                  <div
-                    onContextMenu={(e) => handleCategoryContextMenu(e, cat, "daily")}
-                    onClick={() => toggleDailyCollapse(catIdx)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left font-medium text-sm text-[#ffffff] hover:bg-[#333333] transition-colors cursor-pointer select-none"
-                  >
-                    <span className="truncate flex-1 pr-2">{cat.name}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {isLoggedIn && (
-                        <button
-                          type="button"
-                          onClick={(e) => openCategoryMenuFromButton(e, cat, "daily")}
-                          className="p-1 rounded-md text-[#868686] hover:text-[#ffffff] hover:bg-[#3d3d3d] transition-colors"
-                          title="Category options"
-                          aria-label={`Options for category ${cat.name}`}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                      )}
-                      {cat.isCollapsed ? (
-                        <ChevronDown className="h-4 w-4 text-[#868686]" />
-                      ) : (
-                        <ChevronUp className="h-4 w-4 text-[#868686]" />
-                      )}
-                    </div>
-                  </div>
+              {dailyCategories.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#333333] bg-[#1a1a1a]/50 p-6 text-center">
+                  <p className="text-sm font-medium text-[#d1d1d1]">No daily todos yet</p>
+                  <p className="text-xs text-[#868686] mt-1">Organize your daily study commitments by adding your first task.</p>
+                </div>
+              ) : (
+                dailyCategories.map((cat, catIdx) => {
+                const isCatDragging =
+                  draggedItem?.type === "category" &&
+                  draggedItem.sourceColumn === "daily" &&
+                  draggedItem.sourceCatIdx === catIdx;
+                const isCatOver =
+                  dragOverInfo?.type === "category" &&
+                  dragOverInfo.targetColumn === "daily" &&
+                  dragOverInfo.targetCatIdx === catIdx;
 
-                  {!cat.isCollapsed && (
-                    <div className="px-4 pb-3 pt-1 space-y-2.5 border-t border-[#383838]">
-                      {cat.tasks.length === 0 ? (
-                        <p className="text-xs text-[#868686] py-1">No daily tasks in this category.</p>
-                      ) : (
-                        cat.tasks.map((task) => (
-                          <div
-                            key={task.id}
-                            onContextMenu={(e) =>
-                              handleTaskContextMenu(e, task, catIdx, "daily")
-                            }
-                            className="flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-[#383838] transition-colors group"
+                return (
+                  <div
+                    key={cat.id || cat.name}
+                    data-drag-card="category"
+                    onDragOver={(e) => handleCategoryDragOver(e, catIdx, "daily")}
+                    onDrop={(e) => handleCategoryDrop(e, catIdx, "daily")}
+                    className={`rounded-xl bg-[#292929] overflow-hidden border transition-all ${
+                      isCatDragging ? "opacity-30 border-dashed border-[#e08a32] bg-[#1e1e1e] scale-[0.99]" : ""
+                    } ${
+                      isCatOver && dragOverInfo?.position === "above"
+                        ? "border-t-2 border-t-[#e08a32] border-[#333333]"
+                        : isCatOver && dragOverInfo?.position === "below"
+                        ? "border-b-2 border-b-[#e08a32] border-[#333333]"
+                        : isCatOver
+                        ? "border-[#e08a32]"
+                        : "border-[#333333]"
+                    }`}
+                  >
+                    <div
+                      onContextMenu={(e) => handleCategoryContextMenu(e, cat, "daily")}
+                      onClick={() => toggleDailyCollapse(catIdx)}
+                      className="w-full flex items-center justify-between px-3 py-3 text-left font-medium text-sm text-[#ffffff] hover:bg-[#333333] transition-colors cursor-pointer select-none"
+                    >
+                      <div
+                        draggable
+                        onDragStart={(e) => handleCategoryDragStart(e, catIdx, "daily")}
+                        onDragEnd={handleDragEnd}
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 -ml-1 mr-1 text-[#666] hover:text-[#e08a32] cursor-grab active:cursor-grabbing rounded transition-colors shrink-0"
+                        title="Drag category to reorder or move across boards"
+                        aria-label={`Drag category ${cat.name}`}
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </div>
+                      <span className="truncate flex-1 pr-2">{cat.name}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isLoggedIn && (
+                          <button
+                            type="button"
+                            onClick={(e) => openCategoryMenuFromButton(e, cat, "daily")}
+                            className="p-1 rounded-md text-[#868686] hover:text-[#ffffff] hover:bg-[#3d3d3d] transition-colors"
+                            title="Category options"
+                            aria-label={`Options for category ${cat.name}`}
                           >
-                            <div
-                              onClick={() => toggleDailyTask(catIdx, task.id)}
-                              className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
-                            >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        )}
+                        {cat.isCollapsed ? (
+                          <ChevronDown className="h-4 w-4 text-[#868686]" />
+                        ) : (
+                          <ChevronUp className="h-4 w-4 text-[#868686]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {!cat.isCollapsed && (
+                      <div className="px-4 pb-3 pt-1 space-y-2.5 border-t border-[#383838]">
+                        {cat.tasks.length === 0 ? (
+                          <p className="text-xs text-[#868686] py-1">No daily tasks in this category.</p>
+                        ) : (
+                          cat.tasks.map((task) => {
+                            const isTaskDragging =
+                              draggedItem?.type === "task" && draggedItem.id === task.id;
+                            const isTaskOver =
+                              dragOverInfo?.type === "task" && dragOverInfo.targetId === task.id;
+
+                            return (
                               <div
-                                className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 ${
-                                  task.completed
-                                    ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
-                                    : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
+                                key={task.id}
+                                data-drag-card="task"
+                                onDragOver={(e) =>
+                                  handleTaskDragOver(e, task.id, catIdx, "daily")
+                                }
+                                onDrop={(e) =>
+                                  handleTaskDrop(e, task.id, catIdx, "daily")
+                                }
+                                onContextMenu={(e) =>
+                                  handleTaskContextMenu(e, task, catIdx, "daily")
+                                }
+                                className={`flex items-start justify-between gap-2 p-1.5 rounded-lg hover:bg-[#383838] transition-all group ${
+                                  isTaskDragging
+                                    ? "opacity-30 border border-dashed border-[#e08a32] bg-[#1e1e1e]"
+                                    : ""
+                                } ${
+                                  isTaskOver && dragOverInfo?.position === "above"
+                                    ? "border-t-2 border-t-[#e08a32]"
+                                    : isTaskOver && dragOverInfo?.position === "below"
+                                    ? "border-b-2 border-b-[#e08a32]"
+                                    : ""
                                 }`}
                               >
-                                {task.completed && (
-                                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                <div
+                                  draggable
+                                  onDragStart={(e) =>
+                                    handleTaskDragStart(e, task.id, catIdx, "daily")
+                                  }
+                                  onDragEnd={handleDragEnd}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1 -ml-1 text-[#666] hover:text-[#e08a32] cursor-grab active:cursor-grabbing rounded transition-colors shrink-0 mt-0.5"
+                                  title="Drag task to reorder or move across categories"
+                                  aria-label={`Drag task ${task.text}`}
+                                >
+                                  <GripVertical className="h-3.5 w-3.5" />
+                                </div>
+                                <div
+                                  onClick={() => toggleDailyTask(catIdx, task.id)}
+                                  className="flex items-start gap-3 cursor-pointer flex-1 min-w-0"
+                                >
+                                  <div
+                                    className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 mt-0.5 ${
+                                      task.completed
+                                        ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
+                                        : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
+                                    }`}
+                                  >
+                                    {task.completed && (
+                                      <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                    )}
+                                  </div>
+                                  <span
+                                    className={`text-sm line-clamp-2 break-words leading-snug ${
+                                      task.completed
+                                        ? "text-[#868686] line-through"
+                                        : "text-[#ffffff]"
+                                    }`}
+                                  >
+                                    {task.text}
+                                  </span>
+                                </div>
+                                {isLoggedIn && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) =>
+                                      openTaskMenuFromButton(
+                                        e,
+                                        task,
+                                        catIdx,
+                                        "daily",
+                                      )
+                                    }
+                                    className="opacity-0 group-hover:opacity-100 sm:opacity-0 max-sm:opacity-100 p-1 text-[#868686] hover:text-[#ffffff] rounded hover:bg-[#444444] transition-opacity shrink-0 mt-0.5"
+                                    title="Task options"
+                                    aria-label={`Options for task ${task.text}`}
+                                  >
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </button>
                                 )}
                               </div>
-                              <span
-                                className={`text-sm truncate ${
-                                  task.completed
-                                    ? "text-[#868686] line-through"
-                                    : "text-[#ffffff]"
-                                }`}
-                              >
-                                {task.text}
-                              </span>
-                            </div>
-                            {isLoggedIn && (
-                              <button
-                                type="button"
-                                onClick={(e) =>
-                                  openTaskMenuFromButton(
-                                    e,
-                                    task,
-                                    catIdx,
-                                    "daily",
-                                  )
-                                }
-                                className="opacity-0 group-hover:opacity-100 sm:opacity-0 max-sm:opacity-100 p-1 text-[#868686] hover:text-[#ffffff] rounded hover:bg-[#444444] transition-opacity"
-                                title="Task options"
-                                aria-label={`Options for task ${task.text}`}
-                              >
-                                <MoreVertical className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              }))}
             </div>
           </div>
 
@@ -737,17 +1700,31 @@ export function CockpitTasksSection({
               type="button"
               onClick={() => {
                 setAddModalType("daily");
-                setSelectedCategory(dailyCategoryOptions[0] || "Category 1");
+                if (dailyCategoryOptions.length > 0) {
+                  setSelectedCategory(dailyCategoryOptions[0]);
+                  setIsCreatingCategory(false);
+                } else {
+                  setSelectedCategory("");
+                  setIsCreatingCategory(true);
+                }
               }}
               className="h-10 px-6 rounded-full bg-[#ffffff] text-[#000000] text-xs font-bold hover:bg-[#e0e0e0] shadow-sm inline-flex items-center gap-1.5"
             >
-              Add more todos
+              {dailyCategories.length === 0 ? "+ Add first todo" : "+ Add more todos"}
             </Button>
           </div>
         </div>
 
         {/* Weekly Todos */}
-        <div className="rounded-2xl border border-[#262626] bg-[#141414] p-6 shadow-md flex flex-col justify-between space-y-5">
+        <div
+          onDragOver={(e) => handleColumnDragOver(e, "weekly")}
+          onDrop={(e) => handleColumnDrop(e, "weekly")}
+          className={`rounded-2xl border bg-[#141414] p-6 shadow-md flex flex-col justify-between space-y-5 transition-all ${
+            dragOverInfo?.type === "column" && dragOverInfo.targetColumn === "weekly"
+              ? "border-[#e08a32] ring-1 ring-[#e08a32]/50 bg-[#1a1816]"
+              : "border-[#262626]"
+          }`}
+        >
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-[#ffffff]">Weekly Todos</h3>
@@ -757,100 +1734,178 @@ export function CockpitTasksSection({
             </div>
 
             <div className="space-y-3">
-              {weeklyCategories.map((cat, catIdx) => (
-                <div
-                  key={cat.name}
-                  className="rounded-xl bg-[#292929] overflow-hidden border border-[#333333]"
-                >
-                  <div
-                    onContextMenu={(e) => handleCategoryContextMenu(e, cat, "weekly")}
-                    onClick={() => toggleWeeklyCollapse(catIdx)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left font-medium text-sm text-[#ffffff] hover:bg-[#333333] transition-colors cursor-pointer select-none"
-                  >
-                    <span className="truncate flex-1 pr-2">{cat.name}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {isLoggedIn && (
-                        <button
-                          type="button"
-                          onClick={(e) => openCategoryMenuFromButton(e, cat, "weekly")}
-                          className="p-1 rounded-md text-[#868686] hover:text-[#ffffff] hover:bg-[#3d3d3d] transition-colors"
-                          title="Category options"
-                          aria-label={`Options for category ${cat.name}`}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                      )}
-                      {cat.isCollapsed ? (
-                        <ChevronDown className="h-4 w-4 text-[#868686]" />
-                      ) : (
-                        <ChevronUp className="h-4 w-4 text-[#868686]" />
-                      )}
-                    </div>
-                  </div>
+              {weeklyCategories.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#333333] bg-[#1a1a1a]/50 p-6 text-center">
+                  <p className="text-sm font-medium text-[#d1d1d1]">No weekly todos yet</p>
+                  <p className="text-xs text-[#868686] mt-1">Set your weekly milestones and track them across the challenge.</p>
+                </div>
+              ) : (
+                weeklyCategories.map((cat, catIdx) => {
+                const isCatDragging =
+                  draggedItem?.type === "category" &&
+                  draggedItem.sourceColumn === "weekly" &&
+                  draggedItem.sourceCatIdx === catIdx;
+                const isCatOver =
+                  dragOverInfo?.type === "category" &&
+                  dragOverInfo.targetColumn === "weekly" &&
+                  dragOverInfo.targetCatIdx === catIdx;
 
-                  {!cat.isCollapsed && (
-                    <div className="px-4 pb-3 pt-1 space-y-2.5 border-t border-[#383838]">
-                      {cat.tasks.length === 0 ? (
-                        <p className="text-xs text-[#868686] py-1">No weekly tasks in this category.</p>
-                      ) : (
-                        cat.tasks.map((task) => (
-                          <div
-                            key={task.id}
-                            onContextMenu={(e) =>
-                              handleTaskContextMenu(e, task, catIdx, "weekly")
-                            }
-                            className="flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-[#383838] transition-colors group"
+                return (
+                  <div
+                    key={cat.id || cat.name}
+                    data-drag-card="category"
+                    onDragOver={(e) => handleCategoryDragOver(e, catIdx, "weekly")}
+                    onDrop={(e) => handleCategoryDrop(e, catIdx, "weekly")}
+                    className={`rounded-xl bg-[#292929] overflow-hidden border transition-all ${
+                      isCatDragging ? "opacity-30 border-dashed border-[#e08a32] bg-[#1e1e1e] scale-[0.99]" : ""
+                    } ${
+                      isCatOver && dragOverInfo?.position === "above"
+                        ? "border-t-2 border-t-[#e08a32] border-[#333333]"
+                        : isCatOver && dragOverInfo?.position === "below"
+                        ? "border-b-2 border-b-[#e08a32] border-[#333333]"
+                        : isCatOver
+                        ? "border-[#e08a32]"
+                        : "border-[#333333]"
+                    }`}
+                  >
+                    <div
+                      onContextMenu={(e) => handleCategoryContextMenu(e, cat, "weekly")}
+                      onClick={() => toggleWeeklyCollapse(catIdx)}
+                      className="w-full flex items-center justify-between px-3 py-3 text-left font-medium text-sm text-[#ffffff] hover:bg-[#333333] transition-colors cursor-pointer select-none"
+                    >
+                      <div
+                        draggable
+                        onDragStart={(e) => handleCategoryDragStart(e, catIdx, "weekly")}
+                        onDragEnd={handleDragEnd}
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 -ml-1 mr-1 text-[#666] hover:text-[#e08a32] cursor-grab active:cursor-grabbing rounded transition-colors shrink-0"
+                        title="Drag category to reorder or move across boards"
+                        aria-label={`Drag category ${cat.name}`}
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </div>
+                      <span className="truncate flex-1 pr-2">{cat.name}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isLoggedIn && (
+                          <button
+                            type="button"
+                            onClick={(e) => openCategoryMenuFromButton(e, cat, "weekly")}
+                            className="p-1 rounded-md text-[#868686] hover:text-[#ffffff] hover:bg-[#3d3d3d] transition-colors"
+                            title="Category options"
+                            aria-label={`Options for category ${cat.name}`}
                           >
-                            <div
-                              onClick={() => toggleWeeklyTask(catIdx, task.id)}
-                              className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
-                            >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        )}
+                        {cat.isCollapsed ? (
+                          <ChevronDown className="h-4 w-4 text-[#868686]" />
+                        ) : (
+                          <ChevronUp className="h-4 w-4 text-[#868686]" />
+                        )}
+                      </div>
+                    </div>
+
+                    {!cat.isCollapsed && (
+                      <div className="px-4 pb-3 pt-1 space-y-2.5 border-t border-[#383838]">
+                        {cat.tasks.length === 0 ? (
+                          <p className="text-xs text-[#868686] py-1">No weekly tasks in this category.</p>
+                        ) : (
+                          cat.tasks.map((task) => {
+                            const isTaskDragging =
+                              draggedItem?.type === "task" && draggedItem.id === task.id;
+                            const isTaskOver =
+                              dragOverInfo?.type === "task" && dragOverInfo.targetId === task.id;
+
+                            return (
                               <div
-                                className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 ${
-                                  task.completed
-                                    ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
-                                    : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
+                                key={task.id}
+                                data-drag-card="task"
+                                onDragOver={(e) =>
+                                  handleTaskDragOver(e, task.id, catIdx, "weekly")
+                                }
+                                onDrop={(e) =>
+                                  handleTaskDrop(e, task.id, catIdx, "weekly")
+                                }
+                                onContextMenu={(e) =>
+                                  handleTaskContextMenu(e, task, catIdx, "weekly")
+                                }
+                                className={`flex items-start justify-between gap-2 p-1.5 rounded-lg hover:bg-[#383838] transition-all group ${
+                                  isTaskDragging
+                                    ? "opacity-30 border border-dashed border-[#e08a32] bg-[#1e1e1e]"
+                                    : ""
+                                } ${
+                                  isTaskOver && dragOverInfo?.position === "above"
+                                    ? "border-t-2 border-t-[#e08a32]"
+                                    : isTaskOver && dragOverInfo?.position === "below"
+                                    ? "border-b-2 border-b-[#e08a32]"
+                                    : ""
                                 }`}
                               >
-                                {task.completed && (
-                                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                <div
+                                  draggable
+                                  onDragStart={(e) =>
+                                    handleTaskDragStart(e, task.id, catIdx, "weekly")
+                                  }
+                                  onDragEnd={handleDragEnd}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1 -ml-1 text-[#666] hover:text-[#e08a32] cursor-grab active:cursor-grabbing rounded transition-colors shrink-0 mt-0.5"
+                                  title="Drag task to reorder or move across categories"
+                                  aria-label={`Drag task ${task.text}`}
+                                >
+                                  <GripVertical className="h-3.5 w-3.5" />
+                                </div>
+                                <div
+                                  onClick={() => toggleWeeklyTask(catIdx, task.id)}
+                                  className="flex items-start gap-3 cursor-pointer flex-1 min-w-0"
+                                >
+                                  <div
+                                    className={`h-5 w-5 rounded flex items-center justify-center border transition-all shrink-0 mt-0.5 ${
+                                      task.completed
+                                        ? "bg-[#ffffff] border-[#ffffff] text-[#0d0d0d]"
+                                        : "border-[#ffffff] bg-transparent group-hover:border-gray-300"
+                                    }`}
+                                  >
+                                    {task.completed && (
+                                      <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                    )}
+                                  </div>
+                                  <span
+                                    className={`text-sm line-clamp-2 break-words leading-snug ${
+                                      task.completed
+                                        ? "text-[#868686] line-through"
+                                        : "text-[#ffffff]"
+                                    }`}
+                                  >
+                                    {task.text}
+                                  </span>
+                                </div>
+                                {isLoggedIn && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) =>
+                                      openTaskMenuFromButton(
+                                        e,
+                                        task,
+                                        catIdx,
+                                        "weekly",
+                                      )
+                                    }
+                                    className="opacity-0 group-hover:opacity-100 sm:opacity-0 max-sm:opacity-100 p-1 text-[#868686] hover:text-[#ffffff] rounded hover:bg-[#444444] transition-opacity shrink-0 mt-0.5"
+                                    title="Task options"
+                                    aria-label={`Options for task ${task.text}`}
+                                  >
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </button>
                                 )}
                               </div>
-                              <span
-                                className={`text-sm truncate ${
-                                  task.completed
-                                    ? "text-[#868686] line-through"
-                                    : "text-[#ffffff]"
-                                }`}
-                              >
-                                {task.text}
-                              </span>
-                            </div>
-                            {isLoggedIn && (
-                              <button
-                                type="button"
-                                onClick={(e) =>
-                                  openTaskMenuFromButton(
-                                    e,
-                                    task,
-                                    catIdx,
-                                    "weekly",
-                                  )
-                                }
-                                className="opacity-0 group-hover:opacity-100 sm:opacity-0 max-sm:opacity-100 p-1 text-[#868686] hover:text-[#ffffff] rounded hover:bg-[#444444] transition-opacity"
-                                title="Task options"
-                                aria-label={`Options for task ${task.text}`}
-                              >
-                                <MoreVertical className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              }))}
             </div>
           </div>
 
@@ -859,11 +1914,17 @@ export function CockpitTasksSection({
               type="button"
               onClick={() => {
                 setAddModalType("weekly");
-                setSelectedCategory(weeklyCategoryOptions[0] || "Category 1");
+                if (weeklyCategoryOptions.length > 0) {
+                  setSelectedCategory(weeklyCategoryOptions[0]);
+                  setIsCreatingCategory(false);
+                } else {
+                  setSelectedCategory("");
+                  setIsCreatingCategory(true);
+                }
               }}
               className="h-10 px-6 rounded-full bg-[#ffffff] text-[#000000] text-xs font-bold hover:bg-[#e0e0e0] shadow-sm inline-flex items-center gap-1.5"
             >
-              Add more todos
+              {weeklyCategories.length === 0 ? "+ Add first todo" : "+ Add more todos"}
             </Button>
           </div>
         </div>
@@ -909,10 +1970,15 @@ export function CockpitTasksSection({
                 {!isCreatingCategory ? (
                   <div className="flex gap-2">
                     <select
+                      ref={categorySelectRef}
                       value={selectedCategory}
                       onChange={(e) => {
                         if (e.target.value === "__NEW__") {
                           setIsCreatingCategory(true);
+                          setTimeout(() => {
+                            categoryInputRef.current?.focus();
+                            categoryInputRef.current?.select();
+                          }, 50);
                         } else {
                           setSelectedCategory(e.target.value);
                         }
@@ -932,20 +1998,29 @@ export function CockpitTasksSection({
                 ) : (
                   <div className="flex gap-2">
                     <Input
+                      ref={categoryInputRef}
                       type="text"
                       placeholder="Category name"
                       value={customCategory}
                       onChange={(e) => setCustomCategory(e.target.value)}
+                      autoFocus
                       className="h-11 bg-[#545454] border-[#484848] text-[#f4f3f6] rounded-xl"
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsCreatingCategory(false)}
-                      className="h-11 border-[#484848] text-xs text-[#ffffff]"
-                    >
-                      Back
-                    </Button>
+                    {(addModalType === "daily" ? dailyCategoryOptions : weeklyCategoryOptions).length > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setIsCreatingCategory(false);
+                          setTimeout(() => {
+                            categorySelectRef.current?.focus();
+                          }, 50);
+                        }}
+                        className="h-11 border-[#484848] text-xs text-[#ffffff]"
+                      >
+                        Back
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

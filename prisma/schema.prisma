@@ -188,6 +188,7 @@ model Category {
   userId    String
   name      String   @db.VarChar(255)
   taskType  TaskType @default(DAILY) @map("task_type")
+  sortOrder Int      @default(0) @map("sort_order")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -205,6 +206,7 @@ model Task {
   categoryId  String
   title       String    @db.VarChar(255)
   taskType    TaskType  @map("task_type")
+  sortOrder   Int       @default(0) @map("sort_order")
   isComplete  Boolean   @default(false) @map("is_complete")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")

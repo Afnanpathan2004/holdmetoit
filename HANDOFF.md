@@ -249,24 +249,81 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - Created `FeedbackForm`: segmented toggle (`🐛 Bug` / `✨ Suggestion`), loading state with spinner, double-submit protection, and clean success confirmation (removed `📍 Page` indicator and `Reference: FB-XX` badge from client dialog, keeping user confirmation simple and warm while preserving full metadata in DB and Discord).
     - Created `FeedbackDialog`: modal with backdrop blur and escape key dismissal.
     - Created `FeedbackTriggerButton`: fixed floating bottom-right trigger pill.
-    - Mounted `<FeedbackTriggerButton />` in `app/layout.tsx`.
-    - Added component test suites in `feedback-form.test.tsx` and `feedback-dialog.test.tsx`.
+### Session 46 — 2026-10-06
+- **Agent Role:** Fullstack & Participant UI Agent
+- **Changes Completed (Offline-First To-Do List with IndexedDB & Cloud Sync):**
+  - **Pure Domain Engine (`features/tasks/domain/` / Law L7):**
+    - Created `task-sync.types.ts`: TypeScript contracts for `LocalTaskRecord`, `LocalCategoryRecord`, `QueuedMutation`, `BatchSyncRequest`, and `BatchSyncResponse`.
+    - Created `task-sync.schema.ts`: Zod validation schemas for `queuedMutationSchema` and `batchSyncSchema`. Implemented pure queue utilities: `sortMutationsChronologically` (FIFO ordering) and `compactMutationQueue` (pruning transient creates/deletes before sync).
+    - Created unit tests in `task-sync.test.ts` (100% green, 5/5 tests).
+  - **IndexedDB Layer (`features/tasks/data/local/`):**
+    - Created `task-idb.ts`: Browser-safe IndexedDB wrapper (`holdmetoit_db`, version 1) managing object stores `tasks`, `categories`, and `queued_mutations`.
+    - Implemented guest data migration (`migrateGuestDataToUser`): automatically transfers unauthenticated local tasks to the authenticated user ID upon Discord OAuth login.
+    - Uses native `crypto.randomUUID()` matching Prisma's `@id @default(uuid())` primary keys natively.
+    - Integrated direct `console.log("[TaskSync] ...")` and `LogRocket.log("[TaskSync] ...")` for transparent online/offline observability.
+  - **Background Sync Service (`features/tasks/data/local/task-sync.service.ts`):**
+    - Created `TaskSyncService`: listens to `window.online`, `window.offline`, and `document.visibilitychange` events to trigger background queue flushes without blocking the UI.
+    - Implemented debounced sync scheduler (`scheduleSync`) for local mutations.
+  - **Backend Batch Sync Endpoint (`app/api/tasks/sync/route.ts` & `features/tasks/data/task-sync.repository.ts`):**
+    - Created `POST /api/tasks/sync`: validates batch payloads with Zod, checks active session, and executes mutations inside a Prisma transaction (`prisma.$transaction`) with idempotent upserts.
+    - Returns processed mutation IDs and server changes for two-way reconciliation.
+    - Added unit test suite in `task-sync.route.test.ts` (100% green, 3/3 tests).
+  - **Presentation Layer (`features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx` / Law L9):**
+    - Passed `userId` from `HomeCockpitView` to `CockpitTasksSection`.
+    - Hydrated tasks and categories from IndexedDB on component mount.
+    - Updated toggle, create, edit, and delete handlers to write instantly (`0ms`) to IndexedDB and queue mutations for background sync.
+    - **Zero UI Indicators:** Strictly no status pills, badges, spinners, or banners in the UI per user specification.
   - **Quality Gates:**
     - `npm run typecheck` exits 0 (zero TypeScript compiler errors).
-    - `npm run test` exits 0 (52 test files, 543/543 tests green).
-    - `npm run build` succeeds cleanly with all routes compiled including `ƒ /api/feedback`.
+    - `npm run test` exits 0 (54 test files, 551/551 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled including `ƒ /api/tasks/sync`.
+
+### Session 47 — 2026-10-06
+- **Agent Role:** Fullstack & Participant UI Agent
+- **Changes Completed (Drag & Drop Categories and Tasks Across Daily & Weekly To-Dos):**
+  - **Database & Prisma Schema (`prisma/schema.prisma`):**
+    - Added `sortOrder Int @default(0)` mapped to `sort_order` in `Category` and `Task` models.
+    - Synchronized schema to Supabase PostgreSQL via `npx prisma db push` and regenerated Prisma client.
+  - **Pure Domain Engine (`features/tasks/domain/` / Law L7):**
+    - Created `task-reorder.ts`: pure functions `reorderArray`, `moveTaskBetweenCategories`, and `moveCategoryBetweenColumns` with immutable state transformations and 0-based `sortOrder` normalizations.
+    - Updated `task.types.ts` and `task-sync.types.ts`: added `sortOrder?: number` to `CategoryGroup`, `TaskItem`, `LocalCategoryRecord`, and `LocalTaskRecord`.
+    - Expanded `SyncAction` union to include `"MOVE" | "REORDER"`.
+    - Updated `task-sync.schema.ts`: extended `queuedMutationSchema` to validate payload fields (`sortOrder`, `categoryId`, `taskType`, `column`) for reorder and move actions.
+    - Added unit test suite `task-reorder.test.ts` (100% green, 5/5 tests).
+  - **Data Layer & Cloud Sync (`features/tasks/data/`):**
+    - Updated `task.repository.ts`: updated `getUserCategoriesWithTasks` to sort categories and tasks in ascending order by `sortOrder`.
+    - Hardened `task-sync.repository.ts`: removed faulty `DEFAULT_CATEGORY_NAME` fallback on category `MOVE` and `UPDATE`, eliminating the auto-rename to "Category 1" and unique constraint crashes. Added automatic cross-column name disambiguation (`(Moved)`) when moving categories across `DAILY` and `WEEKLY` boards to strictly prevent `P2002` violations.
+    - Fixed mutation acknowledgment: errored mutations are no longer marked as processed, preventing stale server overwrites of local IndexedDB state.
+    - Added unit test suite `task-sync.repository.test.ts` (100% green, 3/3 tests).
+  - **Presentation Layer (`features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx` / Law L9):**
+    - Implemented native HTML5 Drag and Drop with full-card floating previews via `e.dataTransfer.setDragImage(cardElement, offsetX, offsetY)`.
+    - Added `data-drag-card="category"` and `data-drag-card="task"` hooks with elevated floating cues and subtle scaling (`scale-[0.99]`).
+    - Added `sortOrder` ascending sort during `hydrateFromIndexedDB` for both categories and tasks.
+    - Added local task `taskType` cascade and multi-category `sortOrder` updates to IndexedDB on drop.
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero TypeScript compiler errors).
+    - `npm run test` exits 0 (56 test files, 559/559 tests green).
+    - `npm run build` succeeds cleanly with all 8 dynamic/static routes compiled.
 
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify Feedback Floating Widget in Browser:**
-   - Run `npm run dev` and visit `http://localhost:3000`.
-   - Click the bottom-right "Feedback" floating pill.
-   - Submit a test bug report and a test enhancement suggestion.
-   - Verify prompt confirmation in UI and inspect the live embed posted directly to channel `1556790638593319063`.
-2. **Phase 2 & 3 Verification:**
-   - Verify LogRocket session URL correlation when submitting a bug report.
+1. **In-Browser Verification of Drag & Drop and Offline Sync:**
+   - Run `npm run dev` and navigate to `http://localhost:3000`.
+   - Test dragging tasks between categories within Daily and Weekly columns.
+   - Test dragging tasks across the boundary between Daily and Weekly to-do boards.
+   - Test dragging an entire category card to reorder or move it between Daily and Weekly columns.
+   - Verify that all mutations persist instantly across browser refreshes and sync smoothly with the PostgreSQL backend.
+2. **Offline-to-Online Network Simulation:**
+   - Open Chrome DevTools -> Application -> IndexedDB -> `holdmetoit_db` to inspect `tasks`, `categories`, and `queued_mutations`.
+   - Set Chrome DevTools Network to "Offline", perform several task/category drag-and-drop operations, and verify 0ms responsiveness.
+   - Restore Network connection and check Chrome console logs (`[TaskSync] Batch sync completed successfully...`) to confirm clean draining of `queued_mutations`.
+3. **Guest Claim Flow Verification:**
+   - Log out or open an Incognito window as guest.
+   - Create guest tasks in the Cockpit.
+   - Log in via Discord OAuth and observe automatic migration of guest tasks to the user account.
+
 
 
 

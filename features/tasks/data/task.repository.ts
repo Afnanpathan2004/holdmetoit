@@ -7,7 +7,7 @@ import type {
   UserCategorizedTasks,
 } from "@/features/tasks/domain/task.types";
 
-export const DEFAULT_CATEGORY_NAME = "Category 1";
+export const DEFAULT_CATEGORY_NAME = "General";
 
 export async function getUserCategorizedTasks(
   userId: string,
@@ -16,49 +16,18 @@ export async function getUserCategorizedTasks(
     where: { userId },
     include: {
       tasks: {
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       },
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
-
-  // Ensure default categories exist for both DAILY and WEEKLY
-  const hasDaily = categories.some((c) => c.taskType === "DAILY");
-  const hasWeekly = categories.some((c) => c.taskType === "WEEKLY");
-
-  if (!hasDaily) {
-    const defaultDaily = await prisma.category.create({
-      data: {
-        userId,
-        name: DEFAULT_CATEGORY_NAME,
-        taskType: "DAILY",
-      },
-      include: {
-        tasks: true,
-      },
-    });
-    categories.push(defaultDaily);
-  }
-
-  if (!hasWeekly) {
-    const defaultWeekly = await prisma.category.create({
-      data: {
-        userId,
-        name: DEFAULT_CATEGORY_NAME,
-        taskType: "WEEKLY",
-      },
-      include: {
-        tasks: true,
-      },
-    });
-    categories.push(defaultWeekly);
-  }
 
   const categoryItems: CategoryItem[] = categories.map((c) => ({
     id: c.id,
     userId: c.userId,
     name: c.name,
     taskType: c.taskType,
+    sortOrder: c.sortOrder,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
   }));
@@ -74,6 +43,7 @@ export async function getUserCategorizedTasks(
           categoryId: t.categoryId,
           title: t.title,
           taskType: "DAILY" as const,
+          sortOrder: t.sortOrder,
           isComplete: t.isComplete,
           createdAt: t.createdAt,
           updatedAt: t.updatedAt,
@@ -84,6 +54,7 @@ export async function getUserCategorizedTasks(
         id: c.id,
         name: c.name,
         taskType: "DAILY" as const,
+        sortOrder: c.sortOrder,
         isCollapsed: false,
         tasks: dailyTasks,
       };
@@ -100,6 +71,7 @@ export async function getUserCategorizedTasks(
           categoryId: t.categoryId,
           title: t.title,
           taskType: "WEEKLY" as const,
+          sortOrder: t.sortOrder,
           isComplete: t.isComplete,
           createdAt: t.createdAt,
           updatedAt: t.updatedAt,
@@ -110,6 +82,7 @@ export async function getUserCategorizedTasks(
         id: c.id,
         name: c.name,
         taskType: "WEEKLY" as const,
+        sortOrder: c.sortOrder,
         isCollapsed: false,
         tasks: weeklyTasks,
       };
