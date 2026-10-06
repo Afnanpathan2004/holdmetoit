@@ -278,22 +278,48 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - `npm run test` exits 0 (54 test files, 551/551 tests green).
     - `npm run build` succeeds cleanly with all routes compiled including `ƒ /api/tasks/sync`.
 
+### Session 47 — 2026-10-06
+- **Agent Role:** Fullstack & Participant UI Agent
+- **Changes Completed (Drag & Drop Categories and Tasks Across Daily & Weekly To-Dos):**
+  - **Database & Prisma Schema (`prisma/schema.prisma`):**
+    - Added `sortOrder Int @default(0)` mapped to `sort_order` in `Category` and `Task` models.
+    - Synchronized schema to Supabase PostgreSQL via `npx prisma db push` and regenerated Prisma client.
+  - **Pure Domain Engine (`features/tasks/domain/` / Law L7):**
+    - Created `task-reorder.ts`: pure functions `reorderArray`, `moveTaskBetweenCategories`, and `moveCategoryBetweenColumns` with immutable state transformations and 0-based `sortOrder` normalizations.
+    - Updated `task.types.ts` and `task-sync.types.ts`: added `sortOrder?: number` to `CategoryGroup`, `TaskItem`, `LocalCategoryRecord`, and `LocalTaskRecord`.
+    - Expanded `SyncAction` union to include `"MOVE" | "REORDER"`.
+    - Updated `task-sync.schema.ts`: extended `queuedMutationSchema` to validate payload fields (`sortOrder`, `categoryId`, `taskType`, `column`) for reorder and move actions.
+    - Added unit test suite `task-reorder.test.ts` (100% green, 5/5 tests).
+  - **Data Layer & Cloud Sync (`features/tasks/data/`):**
+    - Updated `task.repository.ts`: updated `getUserCategoriesWithTasks` to sort categories and tasks in ascending order by `sortOrder`.
+    - Hardened `task-sync.repository.ts`: removed faulty `DEFAULT_CATEGORY_NAME` fallback on category `MOVE` and `UPDATE`, eliminating the auto-rename to "Category 1" and unique constraint crashes. Added automatic cross-column name disambiguation (`(Moved)`) when moving categories across `DAILY` and `WEEKLY` boards to strictly prevent `P2002` violations.
+    - Fixed mutation acknowledgment: errored mutations are no longer marked as processed, preventing stale server overwrites of local IndexedDB state.
+    - Added unit test suite `task-sync.repository.test.ts` (100% green, 3/3 tests).
+  - **Presentation Layer (`features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx` / Law L9):**
+    - Implemented native HTML5 Drag and Drop with full-card floating previews via `e.dataTransfer.setDragImage(cardElement, offsetX, offsetY)`.
+    - Added `data-drag-card="category"` and `data-drag-card="task"` hooks with elevated floating cues and subtle scaling (`scale-[0.99]`).
+    - Added `sortOrder` ascending sort during `hydrateFromIndexedDB` for both categories and tasks.
+    - Added local task `taskType` cascade and multi-category `sortOrder` updates to IndexedDB on drop.
+  - **Quality Gates:**
+    - `npm run typecheck` exits 0 (zero TypeScript compiler errors).
+    - `npm run test` exits 0 (56 test files, 559/559 tests green).
+    - `npm run build` succeeds cleanly with all 8 dynamic/static routes compiled.
+
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **Verify Offline-First To-Do List in Browser:**
+1. **In-Browser Verification of Drag & Drop and Offline Sync:**
    - Run `npm run dev` and navigate to `http://localhost:3000`.
-   - Open Chrome DevTools $\rightarrow$ Application $\rightarrow$ IndexedDB $\rightarrow$ `holdmetoit_db` to inspect `tasks`, `categories`, and `queued_mutations`.
-   - Toggle Chrome DevTools Network to "Offline", create/toggle tasks, and observe:
-     - 0ms instant UI updates without lag.
-     - Offline console logs: `[TaskSync] Local mutation recorded...`.
-     - Data persists across hard refreshes even when offline.
-   - Toggle Network back to "Online", observe automatic background sync flush:
-     - `[TaskSync] Device transitioned to ONLINE...`
-     - `[TaskSync] Batch sync completed successfully...`
-     - `queued_mutations` store cleanly drains.
-2. **Guest Claim Flow Verification:**
+   - Test dragging tasks between categories within Daily and Weekly columns.
+   - Test dragging tasks across the boundary between Daily and Weekly to-do boards.
+   - Test dragging an entire category card to reorder or move it between Daily and Weekly columns.
+   - Verify that all mutations persist instantly across browser refreshes and sync smoothly with the PostgreSQL backend.
+2. **Offline-to-Online Network Simulation:**
+   - Open Chrome DevTools -> Application -> IndexedDB -> `holdmetoit_db` to inspect `tasks`, `categories`, and `queued_mutations`.
+   - Set Chrome DevTools Network to "Offline", perform several task/category drag-and-drop operations, and verify 0ms responsiveness.
+   - Restore Network connection and check Chrome console logs (`[TaskSync] Batch sync completed successfully...`) to confirm clean draining of `queued_mutations`.
+3. **Guest Claim Flow Verification:**
    - Log out or open an Incognito window as guest.
    - Create guest tasks in the Cockpit.
    - Log in via Discord OAuth and observe automatic migration of guest tasks to the user account.

@@ -2,7 +2,13 @@ import type { CategoryItem, TaskItem, TaskType } from "./task.types";
 
 export type SyncState = "synced" | "pending";
 
-export type SyncAction = "CREATE" | "UPDATE" | "DELETE" | "TOGGLE";
+export type SyncAction =
+  | "CREATE"
+  | "UPDATE"
+  | "DELETE"
+  | "TOGGLE"
+  | "MOVE"
+  | "REORDER";
 
 export type SyncEntityType = "TASK" | "CATEGORY";
 
@@ -12,6 +18,7 @@ export interface LocalTaskRecord {
   categoryId: string;
   title: string;
   taskType: TaskType;
+  sortOrder?: number;
   isComplete: boolean;
   createdAt: string;
   updatedAt: string;
@@ -24,6 +31,7 @@ export interface LocalCategoryRecord {
   userId: string | null;
   name: string;
   taskType: TaskType;
+  sortOrder?: number;
   createdAt: string;
   updatedAt: string;
   syncState: SyncState;

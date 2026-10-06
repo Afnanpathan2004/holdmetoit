@@ -106,51 +106,17 @@ describe("task.repository", () => {
       expect(result.completedWeeklyTasks).toBe(0);
     });
 
-    it("seeds default Category 1 for both DAILY and WEEKLY if user has no categories", async () => {
+    it("returns empty arrays without seeding default categories if user has no categories", async () => {
       vi.mocked(prisma.category.findMany).mockResolvedValue([] as never);
-      vi.mocked(prisma.category.create)
-        .mockResolvedValueOnce({
-          id: "cat_default_daily",
-          userId: "user_new",
-          name: "Category 1",
-          taskType: "DAILY",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          tasks: [],
-        } as never)
-        .mockResolvedValueOnce({
-          id: "cat_default_weekly",
-          userId: "user_new",
-          name: "Category 1",
-          taskType: "WEEKLY",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          tasks: [],
-        } as never);
 
       const result = await getUserCategorizedTasks("user_new");
 
-      expect(prisma.category.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            userId: "user_new",
-            name: "Category 1",
-            taskType: "DAILY",
-          }),
-        }),
-      );
-      expect(prisma.category.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            userId: "user_new",
-            name: "Category 1",
-            taskType: "WEEKLY",
-          }),
-        }),
-      );
-      expect(result.categories).toHaveLength(2);
-      expect(result.dailyCategories).toHaveLength(1);
-      expect(result.weeklyCategories).toHaveLength(1);
+      expect(prisma.category.create).not.toHaveBeenCalled();
+      expect(result.categories).toHaveLength(0);
+      expect(result.dailyCategories).toHaveLength(0);
+      expect(result.weeklyCategories).toHaveLength(0);
+      expect(result.totalDailyTasks).toBe(0);
+      expect(result.totalWeeklyTasks).toBe(0);
     });
   });
 

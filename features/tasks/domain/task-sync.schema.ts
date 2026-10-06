@@ -4,7 +4,7 @@ import type { QueuedMutation } from "./task-sync.types";
 export const queuedMutationSchema = z.object({
   id: z.string().uuid("Mutation id must be a valid UUID"),
   entityType: z.enum(["TASK", "CATEGORY"]),
-  action: z.enum(["CREATE", "UPDATE", "DELETE", "TOGGLE"]),
+  action: z.enum(["CREATE", "UPDATE", "DELETE", "TOGGLE", "MOVE", "REORDER"]),
   payload: z.record(z.string(), z.unknown()),
   createdAt: z.number().int().positive(),
   retryCount: z.number().int().min(0).default(0),
