@@ -384,6 +384,7 @@ export function ChallengeLeaderboardTab({
                                   width={28}
                                   height={28}
                                   className="object-cover"
+                                  unoptimized
                                 />
                               ) : (
                                 <span>
