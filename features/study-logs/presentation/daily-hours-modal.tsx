@@ -408,7 +408,7 @@ export function DailyHoursModal({
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          <div className="grid grid-cols-7 gap-1 w-full pb-1">
             {dayOptions.map((opt) => {
               const isSelected = selectedDayNumber === opt.dayNumber;
               const hasLogged = Boolean(
@@ -423,7 +423,7 @@ export function DailyHoursModal({
                   type="button"
                   disabled={opt.isFuture}
                   onClick={() => handleSelectDay(opt.dayNumber, opt.dateKey)}
-                  className={`flex-1 min-w-[44px] py-1.5 px-1 rounded-xl text-center flex flex-col items-center justify-center transition-all ${
+                  className={`w-full min-w-0 py-1.5 px-0.5 sm:px-1 rounded-xl text-center flex flex-col items-center justify-center transition-all ${
                     isSelected
                       ? "bg-[#ffffff] text-[#0d0d0d] font-bold shadow-md"
                       : opt.isFuture

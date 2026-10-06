@@ -251,9 +251,9 @@ export function CockpitTasksSection({
         challengeStartDate,
         effectiveTodayDate,
         totalChallengeDays ?? 7,
-      );
+      ).slice(0, 7);
     }
-    return getCalendarWeekDayOptions(effectiveTodayDate);
+    return getCalendarWeekDayOptions(effectiveTodayDate).slice(0, 7);
   }, [challengeStartDate, effectiveTodayDate, totalChallengeDays]);
 
   const todayDayOption = useMemo(() => {
@@ -1830,11 +1830,11 @@ export function CockpitTasksSection({
               </div>
             </div>
 
-            {/* 7-Day Pill Switcher */}
+            {/* 7-Day Pill Switcher (Fits all 7 days without horizontal scrolling) */}
             <div
               role="tablist"
               aria-label="Challenge Day Tabs"
-              className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 scrollbar-none"
+              className="grid grid-cols-7 gap-1 sm:gap-1.5 w-full pt-0.5 pb-1"
             >
               {dayOptions.map((opt) => {
                 const isSelected = opt.dateKey === selectedDateKey;
@@ -1847,22 +1847,22 @@ export function CockpitTasksSection({
                     role="tab"
                     aria-selected={isSelected}
                     onClick={() => handleSelectDay(opt)}
-                    className={`flex-1 min-w-[56px] py-1.5 px-1.5 rounded-xl text-center border transition-all flex flex-col items-center justify-center shrink-0 ${
+                    className={`w-full min-w-0 py-1.5 px-0.5 sm:px-1 rounded-xl text-center border transition-all flex flex-col items-center justify-between min-h-[54px] sm:min-h-[58px] ${
                       isSelected
                         ? "bg-[#25201b] border-[#e08a32] text-white shadow-sm ring-1 ring-[#e08a32]/60"
                         : "bg-[#1c1c1c] border-[#2e2e2e] text-[#a0a0a0] hover:bg-[#262626] hover:text-white"
                     }`}
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-wider leading-none">
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none">
                       {opt.shortLabel.startsWith("Day ") ? `D${opt.dayNumber}` : opt.shortLabel.slice(0, 3)}
                     </span>
-                    <span className="text-[9px] opacity-75 mt-0.5 leading-none">
+                    <span className="text-[8px] sm:text-[9px] opacity-75 mt-0.5 leading-none truncate max-w-full">
                       {formatDayDate(opt.dateKey)}
                     </span>
-                    <div className="mt-1 flex items-center gap-1">
+                    <div className="mt-1 flex items-center justify-center gap-0.5 sm:gap-1 min-h-[14px] w-full">
                       {opt.isToday && (
                         <span
-                          className={`h-1.5 w-1.5 rounded-full ${
+                          className={`h-1.5 w-1.5 rounded-full shrink-0 ${
                             isSelected ? "bg-[#e08a32]" : "bg-emerald-400"
                           }`}
                           title="Today"
@@ -1870,7 +1870,7 @@ export function CockpitTasksSection({
                       )}
                       {stats.total > 0 && (
                         <span
-                          className={`text-[9px] font-semibold px-1 rounded ${
+                          className={`text-[8px] sm:text-[9px] font-semibold px-0.5 sm:px-1 rounded leading-tight truncate ${
                             allDone
                               ? "bg-emerald-500/20 text-emerald-400"
                               : isSelected
@@ -2558,7 +2558,7 @@ export function CockpitTasksSection({
                       {formatDayDate(addTodoDateKey || selectedDateKey)}
                     </span>
                   </label>
-                  <div className="grid grid-cols-7 gap-1 overflow-x-auto pb-1">
+                  <div className="grid grid-cols-7 gap-1 w-full pb-1">
                     {dayOptions.map((opt) => {
                       const isSelected = (addTodoDateKey || selectedDateKey) === opt.dateKey;
                       return (
@@ -2924,7 +2924,7 @@ export function CockpitTasksSection({
                       {formatDayDate(editTaskInputDueDate)}
                     </span>
                   </label>
-                  <div className="grid grid-cols-7 gap-1 overflow-x-auto pb-1">
+                  <div className="grid grid-cols-7 gap-1 w-full pb-1">
                     {dayOptions.map((opt) => {
                       const isSelected = editTaskInputDueDate === opt.dateKey;
                       return (
