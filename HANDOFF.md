@@ -300,29 +300,69 @@ In accordance with **`AGENTS.md` Rule §9.3**:
     - Added `data-drag-card="category"` and `data-drag-card="task"` hooks with elevated floating cues and subtle scaling (`scale-[0.99]`).
     - Added `sortOrder` ascending sort during `hydrateFromIndexedDB` for both categories and tasks.
     - Added local task `taskType` cascade and multi-category `sortOrder` updates to IndexedDB on drop.
+### Session 48 — 2026-10-06
+- **Agent Role:** Data & Identity Agent & Admin Operations Agent
+- **Changes Completed (Comprehensive Event Audit Log System — FEAT-AUDIT-01):**
+  - **Database & Prisma Schema (`prisma/schema.prisma`):**
+    - Added `AuditLog` model mapped to `audit_logs` table in PostgreSQL with indexed `challengeId`, `createdAt(sort: Desc)`, `actorId`, and `actionType`.
+    - Configured relations: `challenge Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)` and `actor User? @relation("AuditLogsWritten", fields: [actorId], references: [id], onDelete: SetNull)` ensuring strict tamper-proof immutability and historical retention even if challenges or accounts are removed.
+    - Created and executed migration `20261006000000_add_event_audit_logs/migration.sql` deployed successfully via `npx prisma migrate deploy`.
+  - **Pure Domain Engine (`features/audit/domain/` & `features/challenges/domain/` / Law L7):**
+    - Enriched `AuditEvent` and `CreateAuditEventParams` with `actorDisplayName`, `actorImage`, and `targetEntityName`.
+    - Added granular `AuditEventType`s: `EVENT_DETAILS_UPDATED`, `TIMETABLE_ADJUSTED`, `EVENT_BANNER_UPDATED`, `PUNISHMENT_PFP_UPDATED`, and `HOUSE_IDENTITY_UPDATED` with human-readable formatting in `formatAuditActionHuman`.
+    - Created `event-audit-diff.ts`: pure domain diff engine `computeEventDetailsDiff` comparing existing challenge state against incoming input and detecting field-level changes across title, timetable, header banner, punishment PFP, and house identities (added, removed, renamed, or modified color/icon).
+    - Added unit test suite `event-audit-diff.test.ts` (100% green, 5/5 tests).
+  - **Data Layer (`features/audit/data/audit-log.repository.ts`):**
+    - Upgraded repository from in-memory stub to Prisma query engine reading and writing to PostgreSQL `audit_logs` table with automatic actor hydration (`displayName`, `image`).
+    - Added test-mode fallback `_setUseInMemoryAuditTrailForTests` for isolated Vitest runs.
+    - Added unit test coverage in `audit-log.repository.test.ts` (100% green, 2/2 tests).
+  - **Admin Actions & Mutation Wiring (`features/challenges/data/challenge-admin.repository.ts`):**
+    - Integrated `computeEventDetailsDiff` into `updateAdminChallenge`: automatically records granular diffs in `previousValue` and `newValue` and writes readable audit summaries.
+    - Augmented all administrative event operations to pass `targetEntityName`: `createAdminChallenge`, `kickoffChallenge`, `lockChallengeResults`, `adminEnrollParticipant`, `reassignParticipantTeam`, `deleteAdminChallenge`, `executeAdminHoursOverride`, and `adminPardonParticipant`.
+    - Hardened deletion: recorded audit event before physical deletion with `onDelete: SetNull` preserving historical trail.
+  - **Server Actions (`features/audit/api/audit.actions.ts`):**
+    - Created `getChallengeAuditTrailAction`: verifies admin privileges via Auth.js session and returns chronological audit logs.
+    - Added unit test suite `audit.actions.test.ts` (100% green, 2/2 tests).
+  - **Presentation Layer (`features/audit/presentation/` & `features/challenges/presentation/` / Law L9):**
+    - Created `EventAuditTab`: high-density 4-column timeline displaying **Time** (tabular monospace UTC and relative), **Admin** (avatar, name, `@username`), **Name** (target entity pill), and **Action** (color-coded badge, summary, and expandable field-level before/after visual diff).
+    - Included real-time search input, category filter chips (All, Event Details, Roster, Hours, Lifecycle), on-demand refresh, and 1-click JSON export downloading formatted audit records for offline archival (`FEAT-AUDIT-01`).
+    - Integrated **Audit Log** tab into `ChallengeView` (`features/challenges/presentation/challenge-view.tsx`) and updated route props in `app/challenge/[id]/page.tsx`.
+    - Added unit test suite `event-audit-tab.test.tsx` (100% green).
+### Session 49 — 2026-10-06
+- **Agent Role:** Scoring & Engine Agent & Participant UI Agent
+- **Changes Completed (Timezone Drift Diagnosis, UTC Normalization & Timetable Restoration):**
+  - **Diagnostic Forensic Analysis:**
+    - Diagnosed recurring $-5\text{h }30\text{m}$ timetable shift on challenge edit/save operations in `ChallengeManageTab`.
+    - Identified root cause: browser's `new Date("YYYY-MM-DDTHH:mm")` parsing datetime strings without timezone as local time (IST, UTC+05:30), which `.toISOString()` subsequently converted to UTC, subtracting 5 hours and 30 minutes on every save.
+  - **Pure Domain Engine (`features/challenges/domain/` / Law L7 & L8):**
+    - Created `challenge-date-time.ts`: pure functions `formatDateToUtcInputString`, `parseUtcInputStringToIso`, and `isUtcDateRangeValid` utilizing `Date.UTC(...)` and UTC getters to guarantee strict zero-drift round-trip serialization between HTML5 datetime-local inputs and PostgreSQL UTC ISO strings.
+    - Added unit test suite in `challenge-date-time.test.ts` verifying multiple consecutive round-trips with zero milliseconds of drift (100% green, 5/5 tests).
+  - **Presentation Layer (`features/challenges/presentation/`):**
+    - Updated `ChallengeManageTab`: replaced `formatDateForInput` and `new Date(startAt).toISOString()` with `formatDateToUtcInputString` and `parseUtcInputStringToIso`.
+    - Updated `ChallengeCreatorWizard`: initialized state and serialized submission values through `formatDateToUtcInputString` and `parseUtcInputStringToIso`.
+  - **Database Restoration:**
+    - Restored `October Team Battle` (`cmuub6ijq0003sb4eytzy2262`) to its original canonical timetable: `startAt: 2026-10-04T01:00:00.000Z` and `endAt: 2026-10-10T01:00:00.000Z`.
+    - Recorded corrective audit log entry `audit_1791266591007_yfvw187` documenting the restoration.
   - **Quality Gates:**
     - `npm run typecheck` exits 0 (zero TypeScript compiler errors).
-    - `npm run test` exits 0 (56 test files, 559/559 tests green).
-    - `npm run build` succeeds cleanly with all 8 dynamic/static routes compiled.
+    - `npm run test` exits 0 (60 test files, 572/572 tests green).
+    - `npm run build` succeeds cleanly with all routes compiled.
 
 ---
 
 ## 8. Next Steps for Incoming Agent
 
-1. **In-Browser Verification of Drag & Drop and Offline Sync:**
+1. **In-Browser Verification of Event Audit Log & Timetable Invariance:**
    - Run `npm run dev` and navigate to `http://localhost:3000`.
-   - Test dragging tasks between categories within Daily and Weekly columns.
-   - Test dragging tasks across the boundary between Daily and Weekly to-do boards.
-   - Test dragging an entire category card to reorder or move it between Daily and Weekly columns.
-   - Verify that all mutations persist instantly across browser refreshes and sync smoothly with the PostgreSQL backend.
-2. **Offline-to-Online Network Simulation:**
-   - Open Chrome DevTools -> Application -> IndexedDB -> `holdmetoit_db` to inspect `tasks`, `categories`, and `queued_mutations`.
-   - Set Chrome DevTools Network to "Offline", perform several task/category drag-and-drop operations, and verify 0ms responsiveness.
-   - Restore Network connection and check Chrome console logs (`[TaskSync] Batch sync completed successfully...`) to confirm clean draining of `queued_mutations`.
-3. **Guest Claim Flow Verification:**
-   - Log out or open an Incognito window as guest.
-   - Create guest tasks in the Cockpit.
-   - Log in via Discord OAuth and observe automatic migration of guest tasks to the user account.
+   - Log in with an Admin/Dev account.
+   - Navigate to `October Team Battle` at `/challenge/cmuub6ijq0003sb4eytzy2262`.
+   - Verify in the **About** and **Manage** tabs that the start time displays as `01:00 UTC`.
+   - In the **Manage** tab, click "Save Changes" several times and verify in the **Audit Log** tab that NO spurious date changes or timetable shifts are triggered.
+   - Verify that the corrective audit log entry ("Restored canonical 01:00:00 UTC timetable") is listed in the Audit Log timeline.
+2. **Phase 1 Evolution:**
+   - Automated Yeolpumta (YPT) study log ingestion (`FEAT-LOG-03`) or Discord bot daemon integration (`FEAT-DISC-03`).
+
+
 
 
 

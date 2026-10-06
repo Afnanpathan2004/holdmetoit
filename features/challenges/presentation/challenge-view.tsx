@@ -6,10 +6,11 @@ import { ChallengeHeroBanner } from "./challenge-hero-banner";
 import { ChallengeOverviewTab } from "./challenge-overview-tab";
 import { ChallengeLeaderboardTab } from "@/features/leaderboard/presentation/challenge-leaderboard-tab";
 import { ChallengeManageTab } from "./challenge-manage-tab";
+import { EventAuditTab } from "@/features/audit/presentation/event-audit-tab";
 
 interface ChallengeViewProps {
   challenge: ChallengeScoreboardViewModel;
-  initialTab?: "overview" | "leaderboard" | "about" | "manage";
+  initialTab?: "overview" | "leaderboard" | "about" | "manage" | "audit";
   isAdmin?: boolean;
 }
 
@@ -19,7 +20,7 @@ export function ChallengeView({
   isAdmin = false,
 }: ChallengeViewProps) {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "leaderboard" | "about" | "manage"
+    "overview" | "leaderboard" | "about" | "manage" | "audit"
   >(initialTab);
 
   return (
@@ -62,17 +63,30 @@ export function ChallengeView({
             About
           </button>
           {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setActiveTab("manage")}
-              className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === "manage"
-                  ? "bg-[#4a4a4a] text-[#ffffff] shadow"
-                  : "text-[#868686] hover:text-[#ffffff] hover:bg-[#333333]"
-              }`}
-            >
-              Manage
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("manage")}
+                className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === "manage"
+                    ? "bg-[#4a4a4a] text-[#ffffff] shadow"
+                    : "text-[#868686] hover:text-[#ffffff] hover:bg-[#333333]"
+                }`}
+              >
+                Manage
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("audit")}
+                className={`px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === "audit"
+                    ? "bg-[#4a4a4a] text-[#ffffff] shadow"
+                    : "text-[#868686] hover:text-[#ffffff] hover:bg-[#333333]"
+                }`}
+              >
+                Audit Log
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -89,6 +103,13 @@ export function ChallengeView({
 
       {activeTab === "manage" && isAdmin && (
         <ChallengeManageTab challenge={challenge} />
+      )}
+
+      {activeTab === "audit" && isAdmin && (
+        <EventAuditTab
+          challengeId={challenge.id}
+          challengeTitle={challenge.title}
+        />
       )}
 
       {activeTab === "about" && (

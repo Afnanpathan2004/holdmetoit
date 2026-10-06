@@ -13,7 +13,7 @@ interface ChallengePageProps {
     id: string;
   };
   searchParams?: {
-    tab?: "overview" | "leaderboard" | "about" | "manage";
+    tab?: "overview" | "leaderboard" | "about" | "manage" | "audit";
   };
 }
 

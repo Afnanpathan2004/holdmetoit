@@ -7,6 +7,7 @@ import {
   calculateChallengeStatus,
   type ChallengeCreationInput,
 } from "@/features/challenges/domain/challenge-lifecycle";
+import { computeEventDetailsDiff } from "@/features/challenges/domain/event-audit-diff";
 
 export async function listAllChallengesForAdmin() {
   const challenges = await prisma.challenge.findMany({
@@ -127,6 +128,7 @@ export async function createAdminChallenge(
       actionType: "CHALLENGE_CREATED",
       targetEntityId: challenge.id,
       targetEntityType: "CHALLENGE",
+      targetEntityName: challenge.title,
       challengeId: challenge.id,
       newValue: {
         title: challenge.title,
@@ -170,6 +172,7 @@ export async function kickoffChallenge(
     actionType: "CHALLENGE_KICKOFF",
     targetEntityId: challengeId,
     targetEntityType: "CHALLENGE",
+    targetEntityName: challenge.title,
     challengeId,
     previousValue: { status: currentStatus },
     newValue: { status: "ACTIVE" },
@@ -267,6 +270,7 @@ export async function lockChallengeResults(
       actionType: "CHALLENGE_LOCKED",
       targetEntityId: challengeId,
       targetEntityType: "CHALLENGE",
+      targetEntityName: challenge.title,
       challengeId,
       previousValue: { status: currentStatus },
       newValue: {
@@ -352,6 +356,10 @@ export async function adminEnrollParticipant(params: {
     actionType: "ROSTER_EDIT",
     targetEntityId: participant.id,
     targetEntityType: "PARTICIPANT",
+    targetEntityName:
+      participant.user?.displayName ||
+      participant.user?.username ||
+      "Participant",
     challengeId: params.challengeId,
     previousValue: null,
     newValue: {
@@ -455,24 +463,30 @@ export async function updateAdminChallenge(
       });
     }
 
-    await recordAuditEvent({
-      actorId: actor.id,
-      actorUsername: actor.username,
-      actionType: "CHALLENGE_UPDATED",
-      targetEntityId: challengeId,
-      targetEntityType: "CHALLENGE",
-      challengeId,
-      previousValue: {
+    const diff = computeEventDetailsDiff(
+      {
         title: challenge.title,
         startAt: challenge.startAt,
         endAt: challenge.endAt,
+        eventBannerUrl: challenge.eventBannerUrl,
+        punishmentPfpUrl: challenge.punishmentPfpUrl,
+        teams: challenge.teams,
       },
-      newValue: {
-        title: updatedChallenge.title,
-        startAt: updatedChallenge.startAt,
-        endAt: updatedChallenge.endAt,
-      },
-      auditReason: "Admin updated challenge configuration and team identities",
+      input,
+    );
+
+    await recordAuditEvent({
+      actorId: actor.id,
+      actorUsername: actor.username,
+      actionType: "EVENT_DETAILS_UPDATED",
+      targetEntityId: challengeId,
+      targetEntityType: "CHALLENGE",
+      targetEntityName: updatedChallenge.title,
+      challengeId,
+      previousValue: diff.previousValue,
+      newValue: diff.newValue,
+      auditReason:
+        diff.summary || "Admin updated challenge configuration and team identities",
     });
 
     return updatedChallenge;
@@ -507,12 +521,18 @@ export async function reassignParticipantTeam(params: {
       include: { team: true, user: true },
     });
 
+    const participantName =
+      participant.user?.displayName ||
+      participant.user?.username ||
+      "Participant";
+
     await recordAuditEvent({
       actorId: params.admin.id,
       actorUsername: params.admin.username,
       actionType: "ROSTER_EDIT",
       targetEntityId: participant.id,
       targetEntityType: "PARTICIPANT",
+      targetEntityName: participantName,
       challengeId: participant.challengeId,
       previousValue: {
         teamId: participant.teamId,
@@ -524,7 +544,7 @@ export async function reassignParticipantTeam(params: {
       },
       auditReason:
         params.reason?.trim() ||
-        `Host moved ${participant.user.displayName || participant.user.username} to unassigned roster`,
+        `Host moved ${participantName} to unassigned roster`,
     });
 
     return updatedParticipant;
@@ -560,12 +580,18 @@ export async function reassignParticipantTeam(params: {
     include: { team: true, user: true },
   });
 
+  const participantName =
+    participant.user?.displayName ||
+    participant.user?.username ||
+    "Participant";
+
   await recordAuditEvent({
     actorId: params.admin.id,
     actorUsername: params.admin.username,
     actionType: "ROSTER_EDIT",
     targetEntityId: participant.id,
     targetEntityType: "PARTICIPANT",
+    targetEntityName: participantName,
     challengeId: participant.challengeId,
     previousValue: {
       teamId: participant.teamId,
@@ -577,7 +603,7 @@ export async function reassignParticipantTeam(params: {
     },
     auditReason:
       params.reason?.trim() ||
-      `Host reassigned ${participant.user.displayName || participant.user.username} from ${participant.team?.name ?? "Not Assigned"} to ${destinationTeam.name}`,
+      `Host reassigned ${participantName} from ${participant.team?.name ?? "Not Assigned"} to ${destinationTeam.name}`,
   });
 
   return updatedParticipant;
@@ -635,17 +661,14 @@ export async function deleteAdminChallenge(
       where: { challengeId },
     });
 
-    // 8. Delete the challenge
-    const deleted = await tx.challenge.delete({
-      where: { id: challengeId },
-    });
-
+    // 8. Record audit log for permanent challenge deletion
     await recordAuditEvent({
       actorId: actor.id,
       actorUsername: actor.username,
       actionType: "CHALLENGE_DELETED",
       targetEntityId: challengeId,
       targetEntityType: "CHALLENGE",
+      targetEntityName: challenge.title,
       challengeId,
       previousValue: {
         title: challenge.title,
@@ -653,6 +676,11 @@ export async function deleteAdminChallenge(
       },
       newValue: null,
       auditReason: `Host permanently deleted challenge "${challenge.title}"`,
+    });
+
+    // 9. Delete the challenge
+    const deleted = await tx.challenge.delete({
+      where: { id: challengeId },
     });
 
     return deleted;

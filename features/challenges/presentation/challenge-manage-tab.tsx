@@ -29,6 +29,11 @@ import {
 } from "@/features/challenges/api/challenge-admin.actions";
 import { discardChallengeImageUploadAction } from "@/features/challenges/api/punishment-pfp.actions";
 import { ChallengeImageInput } from "@/features/challenges/presentation/challenge-image-input";
+import {
+  formatDateToUtcInputString,
+  isUtcDateRangeValid,
+  parseUtcInputStringToIso,
+} from "@/features/challenges/domain/challenge-date-time";
 
 interface ChallengeManageTabProps {
   challenge: ChallengeScoreboardViewModel;
@@ -40,16 +45,6 @@ interface TeamFormItem {
   color: string;
   iconEmoji: string;
   mascotUrl?: string;
-}
-
-function formatDateForInput(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "";
-    return d.toISOString().slice(0, 16);
-  } catch {
-    return "";
-  }
 }
 
 export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
@@ -67,9 +62,11 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
   // Form states
   const [title, setTitle] = useState(challenge.title);
   const [startAt, setStartAt] = useState(() =>
-    formatDateForInput(challenge.startAt),
+    formatDateToUtcInputString(challenge.startAt),
   );
-  const [endAt, setEndAt] = useState(() => formatDateForInput(challenge.endAt));
+  const [endAt, setEndAt] = useState(() =>
+    formatDateToUtcInputString(challenge.endAt),
+  );
   // Preserve raw saved values rather than normalized images or display-only fallbacks.
   const [savedImages, setSavedImages] = useState({
     eventBannerUrl: challenge.eventBannerUrl,
@@ -116,8 +113,8 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
   const handleReset = () => {
     if (isBusy) return;
     setTitle(challenge.title);
-    setStartAt(formatDateForInput(challenge.startAt));
-    setEndAt(formatDateForInput(challenge.endAt));
+    setStartAt(formatDateToUtcInputString(challenge.startAt));
+    setEndAt(formatDateToUtcInputString(challenge.endAt));
     const persistedUrls = new Set([savedImages.eventBannerUrl, savedImages.punishmentPfpUrl]);
     for (const url of Array.from(new Set([eventBannerUrl, punishmentPfpUrl]))) {
       if (url && !persistedUrls.has(url)) {
@@ -214,7 +211,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
       });
       return;
     }
-    if (new Date(endAt) <= new Date(startAt)) {
+    if (!isUtcDateRangeValid(startAt, endAt)) {
       setFeedback({
         type: "error",
         message: "End date must be strictly after the start date.",
@@ -228,8 +225,8 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
         const res = await updateChallengeAction({
           challengeId: challenge.id,
           title: title.trim(),
-          startAt: new Date(startAt).toISOString(),
-          endAt: new Date(endAt).toISOString(),
+          startAt: parseUtcInputStringToIso(startAt),
+          endAt: parseUtcInputStringToIso(endAt),
           eventBannerUrl,
           punishmentPfpUrl,
           teams: teams.map((t) => ({

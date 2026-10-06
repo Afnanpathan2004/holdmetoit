@@ -7,6 +7,11 @@ export type AuditEventType =
   | "CHALLENGE_LOCKED"
   | "CHALLENGE_CREATED"
   | "CHALLENGE_UPDATED"
+  | "EVENT_DETAILS_UPDATED"
+  | "TIMETABLE_ADJUSTED"
+  | "EVENT_BANNER_UPDATED"
+  | "PUNISHMENT_PFP_UPDATED"
+  | "HOUSE_IDENTITY_UPDATED"
   | "CHALLENGE_DELETED"
   | "ROSTER_EDIT";
 
@@ -22,9 +27,12 @@ export interface AuditEvent {
   timestamp: string; // ISO 8601 UTC
   actorId: string;
   actorUsername: string;
+  actorDisplayName?: string | null;
+  actorImage?: string | null;
   actionType: AuditEventType;
   targetEntityId: string;
   targetEntityType: AuditTargetType;
+  targetEntityName?: string | null;
   challengeId?: string;
   previousValue: unknown;
   newValue: unknown;
@@ -36,9 +44,12 @@ export interface CreateAuditEventParams {
   timestamp?: Date | string;
   actorId: string;
   actorUsername: string;
+  actorDisplayName?: string | null;
+  actorImage?: string | null;
   actionType: AuditEventType;
   targetEntityId: string;
   targetEntityType: AuditTargetType;
+  targetEntityName?: string | null;
   challengeId?: string;
   previousValue?: unknown;
   newValue?: unknown;
@@ -74,9 +85,12 @@ export function createAuditEnvelope(params: CreateAuditEventParams): AuditEvent 
     timestamp,
     actorId: params.actorId.trim(),
     actorUsername: params.actorUsername.trim(),
+    actorDisplayName: params.actorDisplayName?.trim() || null,
+    actorImage: params.actorImage?.trim() || null,
     actionType: params.actionType,
     targetEntityId: params.targetEntityId.trim(),
     targetEntityType: params.targetEntityType,
+    targetEntityName: params.targetEntityName?.trim() || null,
     challengeId: params.challengeId?.trim(),
     previousValue: params.previousValue ?? null,
     newValue: params.newValue ?? null,
@@ -104,7 +118,17 @@ export function formatAuditActionHuman(action: AuditEventType): string {
     case "CHALLENGE_CREATED":
       return "Challenge Created";
     case "CHALLENGE_UPDATED":
-      return "Challenge Updated";
+      return "Event Details Updated";
+    case "EVENT_DETAILS_UPDATED":
+      return "Event Details Updated";
+    case "TIMETABLE_ADJUSTED":
+      return "Event Timetable Adjusted";
+    case "EVENT_BANNER_UPDATED":
+      return "Header Banner Updated";
+    case "PUNISHMENT_PFP_UPDATED":
+      return "Punishment PFP Updated";
+    case "HOUSE_IDENTITY_UPDATED":
+      return "House Identities Updated";
     case "CHALLENGE_DELETED":
       return "Challenge Deleted";
     case "ROSTER_EDIT":
