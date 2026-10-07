@@ -41,9 +41,9 @@ export function CockpitProgressCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto">
           {cockpit.catchUp && cockpit.catchUp.deficitSeconds > 0 ? (
-            <div className="rounded-xl border border-[#ef4444]/40 bg-[#401010] px-3 py-1.5 text-xs text-[#ff5757]">
+            <div className="rounded-xl border border-[#ef4444]/40 bg-[#401010] px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs text-[#ff5757]">
               <span className="font-semibold">Deficit:</span>{" "}
               <span className="font-sans font-sans-tabular">
                 -{formatSecondsToClock(Math.round(cockpit.catchUp.deficitSeconds))}
@@ -60,7 +60,7 @@ export function CockpitProgressCard({
               ) : null}
             </div>
           ) : (
-            <div className="rounded-xl border border-[#22c55e]/40 bg-[#144520] px-3 py-1.5 text-xs text-[#85ff93] font-semibold">
+            <div className="rounded-xl border border-[#22c55e]/40 bg-[#144520] px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs text-[#85ff93] font-semibold">
               Pace on Target
             </div>
           )}

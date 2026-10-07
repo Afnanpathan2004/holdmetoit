@@ -118,13 +118,15 @@ To eliminate architectural drift, the core technology stack is permanently locke
 | :--- | :--- | :--- | :--- |
 | **Framework & Runtime** | Next.js (App Router) | 14+ | Unified fullstack SSR/Client architecture, zero CORS, zero multi-repo overhead |
 | **Language** | TypeScript | 5.x | Strict end-to-end type safety (`strict: true`) across UI, API, and DB layers |
-| **Styling & Components** | Tailwind CSS + shadcn/ui | Latest | Atomic utilities, responsive layouts (360px+), accessible Radix UI primitives |
+| **Styling & Components** | Tailwind CSS + shadcn/ui | Obsidian Dark | Atomic utilities, responsive layouts (360px+), accessible Radix UI primitives, Obsidian tokens (`DESIGN.md`) |
 | **Database Engine** | PostgreSQL (Supabase / Neon) | 15+ | Relational data integrity, ACID transactions for batch logging, Discord Snowflake keys |
-| **Object Storage** | Supabase Storage (`@supabase/supabase-js`) | Latest | Server-only uploads (service-role key) of challenge images, e.g. Punishment PFP; public bucket URLs stored as strings |
-| **ORM & Migrations** | Prisma ORM | 5.x | Declarative schemas, type-safe queries, migration control |
-| **Authentication** | Auth.js (NextAuth.js v5) | Latest | Discord OAuth 2.0 (`identify` scope), session cookie management, spectator fallback |
-| **Schema Validation** | Zod | 3.x | Strict runtime payload validation at API boundaries and form inputs |
-| **Unit & Math Testing** | Vitest | Latest | Fast ESM test runner for pure domain math and time calculations |
+| **Object Storage** | Supabase Storage (`@supabase/supabase-js`) | 2.x | Server-only uploads of event banners and punishment PFPs; public bucket URLs stored as strings |
+| **ORM & Migrations** | Prisma ORM | 6.x | Declarative schemas, type-safe queries, migration control |
+| **Authentication** | Auth.js (NextAuth.js v5 beta) | Latest | Discord OAuth 2.0 (`identify` scope), session cookie management, spectator fallback |
+| **Offline Storage** | Browser IndexedDB | Native | Offline-first task checklist (`holdmetoit_db`) with silent background cloud sync (`/api/tasks/sync`) |
+| **Observability** | LogRocket | 12.x | Client session replays, exception capture in error boundaries |
+| **Schema Validation** | Zod | 4.x | Strict runtime payload validation at API boundaries and form inputs |
+| **Unit & Math Testing** | Vitest | 3.x | Fast ESM test runner for pure domain math and time calculations |
 | **Hosting & Deployment** | Vercel | Production | Native Next.js edge and serverless runtime support |
 
 ### 6.2 Explicitly Rejected Technologies
@@ -231,7 +233,7 @@ journey
 
 ### J1: Discord OAuth Login & Profile Provisioning
 - **Trigger:** Unauthenticated guest opens `/challenge/:id` (Spectator mode active, read-only). Guest clicks "Login with Discord".
-- **Action:** Authenticates via Discord OAuth 2.0 (`identify` scope); redirected to `/dashboard`.
+- **Action:** Authenticates via Discord OAuth 2.0 (`identify` scope); redirected to Home Cockpit (`/`).
 - **Database Assertion:** Record upserted in `User` table matching Discord `id`, `username`, `displayName`, and `avatar`.
 - **Laws Gated:** Law L4 (Discord Identity Primacy), Law L9 (Zero-State & Error Resilience).
 
@@ -243,20 +245,20 @@ journey
 
 ### J3: Participant Pre-Kickoff Declaration & Goal Locking
 - **Trigger:** Enrolled participant visits challenge page during `UPCOMING` phase.
-- **Action:** Submits declared target hours (`35:00:00`) and 3 weekly goals (e.g., *"Finish Physics Ch 1–3"*). Admin clicks "Start Event Now".
-- **Database Assertion:** `ChallengeParticipant` records updated; challenge transitions to `ACTIVE`. All target hours and task text become read-only (`disabled`).
+- **Action:** Submits declared target hours (`35:00:00`) in enrollment modal. Admin clicks "Start Event Now".
+- **Database Assertion:** `ChallengeParticipant` records updated; challenge transitions to `ACTIVE`. Target hours become read-only (`disabled`).
 - **Laws Gated:** Law L6 (Dual-Failure Invariant), Law L8 (Second-Level Precision).
 
 ### J4: Daily Study Logging & Dynamic Catch-Up Recalculation
-- **Trigger:** Participant logs daily study time (`04:30:00`) for the current date via `/dashboard`.
-- **Action:** Form validates duration $\le 86,400\text{ s}$ and submits server action.
+- **Trigger:** Participant logs daily study time (`04:30:00`) for the current date via Home Cockpit (`/`).
+- **Action:** Form validates duration $\le 86,400\text{ s}$ and submits server action (`logStudyTimeAction`).
 - **Database Assertion:** `DailyStudyLog` inserted/upserted; team cumulative score increases by $16,200\text{ s}$; required daily deficit pace updates dynamically.
 - **Laws Gated:** Law L2 (Spreadsheet Exorcism), Law L3 (Catch-Up Deficit Model), Law L7 (Pure Domain Isolation).
 
 ### J5: Admin Inline Hours Override & Audit Logging
-- **Trigger:** Host opens `/admin/challenges/:id/roster` to correct a member's crashed timer.
-- **Action:** Edits participant daily study log from `00:00:00` to `03:45:00` in the admin grid and saves.
-- **Database Assertion:** `DailyStudyLog` updated with `durationSeconds = 13500`, `is_override = true`, `overrideBy = adminUserId`; leaderboard re-aggregates.
+- **Trigger:** Host opens challenge Manage tab (`/challenge/:id?tab=manage`) to correct a member's crashed timer.
+- **Action:** Edits participant daily study log from `00:00:00` to `03:45:00` in the admin grid and saves (`adminOverrideStudyHoursAction`).
+- **Database Assertion:** `DailyStudyLog` updated with `durationSeconds = 13500`, `isOverride = true`, `overrideById = adminUserId`; leaderboard re-aggregates.
 - **Laws Gated:** Law L5 (Admin Override Absolute).
 
 ### J6: Event Lock, Dual-Failure Auto-Punishment & Discord Summary

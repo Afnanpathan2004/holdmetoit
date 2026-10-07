@@ -20,13 +20,17 @@ describe("task.validation", () => {
       expect(result.success).toBe(true);
     });
 
-    it("accepts valid input with newCategoryName", () => {
+    it("accepts valid input with newCategoryName and optional isComplete", () => {
       const result = createTaskSchema.safeParse({
         title: "Finish physics set",
         taskType: "WEEKLY",
         newCategoryName: "Physics",
+        isComplete: true,
       });
       expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.isComplete).toBe(true);
+      }
     });
 
     it("rejects empty title", () => {
@@ -51,6 +55,29 @@ describe("task.validation", () => {
         title: "Review notes",
         taskType: "MONTHLY",
         categoryId: "cat_123",
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("accepts valid dueDate format YYYY-MM-DD", () => {
+      const result = createTaskSchema.safeParse({
+        title: "Study Chapter 4",
+        taskType: "DAILY",
+        categoryId: "cat_123",
+        dueDate: "2026-10-06",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.dueDate).toBe("2026-10-06");
+      }
+    });
+
+    it("rejects invalid dueDate format", () => {
+      const result = createTaskSchema.safeParse({
+        title: "Study Chapter 4",
+        taskType: "DAILY",
+        categoryId: "cat_123",
+        dueDate: "10-06-2026",
       });
       expect(result.success).toBe(false);
     });
@@ -129,6 +156,30 @@ describe("task.validation", () => {
       expect(result.success).toBe(true);
     });
 
+    it("accepts valid task status update without title", () => {
+      const result = updateTaskSchema.safeParse({
+        taskId: "task_1",
+        isComplete: true,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.isComplete).toBe(true);
+      }
+    });
+
+    it("accepts valid update with both title and isComplete", () => {
+      const result = updateTaskSchema.safeParse({
+        taskId: "task_1",
+        title: "Finished essay",
+        isComplete: true,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.title).toBe("Finished essay");
+        expect(result.data.isComplete).toBe(true);
+      }
+    });
+
     it("rejects empty taskId or empty title", () => {
       expect(
         updateTaskSchema.safeParse({ taskId: "", title: "Valid title" }).success,
@@ -136,6 +187,24 @@ describe("task.validation", () => {
       expect(
         updateTaskSchema.safeParse({ taskId: "task_1", title: "   " }).success,
       ).toBe(false);
+    });
+
+    it("accepts valid dueDate update without title or status", () => {
+      const result = updateTaskSchema.safeParse({
+        taskId: "task_1",
+        dueDate: "2026-10-08",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.dueDate).toBe("2026-10-08");
+      }
+    });
+
+    it("rejects when neither title, isComplete, status, nor dueDate is provided", () => {
+      const result = updateTaskSchema.safeParse({
+        taskId: "task_1",
+      });
+      expect(result.success).toBe(false);
     });
   });
 

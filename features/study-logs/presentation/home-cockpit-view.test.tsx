@@ -64,8 +64,9 @@ describe("HomeCockpitView", () => {
                 title: "Study Physics",
                 taskType: "DAILY",
                 isComplete: false,
-                createdAt: new Date(),
-                updatedAt: new Date(),
+                dueDate: "2026-10-04",
+                createdAt: new Date("2026-10-04T12:00:00Z"),
+                updatedAt: new Date("2026-10-04T12:00:00Z"),
                 completedAt: null,
               },
             ],
@@ -102,6 +103,7 @@ describe("HomeCockpitView", () => {
       isYesterdayMissed: false,
       teamRank: null,
       remainingDailyAllowanceSeconds: 68400,
+      todayDayNumber: 1,
     };
 
     expect(() => {
@@ -166,6 +168,7 @@ describe("HomeCockpitView", () => {
       isYesterdayMissed: false,
       teamRank: 1,
       remainingDailyAllowanceSeconds: 86400,
+      todayDayNumber: 1,
     };
 
     const html = renderToStaticMarkup(
@@ -227,6 +230,7 @@ describe("HomeCockpitView", () => {
       isYesterdayMissed: false,
       teamRank: null,
       remainingDailyAllowanceSeconds: 86400,
+      todayDayNumber: 1,
     };
 
     const html = renderToStaticMarkup(

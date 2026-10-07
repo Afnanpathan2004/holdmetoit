@@ -14,6 +14,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  captureLogRocketException,
+  trackLogRocketEvent,
+} from "@/core/observability/logrocket";
 import { createChallengeAction } from "@/features/challenges/api/challenge-admin.actions";
 import { discardChallengeImageUploadAction } from "@/features/challenges/api/punishment-pfp.actions";
 import { ChallengeImageInput } from "@/features/challenges/presentation/challenge-image-input";
@@ -189,11 +193,19 @@ export function ChallengeCreatorWizard() {
         });
 
         if (result.ok && result.data?.challengeId) {
+          trackLogRocketEvent("ChallengeCreated", {
+            challengeId: result.data.challengeId,
+            format,
+          });
           router.push(`/challenge/${result.data.challengeId}`);
         } else if (!result.ok) {
           setErrorMsg(result.message);
         }
-      } catch {
+      } catch (error) {
+        captureLogRocketException(error, {
+          tags: { action: "create-challenge" },
+          extra: { format },
+        });
         setErrorMsg("Could not create the challenge. Please try again.");
       } finally {
         setIsCreating(false);

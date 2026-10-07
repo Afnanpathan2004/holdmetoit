@@ -1,12 +1,17 @@
 export type TaskType = "DAILY" | "WEEKLY";
 
+export type TaskStatus = "TODO" | "IN_PROGRESS" | "COMPLETED" | "CROSSED_OUT";
+
 export interface TaskItem {
   id: string;
   userId: string;
   categoryId: string;
   title: string;
   taskType: TaskType;
+  sortOrder?: number;
   isComplete: boolean;
+  status?: TaskStatus;
+  dueDate?: string | null;
   createdAt: Date;
   updatedAt: Date;
   completedAt: Date | null;
@@ -17,6 +22,7 @@ export interface CategoryItem {
   userId: string;
   name: string;
   taskType: TaskType;
+  sortOrder?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +31,7 @@ export interface CategoryGroup {
   id: string;
   name: string;
   taskType: TaskType;
+  sortOrder?: number;
   isCollapsed: boolean;
   tasks: TaskItem[];
 }

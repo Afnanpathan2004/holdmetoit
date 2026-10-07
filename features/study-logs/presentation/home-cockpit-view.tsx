@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Calendar } from "lucide-react";
+import { hasAdminPrivileges } from "@/features/auth/domain/auth-roles";
 import { DailyHoursModal } from "./daily-hours-modal";
 import { EnrollmentModal as JoinChallengeModal } from "@/features/challenges/presentation/enrollment-modal";
 import {
@@ -23,6 +24,7 @@ export interface HomeCockpitViewProps {
     displayName?: string | null;
     username?: string | null;
     image?: string | null;
+    role?: string | null;
   } | null;
   cockpit?: CockpitViewModel | null;
   upcomingChallenge?: {
@@ -37,6 +39,7 @@ export interface HomeCockpitViewProps {
     }>;
   } | null;
   userTasks?: UserCategorizedTasks | null;
+  isAdmin?: boolean;
 }
 
 export function HomeCockpitView({
@@ -48,13 +51,15 @@ export function HomeCockpitView({
   cockpit,
   upcomingChallenge,
   userTasks,
+  isAdmin,
 }: HomeCockpitViewProps) {
+  const effectiveIsAdmin = isAdmin ?? hasAdminPrivileges(user?.role);
   const [isHoursModalOpen, setIsHoursModalOpen] = useState(false);
-  const [hoursModalDate, setHoursModalDate] = useState<string | undefined>(undefined);
+  const [hoursModalDayNumber, setHoursModalDayNumber] = useState<number | undefined>(undefined);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
 
-  const openHoursModal = (date?: string) => {
-    setHoursModalDate(date);
+  const openHoursModal = (dayNumber?: number) => {
+    setHoursModalDayNumber(dayNumber);
     setIsHoursModalOpen(true);
   };
 
@@ -79,6 +84,7 @@ export function HomeCockpitView({
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   });
 
   const existingLogsMap = useMemo(() => {
@@ -98,7 +104,7 @@ export function HomeCockpitView({
           </h1>
           <p className="text-sm font-medium text-[#868686] mt-1 flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span>{formattedDate}</span>
+            <span>{formattedDate} (UTC)</span>
           </p>
         </div>
       </div>
@@ -128,21 +134,31 @@ export function HomeCockpitView({
       {/* Categorized Task Checklist (Daily & Weekly Todos) */}
       <CockpitTasksSection
         isLoggedIn={isLoggedIn}
+        userId={user?.id || cockpit?.participant.userId || null}
         userTasks={effectiveUserTasks}
+        challengeStartDate={cockpit?.challengeStartDate}
+        todayDate={cockpit?.todayDate}
+        todayDayNumber={cockpit?.todayDayNumber}
+        onOpenHoursModal={openHoursModal}
+        isAdmin={effectiveIsAdmin}
       />
 
       <DailyHoursModal
-        key={`${hoursModalDate ?? "today"}-${isHoursModalOpen}`}
+        key={`${hoursModalDayNumber ?? "today"}-${isHoursModalOpen}`}
         challengeId={activeChallengeId}
         isOpen={isHoursModalOpen}
         onClose={() => setIsHoursModalOpen(false)}
         todayDate={cockpit?.todayDate || new Date().toISOString().slice(0, 10)}
+        todayDayNumber={cockpit?.todayDayNumber ?? 1}
         yesterdayDate={cockpit?.yesterdayDate}
+        yesterdayDayNumber={cockpit?.yesterdayDayNumber}
         isYesterdayMissed={cockpit?.isYesterdayMissed ?? false}
         todayLoggedSeconds={effectiveTodaySeconds}
         yesterdayLoggedSeconds={cockpit?.yesterdayLoggedSeconds ?? 0}
         existingLogs={existingLogsMap}
-        initialDate={hoursModalDate}
+        initialDayNumber={hoursModalDayNumber}
+        challengeStartDate={cockpit?.challengeStartDate}
+        isAdmin={effectiveIsAdmin}
       />
 
       {isLoggedIn && (upcomingChallenge || cockpit) && (

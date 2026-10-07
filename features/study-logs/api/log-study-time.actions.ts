@@ -14,14 +14,21 @@ import {
   composeDurationSeconds,
   validateDailyLogDurationSeconds,
 } from "@/features/study-logs/domain/daily-log.validation";
+import { validateStudyLogChallengeDay } from "@/features/study-logs/domain/challenge-day";
 
-const logStudyTimeSchema = z.object({
-  challengeId: z.string().min(1),
-  logDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  hours: z.number().int().min(0).max(24),
-  minutes: z.number().int().min(0).max(59),
-  seconds: z.number().int().min(0).max(59),
-});
+const logStudyTimeSchema = z
+  .object({
+    challengeId: z.string().min(1),
+    challengeDay: z.number().int().min(1).optional(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    hours: z.number().int().min(0).max(24),
+    minutes: z.number().int().min(0).max(59),
+    seconds: z.number().int().min(0).max(59),
+  })
+  .refine((data) => data.challengeDay !== undefined || data.date !== undefined, {
+    message: "Either challengeDay or date must be provided.",
+    path: ["challengeDay"],
+  });
 
 export type ActionResult =
   | { ok: true }
@@ -47,7 +54,8 @@ export async function logStudyTimeAction(
       parsed.data.challengeId,
     );
 
-    const challengeStatus = calculateChallengeStatus(participant.challenge);
+    const now = new Date();
+    const challengeStatus = calculateChallengeStatus(participant.challenge, now);
     if (!canLogStudyTime(challengeStatus)) {
       return {
         ok: false,
@@ -55,6 +63,25 @@ export async function logStudyTimeAction(
         message: "Study logging is only available during active challenges.",
       };
     }
+
+    const dayValidation = validateStudyLogChallengeDay(
+      participant.challenge.startAt,
+      {
+        challengeDay: parsed.data.challengeDay,
+        date: parsed.data.date,
+      },
+      now,
+    );
+
+    if (!dayValidation.ok) {
+      return {
+        ok: false,
+        code: dayValidation.code,
+        message: dayValidation.message,
+      };
+    }
+
+    const logDate = dayValidation.dateKey;
 
     const durationSeconds = composeDurationSeconds(
       parsed.data.hours,
@@ -73,7 +100,7 @@ export async function logStudyTimeAction(
 
     await upsertDailyStudyLog({
       participantId: participant.id,
-      logDate: parsed.data.logDate,
+      logDate,
       durationSeconds,
     });
 

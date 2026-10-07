@@ -1,45 +1,55 @@
-# Migration baseline
+# Prisma Database Migrations Guide
 
-`20261003000000_baseline` captures the current PostgreSQL schema **before**
-`Challenge.eventBannerUrl`. It was generated locally with Prisma 6 using
-`migrate diff --from-empty --to-schema-datamodel` and a temporary copy of
-`prisma/schema.prisma` with only the `eventBannerUrl` field removed.
-`20261004000000_add_event_banner_url` then adds the nullable field and copies
-existing `punishmentPfpUrl` values into it, retaining PFP values and storage files.
+> **Target Database:** PostgreSQL 15+ (Supabase / Neon)  
+> **ORM & Tooling:** Prisma ORM 6.x (`prisma/schema.prisma`)  
+> **Last Updated:** 2026-10-06  
 
-Run commands from the repository root, with connection variables configured for
-an explicitly reviewed target database. These are deployment instructions, not
-automatic setup steps.
+---
 
-## Fresh, empty database
+## 1. Applied Migration History
 
-Review both SQL files, then apply the complete migration history:
+The repository tracks the following declarative migrations under `prisma/migrations/`:
 
-```sh
+| Migration Directory | Applied Date | Core Schema Delta |
+| :--- | :---: | :--- |
+| `20261003000000_baseline` | 2026-10-03 | Baseline schema capturing initial Auth.js models (`User`, `Account`, `Session`, `VerificationToken`), `Challenge`, `Team`, `ChallengeParticipant`, `DailyStudyLog`, `WeeklyGoal`, `PunishmentRecord`, `team_members`, and `leaderboard_entries`. |
+| `20261004000000_add_event_banner_url` | 2026-10-04 | Adds nullable `eventBannerUrl` to `Challenge` and backfills legacy values from `punishmentPfpUrl`. |
+| `20261004010000_make_participant_team_optional` | 2026-10-04 | Allows `ChallengeParticipant.teamId` to be nullable (`SetNull` on delete), supporting unassigned/open challenge enrollment. |
+| `20261004020000_remove_challenge_status` | 2026-10-04 | Drops `status` column and `ChallengeStatus` enum from database. Status (`UPCOMING`, `ACTIVE`, `COMPLETED`) is derived dynamically in application domain via `calculateChallengeStatus(startAt, endAt)`. |
+| `20261004030000_categorizable_todos` | 2026-10-04 | Drops legacy `WeeklyGoal` table. Introduces user-scoped `categories` and `tasks` tables for flexible productivity tracking. |
+| `20261005010000_add_task_type_to_categories` | 2026-10-05 | Adds `task_type` (`DAILY` or `WEEKLY`) to `categories` table with composite unique index `(userId, name, task_type)` to segregate daily and weekly boards. |
+| `20261005020000_add_dev_user_role` | 2026-10-05 | Extends `UserRole` enum with `DEV` for platform developer privilege gating via `DEV_DISCORD_IDS`. |
+
+---
+
+## 2. Known Schema Drift & Remediation Notice
+
+> [!WARNING]
+> **Schema Drift Alert (`HANDOFF.md` Defect D5):**  
+> Two subsequent features were synchronized to development databases using `prisma db push` without generating a migration directory:
+> 1. `Feedback` model (`feedbacks` table with `feedback_number`, `type`, `status`, `discord_status`, etc.)
+> 2. `sortOrder` integer columns (`sort_order`) on `categories` and `tasks` models.
+>
+> **Action Required for Fresh Databases:**  
+> Running `npx prisma migrate deploy` on a fresh database will successfully apply all 7 tracked migrations up to `add_dev_user_role`, but will not create the `feedbacks` table or `sort_order` columns. Until catch-up migration `20261006000000_add_feedback_and_sort_order` is generated and committed, developers setting up a fresh local database should run `npx prisma db push` to reconcile remaining models.
+
+---
+
+## 3. Standard Deployment Procedures
+
+### 3.1 Fresh Database Deployment
+To apply all tracked migrations to an empty PostgreSQL database:
+```bash
 npx prisma migrate deploy --schema prisma/schema.prisma
 ```
 
-The baseline creates the existing tables, enums, indexes, and foreign keys; the
-incremental migration adds the banner column. No baseline resolve is needed.
-
-## Existing database created with `db push`
-
-**Before marking the baseline applied, back up the database and verify its actual
-schema matches the baseline SQL** (tables, columns, types, defaults, enums,
-indexes, and constraints). The baseline reflects the repository schema, not an
-introspection of any deployed database. Review and reconcile any drift first;
-`migrate resolve` records migration history without checking or executing the SQL.
-This path assumes `eventBannerUrl` does not yet exist. If it already exists or
-migration history is present, stop and review a separate reconciliation plan.
-
-Only after schema verification and explicit approval:
-
-```sh
-npx prisma migrate resolve --applied 20261003000000_baseline --schema prisma/schema.prisma
-npx prisma migrate deploy --schema prisma/schema.prisma
-```
-
-Do not execute the baseline SQL against an existing populated database. Resolve
-marks it as already applied; deploy then runs the reviewed incremental migration.
-Do not use `db push` to add the banner column before deploy: it would bypass the
-backfill and conflict with the migration's `ADD COLUMN`.
+### 3.2 Existing Database Previously Created with `db push`
+If a remote database was provisioned via `db push` and lacks migration history records in `_prisma_migrations`:
+1. **Back up the database** first.
+2. Mark the baseline and preceding migrations as applied:
+   ```bash
+   npx prisma migrate resolve --applied 20261003000000_baseline --schema prisma/schema.prisma
+   npx prisma migrate resolve --applied 20261004000000_add_event_banner_url --schema prisma/schema.prisma
+   # (continue for already-applied migrations)
+   ```
+3. Run `npx prisma migrate deploy` to execute any outstanding incremental migrations.

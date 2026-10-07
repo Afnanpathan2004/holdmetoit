@@ -17,6 +17,7 @@ import {
   formatSecondsToClock,
   formatSecondsToHuman,
 } from "@/features/study-logs/domain/duration";
+import { getChallengeDayBuckets, getChallengeDayNumber } from "@/features/study-logs/domain/challenge-day";
 import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 
 export interface ScoreboardTeam {
@@ -69,6 +70,8 @@ export interface ScoreboardStandingEntry {
   teamIcon: string | null;
   totalLoggedSeconds: number;
   totalLoggedClock: string;
+  todayLoggedSeconds: number;
+  todayLoggedClock: string;
   targetSeconds: number;
   targetClock: string;
   completionPercentage: number;
@@ -77,6 +80,7 @@ export interface ScoreboardStandingEntry {
   paceStatus: ParticipantPaceStatus;
   paceLabel: string;
   deficitSeconds: number;
+  dailyLogs?: Record<string, number>;
 }
 
 export interface FlaggedPunishmentMember {
@@ -158,6 +162,7 @@ export interface RawChallengePayload {
     };
     dailyStudyLogs: Array<{
       durationSeconds: number;
+      logDate?: Date | string;
     }>;
     punishmentRecord?: {
       isPunished: boolean;
@@ -167,6 +172,10 @@ export interface RawChallengePayload {
       incompleteGoalsCount: number;
     } | null;
   }>;
+}
+
+function formatUtcDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
 export function buildScoreboardViewModel(
@@ -186,13 +195,7 @@ export function buildScoreboardViewModel(
   );
   const elapsedDays = isUpcoming
     ? 0
-    : Math.max(
-        1,
-        Math.min(
-          totalDays,
-          Math.ceil((now.getTime() - challenge.startAt.getTime()) / 86_400_000),
-        ),
-      );
+    : Math.min(totalDays, getChallengeDayNumber(challenge.startAt, now));
 
   // 1. Participant logs mapping
   const participantScores = challenge.participants.map((p) => {
@@ -314,9 +317,18 @@ export function buildScoreboardViewModel(
 
   // 4. Standings rows (FEAT-LEAD-02)
   const teamLookup = new Map(challenge.teams.map((t) => [t.id, t]));
+  const todayDateKey = getChallengeDayBuckets(challenge.startAt, now).current.dateKey;
 
   const participantRows = challenge.participants.map((p) => {
     const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
+    const todayLog = p.dailyStudyLogs.find((log) => {
+      if (!log.logDate) return false;
+      const logDateObj =
+        log.logDate instanceof Date ? log.logDate : new Date(log.logDate);
+      return formatUtcDateKey(logDateObj) === todayDateKey;
+    });
+    const todayLoggedSeconds = todayLog?.durationSeconds ?? 0;
+    const todayLoggedClock = formatSecondsToClock(todayLoggedSeconds);
     const goalsCompletedCount = 0;
     const goalsTotalCount = 0;
     const deficitSeconds = Math.max(0, p.targetSeconds - totalLoggedSeconds);
@@ -359,6 +371,15 @@ export function buildScoreboardViewModel(
 
     const team = p.teamId ? teamLookup.get(p.teamId) : null;
 
+    const dailyLogs: Record<string, number> = {};
+    for (const log of p.dailyStudyLogs) {
+      if (log.logDate) {
+        const dObj =
+          log.logDate instanceof Date ? log.logDate : new Date(log.logDate);
+        dailyLogs[formatUtcDateKey(dObj)] = log.durationSeconds;
+      }
+    }
+
     return {
       participantId: p.id,
       userId: p.userId,
@@ -372,6 +393,8 @@ export function buildScoreboardViewModel(
       teamIcon: team?.iconEmoji ?? "⏳",
       totalLoggedSeconds,
       totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
+      todayLoggedSeconds,
+      todayLoggedClock,
       targetSeconds: p.targetSeconds,
       targetClock: formatSecondsToClock(p.targetSeconds),
       completionPercentage,
@@ -380,6 +403,7 @@ export function buildScoreboardViewModel(
       paceStatus,
       paceLabel,
       deficitSeconds,
+      dailyLogs,
     };
   });
 
@@ -548,6 +572,7 @@ export async function getChallengeScoreboard(
           dailyStudyLogs: {
             select: {
               durationSeconds: true,
+              logDate: true,
             },
           },
           punishmentRecord: {
