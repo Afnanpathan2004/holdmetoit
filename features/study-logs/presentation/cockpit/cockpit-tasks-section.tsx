@@ -12,11 +12,11 @@ import {
   GripVertical,
   RotateCcw,
   Calendar,
-  Clock,
 } from "lucide-react";
 import {
   getChallengeDayOptions,
   getCalendarWeekDayOptions,
+  formatDayDate,
   type ChallengeDayOption,
 } from "@/features/study-logs/domain/challenge-day";
 import {
@@ -76,20 +76,7 @@ export function getTaskStatus(task: TaskItem): TaskStatus {
   return task.completed ? "COMPLETED" : "TODO";
 }
 
-export function formatDayDate(dateKey: string): string {
-  try {
-    const parts = dateKey.split("-").map(Number);
-    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
-      const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-      });
-    }
-  } catch {}
-  return dateKey;
-}
+export { formatDayDate };
 
 export interface CategoryGroup {
   id?: string;
@@ -261,14 +248,6 @@ export function CockpitTasksSection({
   const todayDayOption = useMemo(() => {
     return dayOptions.find((d) => d.isToday) || dayOptions[0];
   }, [dayOptions]);
-
-  const visibleDayOptions: ChallengeDayOption[] = useMemo(() => {
-    if (isAdmin) {
-      return dayOptions;
-    }
-    const filtered = dayOptions.filter((d) => d.isToday || d.isYesterday);
-    return filtered.length > 0 ? filtered : [todayDayOption || dayOptions[0]];
-  }, [dayOptions, isAdmin, todayDayOption]);
 
   const [selectedDateKey, setSelectedDateKey] = useState<string>(
     () => todayDayOption?.dateKey || effectiveTodayDate,
@@ -1826,31 +1805,16 @@ export function CockpitTasksSection({
                 <span className="text-xs font-semibold text-[#d2d2d2]">
                   {completedDailyTasksForDay}/{totalDailyTasksForDay} Completed
                 </span>
-                {onOpenHoursModal && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenHoursModal(selectedDayNumber)}
-                    className="p-1 rounded-md text-[#868686] hover:text-[#e08a32] hover:bg-[#252525] transition-colors"
-                    title={`Log study hours for ${activeDayOption.shortLabel}`}
-                    aria-label={`Log study hours for ${activeDayOption.shortLabel}`}
-                  >
-                    <Clock className="h-3.5 w-3.5" />
-                  </button>
-                )}
               </div>
             </div>
 
-            {/* Day Pill Switcher (Today/Yesterday for regular users, all 7 days for mods/devs) */}
+            {/* 7-Day Pill Switcher (Fits all 7 days without horizontal scrolling) */}
             <div
               role="tablist"
               aria-label="Challenge Day Tabs"
-              className={
-                visibleDayOptions.length <= 2
-                  ? "flex items-center gap-2 w-full pt-0.5 pb-1 max-w-sm"
-                  : "grid grid-cols-7 gap-1 sm:gap-1.5 w-full pt-0.5 pb-1"
-              }
+              className="grid grid-cols-7 gap-1 sm:gap-1.5 w-full pt-0.5 pb-1"
             >
-              {visibleDayOptions.map((opt) => {
+              {dayOptions.map((opt) => {
                 const isSelected = opt.dateKey === selectedDateKey;
                 const stats = dayTaskCounts.get(opt.dateKey) || { total: 0, completed: 0 };
                 const allDone = stats.total > 0 && stats.completed === stats.total;
@@ -1861,22 +1825,25 @@ export function CockpitTasksSection({
                     role="tab"
                     aria-selected={isSelected}
                     onClick={() => handleSelectDay(opt)}
-                    className={`${
-                      visibleDayOptions.length <= 2 ? "flex-1" : "w-full"
-                    } min-w-0 py-1.5 px-1 sm:px-1.5 rounded-xl text-center border transition-all flex flex-col items-center justify-between min-h-[54px] sm:min-h-[58px] ${
+                    title={
+                      opt.isToday
+                        ? "Today"
+                        : opt.isYesterday
+                          ? `Yesterday (${opt.label})`
+                          : opt.label
+                    }
+                    className={`w-full min-w-0 py-1.5 px-0.5 sm:px-1 rounded-xl text-center border transition-all flex flex-col items-center justify-between min-h-[54px] sm:min-h-[58px] overflow-hidden ${
                       isSelected
                         ? "bg-[#25201b] border-[#e08a32] text-white shadow-sm ring-1 ring-[#e08a32]/60"
                         : "bg-[#1c1c1c] border-[#2e2e2e] text-[#a0a0a0] hover:bg-[#262626] hover:text-white"
                     }`}
                   >
-                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none">
+                    <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none truncate max-w-full">
                       {opt.isToday
                         ? "Today"
-                        : opt.isYesterday
-                          ? "Yesterday"
-                          : opt.shortLabel.startsWith("Day ")
-                            ? `D${opt.dayNumber}`
-                            : opt.shortLabel.slice(0, 3)}
+                        : opt.shortLabel.startsWith("Day ")
+                          ? `D${opt.dayNumber}`
+                          : opt.shortLabel.slice(0, 3)}
                     </span>
                     <span className="text-[8px] sm:text-[9px] opacity-75 mt-0.5 leading-none truncate max-w-full">
                       {formatDayDate(opt.dateKey)}
@@ -2580,38 +2547,35 @@ export function CockpitTasksSection({
                       {formatDayDate(addTodoDateKey || selectedDateKey)}
                     </span>
                   </label>
-                  <div
-                    className={
-                      visibleDayOptions.length <= 2
-                        ? "flex items-center gap-2 w-full pb-1"
-                        : "grid grid-cols-7 gap-1 w-full pb-1"
-                    }
-                  >
-                    {visibleDayOptions.map((opt) => {
+                  <div className="grid grid-cols-7 gap-1 w-full pb-1">
+                    {dayOptions.map((opt) => {
                       const isSelected = (addTodoDateKey || selectedDateKey) === opt.dateKey;
                       return (
                         <button
                           key={opt.dateKey}
                           type="button"
                           onClick={() => setAddTodoDateKey(opt.dateKey)}
-                          className={`${
-                            visibleDayOptions.length <= 2 ? "flex-1 py-2 px-2" : "py-1.5 px-1"
-                          } flex flex-col items-center justify-center rounded-xl text-xs font-semibold border transition-all ${
+                          title={
+                            opt.isToday
+                              ? "Today"
+                              : opt.isYesterday
+                                ? `Yesterday (${opt.label})`
+                                : opt.label
+                          }
+                          className={`py-1.5 px-1 flex flex-col items-center justify-center rounded-xl text-xs font-semibold border transition-all overflow-hidden ${
                             isSelected
                               ? "bg-[#e08a32] text-white border-[#e08a32] shadow-sm shadow-[#e08a32]/30 ring-1 ring-[#e08a32]"
                               : "bg-[#1f1f1f] text-[#a0a0a0] border-[#383838] hover:text-white hover:bg-[#282828]"
                           }`}
                         >
-                          <span className="text-[10px] uppercase font-bold tracking-wider leading-none">
+                          <span className="text-[10px] uppercase font-bold tracking-wider leading-none truncate max-w-full">
                             {opt.isToday
                               ? "Today"
-                              : opt.isYesterday
-                                ? "Yesterday"
-                                : opt.shortLabel.startsWith("Day ")
-                                  ? `D${opt.dayNumber}`
-                                  : opt.shortLabel.slice(0, 3)}
+                              : opt.shortLabel.startsWith("Day ")
+                                ? `D${opt.dayNumber}`
+                                : opt.shortLabel.slice(0, 3)}
                           </span>
-                          <span className="text-[9px] opacity-80 mt-0.5 leading-none">
+                          <span className="text-[9px] opacity-80 mt-0.5 leading-none truncate max-w-full">
                             {formatDayDate(opt.dateKey)}
                           </span>
                           {opt.isToday && (
@@ -2960,38 +2924,35 @@ export function CockpitTasksSection({
                       {formatDayDate(editTaskInputDueDate)}
                     </span>
                   </label>
-                  <div
-                    className={
-                      visibleDayOptions.length <= 2
-                        ? "flex items-center gap-2 w-full pb-1"
-                        : "grid grid-cols-7 gap-1 w-full pb-1"
-                    }
-                  >
-                    {visibleDayOptions.map((opt) => {
+                  <div className="grid grid-cols-7 gap-1 w-full pb-1">
+                    {dayOptions.map((opt) => {
                       const isSelected = editTaskInputDueDate === opt.dateKey;
                       return (
                         <button
                           key={opt.dateKey}
                           type="button"
                           onClick={() => setEditTaskInputDueDate(opt.dateKey)}
-                          className={`${
-                            visibleDayOptions.length <= 2 ? "flex-1 py-2 px-2" : "py-1.5 px-1"
-                          } flex flex-col items-center justify-center rounded-xl text-xs font-semibold border transition-all ${
+                          title={
+                            opt.isToday
+                              ? "Today"
+                              : opt.isYesterday
+                                ? `Yesterday (${opt.label})`
+                                : opt.label
+                          }
+                          className={`py-1.5 px-1 flex flex-col items-center justify-center rounded-xl text-xs font-semibold border transition-all overflow-hidden ${
                             isSelected
                               ? "bg-[#e08a32] text-white border-[#e08a32] shadow-sm shadow-[#e08a32]/30 ring-1 ring-[#e08a32]"
                               : "bg-[#1f1f1f] text-[#a0a0a0] border-[#383838] hover:text-white hover:bg-[#282828]"
                           }`}
                         >
-                          <span className="text-[10px] uppercase font-bold tracking-wider leading-none">
+                          <span className="text-[10px] uppercase font-bold tracking-wider leading-none truncate max-w-full">
                             {opt.isToday
                               ? "Today"
-                              : opt.isYesterday
-                                ? "Yesterday"
-                                : opt.shortLabel.startsWith("Day ")
-                                  ? `D${opt.dayNumber}`
-                                  : opt.shortLabel.slice(0, 3)}
+                              : opt.shortLabel.startsWith("Day ")
+                                ? `D${opt.dayNumber}`
+                                : opt.shortLabel.slice(0, 3)}
                           </span>
-                          <span className="text-[9px] opacity-80 mt-0.5 leading-none">
+                          <span className="text-[9px] opacity-80 mt-0.5 leading-none truncate max-w-full">
                             {formatDayDate(opt.dateKey)}
                           </span>
                           {opt.isToday && (

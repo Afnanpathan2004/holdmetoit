@@ -156,18 +156,17 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
   - **Admin Override UI (`admin-hours-override-modal.tsx`):** Built dedicated modal for moderators (`ADMIN`) and developers (`DEV`) allowing full 7-day week (D1..D7) hours adjustments for any participant with mandatory audit note.
   - **Manage & Leaderboard Integration:** Added initial override triggers in Manage tab and Leaderboard tab.
 
-### Session 54 — 2026-10-07 (krish)
-- **Agent Role:** Participant UI & Admin Operations Agent.
-- **Cockpit Tasks Restriction to Today/Yesterday for Regular Users & Participant Page "Edit hr" for Mods/Devs:**
-  - **Cockpit Tasks Section (`cockpit-tasks-section.tsx`):**
-    - Regular users (`isAdmin = false`) are restricted to viewing and scheduling tasks only for Today or Yesterday in the day switcher tab bar and Add/Edit todo modals.
-    - Mods and devs (`ADMIN`, `DEV`) retain access to the full 7-day week (D1..D7) to view and manage tasks.
-    - Wired `isAdmin` from `app/page.tsx` through `HomeCockpitView` to `CockpitTasksSection`.
-  - **Participants Page / Views "Edit hr" Option for Mods and Devs:**
-    - `ChallengeOverviewTab`: Added explicit **"Edit hr"** button (with `Clock` icon) next to each participant row in the right-column "Participants" card when `isAdmin === true`. Clicking opens `AdminHoursOverrideModal` pre-populated with that participant.
-    - `ChallengeLeaderboardTab`: Updated mobile cards and desktop table rows with explicit **"Edit hr"** buttons (with `Clock` icon) for admin/dev users.
-    - `ChallengeManageTab`: Updated roster button label to **"Edit hr"**.
-  - **Automated Verification:** Added unit tests in `challenge-overview-tab.test.tsx`, updated `challenge-leaderboard-tab.test.tsx` and `cockpit-tasks-section.test.tsx`.
-  - **Quality Gates:** `npm run typecheck` (`npx tsc --noEmit`) ✅ (0 errors) · `npm run test` ✅ (58 files, 610/610 tests green).
-
-
+### Session 56 — 2026-10-07 (krish)
+- **Agent Role:** Participant UI & Data Identity Agent.
+- **Discord OAuth RFC 9207 Issuer Validation Fix:**
+  - **Issue:** Discord enabled RFC 9207 (`iss=https://discord.com`) on authorization callbacks; Auth.js v5 without explicit `issuer` defaulted to `https://authjs.dev/`, throwing `CallbackRouteError: unexpected "iss" (issuer) response parameter value` and redirecting to `/api/auth/error?error=Configuration` (HTTP 500).
+  - **Fix (`core/auth/index.ts`):** Explicitly configured `issuer: "https://discord.com"` on the Discord provider.
+- **Participant Preview Mode (`app/page.tsx`):**
+  - Added moderator/developer preview toggle via `/?as=participant` (or `?preview=participant`) enabling admins and devs to test the dashboard cockpit exactly as regular participants see it.
+  - Added sticky preview alert banner with 1-click "Exit Preview" link, and a Dev mode toggle in the header.
+- **2-Card Daily Hours Selector UX (`daily-hours-modal.tsx`):**
+  - Replaced the compressed strip with an intuitive 2-column card selector ("Today" / "Yesterday") for regular participants with formatted date stamps (`Oct 7`), logged badges, and D-day indicators, while retaining the 7-day grid for admins.
+  - Added [`formatDayDate`](features/study-logs/domain/challenge-day.ts) pure domain date formatter.
+- **Cockpit Tasks 7-Day Switcher Polish (`cockpit-tasks-section.tsx`):**
+  - Cleaned up day pill labels with text truncation and tooltip titles to eliminate text overlap across mobile and desktop.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (58 files, 610/610 green) · `npx next build` ✅ (8 routes compiled).

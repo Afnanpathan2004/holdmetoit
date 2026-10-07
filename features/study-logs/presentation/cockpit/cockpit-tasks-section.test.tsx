@@ -207,7 +207,7 @@ describe("CockpitTasksSection", () => {
     expect(html).not.toContain("Incomplete");
   });
 
-  it("renders only today and yesterday tabs for regular users (isAdmin: false)", () => {
+  it("renders full 7-day pill switcher tabs with challenge days for all users (participants and admins)", () => {
     const html = renderToStaticMarkup(
       createElement(CockpitTasksSection, {
         isLoggedIn: true,
@@ -221,30 +221,33 @@ describe("CockpitTasksSection", () => {
     );
 
     expect(html).toContain('role="tablist"');
+    expect(html).toContain('aria-label="Challenge Day Tabs"');
+    expect(html).toContain("D1");
+    expect(html).toContain("D2");
     expect(html).toContain("Today");
-    expect(html).toContain("Yesterday");
-    expect(html).not.toContain("D1");
-    expect(html).not.toContain("D7");
+    expect(html).toContain("D4");
+    expect(html).toContain("D7");
   });
 
-  it("renders full 7-day pill switcher tabs with challenge days for mods and devs (isAdmin: true)", () => {
+  it("renders day number instead of 'Yesterday' in 7-day switcher to prevent text overlap", () => {
     const html = renderToStaticMarkup(
       createElement(CockpitTasksSection, {
         isLoggedIn: true,
         userTasks: mockTasks,
         challengeStartDate: "2026-10-01T00:00:00Z",
-        todayDate: "2026-10-01",
-        todayDayNumber: 1,
+        todayDate: "2026-10-03",
+        todayDayNumber: 3,
         totalChallengeDays: 7,
-        isAdmin: true,
       }),
     );
 
     expect(html).toContain('role="tablist"');
-    expect(html).toContain('aria-label="Challenge Day Tabs"');
-    expect(html).toContain("Today");
+    expect(html).toContain("D1");
     expect(html).toContain("D2");
+    expect(html).toContain("Today");
+    expect(html).toContain("D4");
     expect(html).toContain("D7");
+    expect(html).not.toMatch(/>\s*Yesterday\s*</i);
   });
 
   it("filters daily tasks according to the active challenge day", () => {
@@ -345,7 +348,7 @@ describe("CockpitTasksSection", () => {
     expect(html).toContain("+ Add todo for");
   });
 
-  it("renders onOpenHoursModal button when prop is provided", () => {
+  it("does not render clock time logging button in tasks section header", () => {
     const openHoursModal = vi.fn();
     const html = renderToStaticMarkup(
       createElement(CockpitTasksSection, {
@@ -355,7 +358,7 @@ describe("CockpitTasksSection", () => {
       }),
     );
 
-    expect(html).toContain('aria-label="Log study hours for');
+    expect(html).not.toContain('aria-label="Log study hours for');
   });
 });
 

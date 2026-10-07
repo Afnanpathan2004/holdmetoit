@@ -158,6 +158,7 @@ export function HomeCockpitView({
         existingLogs={existingLogsMap}
         initialDayNumber={hoursModalDayNumber}
         challengeStartDate={cockpit?.challengeStartDate}
+        isAdmin={effectiveIsAdmin}
       />
 
       {isLoggedIn && (upcomingChallenge || cockpit) && (

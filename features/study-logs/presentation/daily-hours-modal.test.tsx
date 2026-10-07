@@ -126,7 +126,7 @@ describe("DailyHoursModal", () => {
     expect(html).toBe("");
   });
 
-  it("renders day-of-the-week selector with future days disabled and date picker with max constraint", () => {
+  it("renders full challenge week selector with future days disabled for admins", () => {
     const html = renderToStaticMarkup(
       createElement(DailyHoursModal, {
         challengeId: "chal-1",
@@ -136,6 +136,7 @@ describe("DailyHoursModal", () => {
         todayDayNumber: 2,
         challengeStartDate: "2026-10-05",
         totalChallengeDays: 7,
+        isAdmin: true,
       }),
     );
 
@@ -143,7 +144,7 @@ describe("DailyHoursModal", () => {
     // Day 1 (past) and Day 2 (today)
     expect(html).toContain("D1");
     expect(html).toContain("Today");
-    // Date picker input with max set to today
+    // Date picker input with min set to start date and max to today
     expect(html).toContain('type="date"');
     expect(html).toContain('max="2026-10-06"');
     expect(html).toContain('min="2026-10-05"');
@@ -176,7 +177,7 @@ describe("DailyHoursModal", () => {
     expect(html).toContain("Update Hours");
   });
 
-  it("locks days before yesterday so participants cannot edit earlier past days", () => {
+  it("shows only editable days (yesterday and today) in clean 2-card layout for normal participants", () => {
     const html = renderToStaticMarkup(
       createElement(DailyHoursModal, {
         challengeId: "chal-1",
@@ -188,11 +189,24 @@ describe("DailyHoursModal", () => {
         yesterdayDayNumber: 2,
         challengeStartDate: "2026-10-05",
         totalChallengeDays: 7,
+        isAdmin: false,
       }),
     );
 
-    // Day 1 (before yesterday) is disabled with past locked tooltip
-    expect(html).toContain("Past date (locked - only today/yesterday editable)");
+    // Shows 2-card selector header
+    expect(html).toContain("Select Day to Log");
+    expect(html).toContain("Yesterday");
+    expect(html).toContain("Today");
+    expect(html).toContain("D2");
+    expect(html).toContain("D3");
+    // Earlier days (Day 1) and future days are NOT rendered in participant layout
+    expect(html).not.toContain("D1");
+    expect(html).not.toContain("D4");
+    expect(html).not.toContain("D5");
+    expect(html).not.toContain("Future date (cannot log yet)");
+    // Date picker is constrained to yesterday and today
+    expect(html).toContain('min="2026-10-06"');
+    expect(html).toContain('max="2026-10-07"');
   });
 });
 

@@ -14,6 +14,21 @@ function formatUtcDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+export function formatDayDate(dateKey: string): string {
+  try {
+    const parts = dateKey.split("-").map(Number);
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+      const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      });
+    }
+  } catch {}
+  return dateKey;
+}
+
 export function getChallengeDayNumber(
   startAt: Date | string,
   now: Date | string,
