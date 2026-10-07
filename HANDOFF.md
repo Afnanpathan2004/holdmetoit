@@ -11,12 +11,12 @@
 
 ## 1. Current State at a Glance
 
-| Gate | Result (2026-10-07, branch `krish`) |
+| Gate | Result (2026-10-08, branch `krish`) |
 | :--- | :--- |
 | `npm run typecheck` | ✅ 0 errors (`npx tsc --noEmit`) |
-| `npm run test` | ✅ 58 files, 610/610 tests green |
+| `npm run test` | ✅ 62 files, 623/623 tests green |
 | `npm run build` | ✅ 8 routes compiled |
-| Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~74%** — Core daily/weekly loop, today/yesterday participant task & logging restriction, mod/dev 7-day full-week tasks & "Edit hr" options on participants views complete |
+| Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~78%** — Core daily/weekly loop, 2-card participant hours logging, full-week daily todos, mod/dev Event Audit Log & full-week hours override tools complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo |
 | Phase 1 (P1) | ⏸️ Not started |
 
@@ -170,3 +170,14 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 - **Cockpit Tasks 7-Day Switcher Polish (`cockpit-tasks-section.tsx`):**
   - Cleaned up day pill labels with text truncation and tooltip titles to eliminate text overlap across mobile and desktop.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (58 files, 610/610 green) · `npx next build` ✅ (8 routes compiled).
+ 
+### Session 57 — 2026-10-08 (krish)
+- **Agent Role:** Admin Operations & Broadcaster Agent.
+- **Event Audit Log (Mod Log) Integration & Main Branch Sync:**
+  - Pulled and cleanly merged `origin/main` into `krish`, integrating the complete **Event Audit Log** system (`FEAT-AUDIT-01`):
+    - `EventAuditTab` UI ([`event-audit-tab.tsx`](features/audit/presentation/event-audit-tab.tsx)) added to `/challenge/[id]` alongside the "Manage" tab for admins/mods/devs.
+    - Full action filtering, moderator search, field-level before/after JSON visual diffs, and 1-click JSON log export.
+    - Zero-drift UTC timetable serialization (`challenge-date-time.ts`) and database audit trail (`audit_logs` table via Prisma).
+  - Resolved conflicts in `prisma/schema.prisma` and `challenge-manage-tab.tsx`.
+  - Maintained the restored full-week Daily Todos access and clean 2-card (`Yesterday` & `Today`) study hours logging UX.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 623/623 green).
