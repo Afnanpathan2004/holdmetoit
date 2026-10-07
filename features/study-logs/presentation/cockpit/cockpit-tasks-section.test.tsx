@@ -137,4 +137,228 @@ describe("CockpitTasksSection", () => {
     expect(weeklySection).toContain("Sprint Deliverables");
     expect(dailySection).not.toContain("Sprint Deliverables");
   });
+
+  it("renders status indicator badges and accessible checkbox controls for tasks", () => {
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+      }),
+    );
+
+    // Uncompleted / To-Do daily task has clean row without "Incomplete" badge
+    expect(html).toContain('role="checkbox"');
+    expect(html).toContain('aria-checked="false"');
+    expect(html).not.toContain("Incomplete");
+
+    // Completed weekly task
+    expect(html).toContain('aria-checked="true"');
+    expect(html).toContain("Completed");
+  });
+
+  it("renders In Progress and Crossed Out status badges appropriately", () => {
+    const customTasks: UserCategorizedTasks = {
+      ...mockTasks,
+      dailyCategories: [
+        {
+          id: "cat_daily_status",
+          name: "Status Tests",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_prog",
+              userId: "user_1",
+              categoryId: "cat_daily_status",
+              title: "Active Working Task",
+              taskType: "DAILY",
+              isComplete: false,
+              status: "IN_PROGRESS",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              completedAt: null,
+            },
+            {
+              id: "t_cross",
+              userId: "user_1",
+              categoryId: "cat_daily_status",
+              title: "Blocked Task",
+              taskType: "DAILY",
+              isComplete: false,
+              status: "CROSSED_OUT",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: customTasks,
+      }),
+    );
+
+    expect(html).toContain("In Progress");
+    expect(html).toContain("Crossed Out");
+    expect(html).not.toContain("Incomplete");
+  });
+
+  it("renders full 7-day pill switcher tabs with challenge days for all users (participants and admins)", () => {
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-03",
+        todayDayNumber: 3,
+        totalChallengeDays: 7,
+        isAdmin: false,
+      }),
+    );
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('aria-label="Challenge Day Tabs"');
+    expect(html).toContain("D1");
+    expect(html).toContain("D2");
+    expect(html).toContain("Today");
+    expect(html).toContain("D4");
+    expect(html).toContain("D7");
+  });
+
+  it("renders day number instead of 'Yesterday' in 7-day switcher to prevent text overlap", () => {
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-03",
+        todayDayNumber: 3,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain("D1");
+    expect(html).toContain("D2");
+    expect(html).toContain("Today");
+    expect(html).toContain("D4");
+    expect(html).toContain("D7");
+    expect(html).not.toMatch(/>\s*Yesterday\s*</i);
+  });
+
+  it("filters daily tasks according to the active challenge day", () => {
+    const multiDayTasks: UserCategorizedTasks = {
+      ...mockTasks,
+      dailyCategories: [
+        {
+          id: "cat_daily_days",
+          name: "Study Blocks",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_day1",
+              userId: "user_1",
+              categoryId: "cat_daily_days",
+              title: "Day 1 Calculus Prep",
+              taskType: "DAILY",
+              isComplete: false,
+              dueDate: "2026-10-01",
+              createdAt: new Date("2026-10-01T10:00:00Z"),
+              updatedAt: new Date("2026-10-01T10:00:00Z"),
+              completedAt: null,
+            },
+            {
+              id: "t_day2",
+              userId: "user_1",
+              categoryId: "cat_daily_days",
+              title: "Day 2 Organic Chemistry",
+              taskType: "DAILY",
+              isComplete: false,
+              dueDate: "2026-10-02",
+              createdAt: new Date("2026-10-02T10:00:00Z"),
+              updatedAt: new Date("2026-10-02T10:00:00Z"),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    // When viewing Day 1 (todayDate = 2026-10-01)
+    const htmlDay1 = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: multiDayTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-01",
+        todayDayNumber: 1,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    expect(htmlDay1).toContain("Day 1 Calculus Prep");
+    expect(htmlDay1).not.toContain("Day 2 Organic Chemistry");
+  });
+
+  it("renders empty day state when no tasks are scheduled for the active day", () => {
+    const emptyDayTasks: UserCategorizedTasks = {
+      ...mockTasks,
+      dailyCategories: [
+        {
+          id: "cat_daily_days",
+          name: "Study Blocks",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_day5",
+              userId: "user_1",
+              categoryId: "cat_daily_days",
+              title: "Day 5 Biology",
+              taskType: "DAILY",
+              isComplete: false,
+              dueDate: "2026-10-05",
+              createdAt: new Date("2026-10-05T10:00:00Z"),
+              updatedAt: new Date("2026-10-05T10:00:00Z"),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    // Viewing Day 1 (2026-10-01), but task is only on Day 5
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: emptyDayTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-01",
+        todayDayNumber: 1,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    expect(html).toContain("No todos scheduled for");
+    expect(html).toContain("+ Add todo for");
+  });
+
+  it("does not render clock time logging button in tasks section header", () => {
+    const openHoursModal = vi.fn();
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+        onOpenHoursModal: openHoursModal,
+      }),
+    );
+
+    expect(html).not.toContain('aria-label="Log study hours for');
+  });
 });
+

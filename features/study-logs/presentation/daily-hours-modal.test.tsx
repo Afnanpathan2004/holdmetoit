@@ -125,4 +125,88 @@ describe("DailyHoursModal", () => {
 
     expect(html).toBe("");
   });
+
+  it("renders full challenge week selector with future days disabled for admins", () => {
+    const html = renderToStaticMarkup(
+      createElement(DailyHoursModal, {
+        challengeId: "chal-1",
+        isOpen: true,
+        onClose: vi.fn(),
+        todayDate: "2026-10-06",
+        todayDayNumber: 2,
+        challengeStartDate: "2026-10-05",
+        totalChallengeDays: 7,
+        isAdmin: true,
+      }),
+    );
+
+    expect(html).toContain("Challenge Week Days");
+    // Day 1 (past) and Day 2 (today)
+    expect(html).toContain("D1");
+    expect(html).toContain("Today");
+    // Date picker input with min set to start date and max to today
+    expect(html).toContain('type="date"');
+    expect(html).toContain('max="2026-10-06"');
+    expect(html).toContain('min="2026-10-05"');
+    // Future days are disabled
+    expect(html).toContain('disabled=""');
+    expect(html).toContain("Future date (cannot log yet)");
+  });
+
+  it("pre-populates yesterday hours when opened with initialDayNumber for yesterday", () => {
+    const html = renderToStaticMarkup(
+      createElement(DailyHoursModal, {
+        challengeId: "chal-1",
+        isOpen: true,
+        onClose: vi.fn(),
+        todayDate: "2026-10-07",
+        todayDayNumber: 3,
+        yesterdayDate: "2026-10-06",
+        yesterdayDayNumber: 2,
+        isYesterdayMissed: true,
+        initialDayNumber: 2,
+        challengeStartDate: "2026-10-05",
+        existingLogs: {
+          "2026-10-06": 7200, // 2 hours on Day 2 (yesterday)
+        },
+      }),
+    );
+
+    expect(html).toContain("How much did you study yesterday?");
+    expect(html).toContain('value="2"');
+    expect(html).toContain("Update Hours");
+  });
+
+  it("shows only editable days (yesterday and today) in clean 2-card layout for normal participants", () => {
+    const html = renderToStaticMarkup(
+      createElement(DailyHoursModal, {
+        challengeId: "chal-1",
+        isOpen: true,
+        onClose: vi.fn(),
+        todayDate: "2026-10-07",
+        todayDayNumber: 3,
+        yesterdayDate: "2026-10-06",
+        yesterdayDayNumber: 2,
+        challengeStartDate: "2026-10-05",
+        totalChallengeDays: 7,
+        isAdmin: false,
+      }),
+    );
+
+    // Shows 2-card selector header
+    expect(html).toContain("Select Day to Log");
+    expect(html).toContain("Yesterday");
+    expect(html).toContain("Today");
+    expect(html).toContain("D2");
+    expect(html).toContain("D3");
+    // Earlier days (Day 1) and future days are NOT rendered in participant layout
+    expect(html).not.toContain("D1");
+    expect(html).not.toContain("D4");
+    expect(html).not.toContain("D5");
+    expect(html).not.toContain("Future date (cannot log yet)");
+    // Date picker is constrained to yesterday and today
+    expect(html).toContain('min="2026-10-06"');
+    expect(html).toContain('max="2026-10-07"');
+  });
 });
+

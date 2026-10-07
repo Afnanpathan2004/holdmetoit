@@ -208,16 +208,19 @@ model Task {
   categoryId  String
   title       String    @db.VarChar(255)
   taskType    TaskType  @map("task_type")
-  sortOrder   Int       @default(0) @map("sort_order")
-  isComplete  Boolean   @default(false) @map("is_complete")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  completedAt DateTime? @map("completed_at")
+  sortOrder   Int        @default(0) @map("sort_order")
+  isComplete  Boolean    @default(false) @map("is_complete")
+  status      TaskStatus @default(TODO)
+  dueDate     DateTime?  @map("due_date") @db.Date
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  completedAt DateTime?  @map("completed_at")
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@index([userId, taskType])
+  @@index([userId, dueDate])
   @@index([categoryId])
   @@map("tasks")
 }
@@ -374,6 +377,13 @@ enum ParticipantStatus {
 enum TaskType {
   DAILY
   WEEKLY
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CROSSED_OUT
 }
 
 enum FeedbackType {

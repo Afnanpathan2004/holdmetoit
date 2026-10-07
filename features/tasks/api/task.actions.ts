@@ -56,6 +56,9 @@ export async function createTaskAction(
       taskType: parsed.data.taskType,
       categoryId: parsed.data.categoryId,
       newCategoryName: parsed.data.newCategoryName,
+      isComplete: parsed.data.isComplete,
+      status: parsed.data.status,
+      dueDate: parsed.data.dueDate,
     });
 
     revalidatePath("/");
@@ -92,6 +95,7 @@ export async function toggleTaskAction(
       taskId: parsed.data.taskId,
       userId: user.id,
       isComplete: parsed.data.isComplete,
+      status: parsed.data.status,
     });
 
     if (!updated) {
@@ -215,6 +219,9 @@ export async function updateTaskAction(
       taskId: parsed.data.taskId,
       userId: user.id,
       title: parsed.data.title,
+      isComplete: parsed.data.isComplete,
+      status: parsed.data.status,
+      dueDate: parsed.data.dueDate,
     });
 
     if (!updated) {

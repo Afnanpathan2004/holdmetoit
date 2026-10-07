@@ -8,6 +8,7 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  Clock,
   Loader2,
   Lock,
   Play,
@@ -19,7 +20,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ChallengeScoreboardViewModel } from "@/features/leaderboard/data/leaderboard-data";
+import type {
+  ChallengeScoreboardViewModel,
+  ScoreboardStandingEntry,
+} from "@/features/leaderboard/data/leaderboard-data";
 import {
   deleteChallengeAction,
   kickoffChallengeAction,
@@ -29,6 +33,15 @@ import {
 } from "@/features/challenges/api/challenge-admin.actions";
 import { discardChallengeImageUploadAction } from "@/features/challenges/api/punishment-pfp.actions";
 import { ChallengeImageInput } from "@/features/challenges/presentation/challenge-image-input";
+import {
+  AdminHoursOverrideModal,
+  type AdminHoursOverrideParticipant,
+} from "@/features/study-logs/presentation/admin-hours-override-modal";
+import {
+  getChallengeDayOptions,
+  type ChallengeDayOption,
+} from "@/features/study-logs/domain/challenge-day";
+import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
 import {
   formatDateToUtcInputString,
   isUtcDateRangeValid,
@@ -53,6 +66,36 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
+
+  // Admin Hours Override State
+  const [overrideParticipant, setOverrideParticipant] =
+    useState<AdminHoursOverrideParticipant | null>(null);
+  const [overrideInitialDay, setOverrideInitialDay] = useState<number>(1);
+  const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
+
+  const dayOptions: ChallengeDayOption[] = getChallengeDayOptions(
+    challenge.startAt,
+    new Date(),
+    challenge.totalDays || 7,
+  );
+
+  const handleOpenOverride = (
+    participant: ScoreboardStandingEntry,
+    dayNum = 1,
+  ) => {
+    setOverrideParticipant({
+      participantId: participant.participantId,
+      userId: participant.userId,
+      displayName: participant.displayName,
+      username: participant.username,
+      image: participant.image,
+      teamName: participant.teamName,
+      teamColor: participant.teamColor,
+      dailyLogs: participant.dailyLogs,
+    });
+    setOverrideInitialDay(dayNum);
+    setIsOverrideModalOpen(true);
+  };
 
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -583,15 +626,19 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
           />
         </section>
 
-        {/* SECTION 4: PARTICIPANT HOUSE ASSIGNMENTS (ROSTER REASSIGNMENT) */}
+        {/* SECTION 4: PARTICIPANT ROSTERS & HOURS MANAGEMENT (ADMIN OVERRIDE) */}
         <section className="space-y-5 pt-4 border-t border-[#262626]">
           <div className="space-y-1">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
-              Participant House Assignments
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
+                Participant Rosters & Study Hours Management
+              </h3>
+              <span className="text-[11px] text-[#868686]">
+                Law L5 Host Override
+              </span>
+            </div>
             <p className="text-xs text-[#868686]">
-              Reassign participants across teams or rebalance rosters. Changes are
-              persisted immediately.
+              Reassign houses or override participant logged hours for throughout the challenge week (D1–D7). All manual adjustments require an audit reason.
             </p>
           </div>
 
@@ -600,7 +647,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
               No scholars have enrolled in this challenge yet.
             </div>
           ) : (
-            <div className="space-y-2 rounded-2xl border border-[#262626] bg-[#1a1a1a] p-3 divide-y divide-[#262626]">
+            <div className="space-y-3 rounded-2xl border border-[#262626] bg-[#1a1a1a] p-3 sm:p-4">
               {challenge.standings.map((participant) => {
                 const currentSelectedTeamId =
                   participantTeamMap[participant.participantId] ||
@@ -612,70 +659,126 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                 return (
                   <div
                     key={participant.participantId}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 pb-3 first:pt-1 last:pb-1"
+                    className="p-3 sm:p-4 rounded-2xl bg-[#1c1c1c] border border-[#262626] space-y-3 hover:border-[#383838] transition-colors"
                   >
-                    {/* User info */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-full bg-[#292929] border border-[#383838] overflow-hidden shrink-0 flex items-center justify-center">
-                        {participant.image ? (
-                          <Image
-                            src={participant.image}
-                            alt={participant.displayName}
-                            width={36}
-                            height={36}
-                            className="h-full w-full object-cover"
-                            unoptimized
-                          />
-                        ) : (
-                          <UserIcon className="h-4 w-4 text-[#868686]" />
-                        )}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      {/* User info */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 rounded-full bg-[#292929] border border-[#383838] overflow-hidden shrink-0 flex items-center justify-center">
+                          {participant.image ? (
+                            <Image
+                              src={participant.image}
+                              alt={participant.displayName}
+                              width={40}
+                              height={40}
+                              className="h-full w-full object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <UserIcon className="h-5 w-5 text-[#868686]" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-[#ffffff] truncate">
+                            {participant.displayName}
+                          </p>
+                          <p className="text-[11px] text-[#868686] truncate">
+                            @{participant.username || "scholar"} •{" "}
+                            <span className="text-[#d1d1d1] font-mono">
+                              {participant.totalLoggedClock}
+                            </span>{" "}
+                            logged
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-[#ffffff] truncate">
-                          {participant.displayName}
-                        </p>
-                        <p className="text-[11px] text-[#868686] truncate">
-                          @{participant.username || "scholar"}
-                        </p>
+
+                      {/* Controls: House Select & Override Button */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                        {/* Team Selector Dropdown */}
+                        <div className="relative flex-1 sm:flex-initial w-full sm:w-auto">
+                          <select
+                            value={currentSelectedTeamId}
+                            onChange={(e) =>
+                              handleReassign(
+                                participant.participantId,
+                                e.target.value,
+                              )
+                            }
+                            disabled={isReassigning}
+                            className="h-9 w-full sm:w-auto pl-3 pr-8 rounded-xl bg-[#292929] border border-[#383838] focus:border-[#545454] text-xs font-semibold text-[#ffffff] appearance-none cursor-pointer focus:outline-none disabled:opacity-50"
+                          >
+                            <option
+                              value="no-assigned"
+                              className="bg-[#1c1c1c] text-[#868686]"
+                            >
+                              ⏳ Not Assigned
+                            </option>
+                            {teams.map((t) => (
+                              <option
+                                key={t.id || t.name}
+                                value={t.id}
+                                className="bg-[#1c1c1c] text-white"
+                              >
+                                {t.iconEmoji || "🛡️"} {t.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="h-3.5 w-3.5 text-[#868686] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+
+                        {/* Override Hours Button */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => handleOpenOverride(participant, 1)}
+                          className="h-9 px-3 rounded-xl border-[#383838] bg-[#292929] hover:bg-[#333333] text-white text-xs font-semibold gap-1.5 shrink-0"
+                          title="Admin: Edit Participant Study Hours"
+                        >
+                          <Clock className="h-3.5 w-3.5 text-[#3b82f6]" />
+                          <span>Edit hr</span>
+                        </Button>
+
+                        {isReassigning && (
+                          <Loader2 className="h-4 w-4 animate-spin text-[#868686]" />
+                        )}
                       </div>
                     </div>
 
-                    {/* Team Selector Dropdown */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                      <div className="relative flex-1 sm:flex-initial w-full sm:w-auto">
-                        <select
-                          value={currentSelectedTeamId}
-                          onChange={(e) =>
-                            handleReassign(
-                              participant.participantId,
-                              e.target.value,
-                            )
-                          }
-                          disabled={isReassigning}
-                          className="h-10 w-full sm:w-auto pl-3 pr-8 rounded-xl bg-[#292929] border border-[#383838] focus:border-[#545454] text-xs font-semibold text-[#ffffff] appearance-none cursor-pointer focus:outline-none disabled:opacity-50"
-                        >
-                          <option
-                            value="no-assigned"
-                            className="bg-[#1c1c1c] text-[#868686]"
-                          >
-                            ⏳ Not Assigned
-                          </option>
-                          {teams.map((t) => (
-                            <option
-                              key={t.id || t.name}
-                              value={t.id}
-                              className="bg-[#1c1c1c] text-white"
-                            >
-                              {t.iconEmoji || "🛡️"} {t.name}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="h-3.5 w-3.5 text-[#868686] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    {/* 7-Day Week Strip (Clickable to jump to specific day in override modal) */}
+                    <div className="pt-2 border-t border-[#262626]">
+                      <div className="flex items-center justify-between text-[10px] text-[#868686] pb-1 px-0.5">
+                        <span>7-Day Log Breakdown (Click day to edit)</span>
+                        <span className="text-[#a1a1a1]">Full Week D1–D7</span>
                       </div>
-
-                      {isReassigning && (
-                        <Loader2 className="h-4 w-4 animate-spin text-[#868686]" />
-                      )}
+                      <div className="grid grid-cols-7 gap-1 w-full text-center">
+                        {dayOptions.map((opt) => {
+                          const loggedSec = participant.dailyLogs?.[opt.dateKey] ?? 0;
+                          const hasHours = loggedSec > 0;
+                          return (
+                            <button
+                              key={opt.dayNumber}
+                              type="button"
+                              onClick={() => handleOpenOverride(participant, opt.dayNumber)}
+                              className={`py-1.5 px-0.5 rounded-lg text-center transition-all ${
+                                hasHours
+                                  ? "bg-[#144520]/30 hover:bg-[#144520]/60 border border-[#22c55e]/30 text-[#4ade80]"
+                                  : "bg-[#242424]/40 hover:bg-[#2f2f2f] border border-[#2e2e2e] text-[#868686] hover:text-[#d1d1d1]"
+                              }`}
+                              title={`Click to edit Day ${opt.dayNumber} (${opt.dateKey}) - ${formatSecondsToClock(loggedSec)}`}
+                            >
+                              <div className="text-[9px] uppercase tracking-wider text-[#a1a1a1] leading-none">
+                                {opt.weekday}
+                              </div>
+                              <div className="text-[10px] font-semibold mt-0.5 leading-none">
+                                D{opt.dayNumber}
+                              </div>
+                              <div className="text-[9px] font-mono mt-1 leading-none truncate">
+                                {hasHours ? `${Math.floor(loggedSec / 3600)}h` : "-"}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 );
@@ -778,6 +881,17 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
           </div>
         </div>
       )}
+
+      {/* Admin Hours Override Modal (Law L5 / FEAT-LOG-04) */}
+      <AdminHoursOverrideModal
+        isOpen={isOverrideModalOpen}
+        onClose={() => setIsOverrideModalOpen(false)}
+        challengeId={challenge.id}
+        challengeStartDate={challenge.startAt}
+        totalChallengeDays={challenge.totalDays || 7}
+        participant={overrideParticipant}
+        initialDayNumber={overrideInitialDay}
+      />
     </div>
   );
 }

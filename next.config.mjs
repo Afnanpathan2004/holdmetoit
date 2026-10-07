@@ -1,17 +1,36 @@
 function supabaseImagePatterns() {
-  const raw = process.env.SUPABASE_URL;
-  if (!raw) return [];
+  const patterns = [
+    {
+      protocol: "https",
+      hostname: "*.supabase.co",
+      pathname: "/**",
+    },
+    {
+      protocol: "https",
+      hostname: "*.supabase.in",
+      pathname: "/**",
+    },
+    {
+      protocol: "https",
+      hostname: "*.supabase.net",
+      pathname: "/**",
+    },
+  ];
+
+  const raw = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!raw) return patterns;
   try {
     const { protocol, hostname } = new URL(raw);
-    return [
-      {
+    if (!patterns.some((p) => p.hostname === hostname)) {
+      patterns.push({
         protocol: protocol.replace(":", ""),
         hostname,
         pathname: "/storage/v1/object/public/**",
-      },
-    ];
+      });
+    }
+    return patterns;
   } catch {
-    return [];
+    return patterns;
   }
 }
 

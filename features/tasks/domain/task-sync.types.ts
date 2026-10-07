@@ -1,4 +1,4 @@
-import type { CategoryItem, TaskItem, TaskType } from "./task.types";
+import type { CategoryItem, TaskItem, TaskStatus, TaskType } from "./task.types";
 
 export type SyncState = "synced" | "pending";
 
@@ -20,6 +20,8 @@ export interface LocalTaskRecord {
   taskType: TaskType;
   sortOrder?: number;
   isComplete: boolean;
+  status?: TaskStatus;
+  dueDate?: string | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;

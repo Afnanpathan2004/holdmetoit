@@ -71,6 +71,7 @@ export default async function AdminDashboardPage() {
               day: "numeric",
               month: "short",
               year: "numeric",
+              timeZone: "UTC",
             });
 
             const statusLabel =

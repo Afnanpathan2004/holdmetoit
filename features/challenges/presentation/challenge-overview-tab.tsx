@@ -3,16 +3,44 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Users, CheckCircle, Shield, Award } from "lucide-react";
+import { ExternalLink, Users, CheckCircle, Shield, Award, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ChallengeScoreboardViewModel } from "@/features/leaderboard/data/leaderboard-data";
+import {
+  AdminHoursOverrideModal,
+  type AdminHoursOverrideParticipant,
+} from "@/features/study-logs/presentation/admin-hours-override-modal";
+import type {
+  ChallengeScoreboardViewModel,
+  ScoreboardStandingEntry,
+} from "@/features/leaderboard/data/leaderboard-data";
 
 interface ChallengeOverviewTabProps {
   challenge: ChallengeScoreboardViewModel;
+  isAdmin?: boolean;
 }
 
-export function ChallengeOverviewTab({ challenge }: ChallengeOverviewTabProps) {
+export function ChallengeOverviewTab({
+  challenge,
+  isAdmin = false,
+}: ChallengeOverviewTabProps) {
   const [showAllParticipants, setShowAllParticipants] = useState(false);
+  const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
+  const [overrideParticipant, setOverrideParticipant] =
+    useState<AdminHoursOverrideParticipant | null>(null);
+
+  const handleOpenOverride = (entry: ScoreboardStandingEntry) => {
+    setOverrideParticipant({
+      participantId: entry.participantId,
+      userId: entry.userId,
+      displayName: entry.displayName,
+      username: entry.username,
+      image: entry.image,
+      teamName: entry.teamName,
+      teamColor: entry.teamColor,
+      dailyLogs: entry.dailyLogs,
+    });
+    setIsOverrideModalOpen(true);
+  };
   const { standings, teams } = challenge;
 
   const displayedParticipants = showAllParticipants
@@ -150,11 +178,26 @@ export function ChallengeOverviewTab({ challenge }: ChallengeOverviewTabProps) {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="h-2 w-2 rounded-full bg-[#22c55e]" />
-                      <span className="text-[11px] font-medium text-[#d1d1d1]">
-                        Active
-                      </span>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-[#22c55e]" />
+                        <span className="text-[11px] font-medium text-[#d1d1d1]">
+                          Active
+                        </span>
+                      </div>
+                      {isAdmin && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenOverride(p)}
+                          className="h-7 px-2.5 rounded-lg border-[#383838] bg-[#242424] hover:bg-[#333333] text-white text-[11px] font-semibold gap-1 shrink-0"
+                          title={`Admin: Edit hours for ${p.displayName}`}
+                        >
+                          <Clock className="h-3 w-3 text-[#3b82f6]" />
+                          <span>Edit hr</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );
@@ -175,6 +218,19 @@ export function ChallengeOverviewTab({ challenge }: ChallengeOverviewTabProps) {
           )}
         </div>
       </div>
+
+      {/* Admin Hours Override Modal (Law L5 / FEAT-LOG-04) */}
+      {isAdmin && (
+        <AdminHoursOverrideModal
+          isOpen={isOverrideModalOpen}
+          onClose={() => setIsOverrideModalOpen(false)}
+          challengeId={challenge.id}
+          challengeStartDate={challenge.startAt}
+          totalChallengeDays={challenge.totalDays || 7}
+          participant={overrideParticipant}
+          initialDayNumber={challenge.currentDayNumber || 1}
+        />
+      )}
     </div>
   );
 }

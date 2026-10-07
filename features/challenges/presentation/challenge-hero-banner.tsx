@@ -37,6 +37,7 @@ function ChallengeHeroImage({ src }: { src: string | null }) {
             alt=""
             fill
             priority
+            unoptimized
             sizes="(max-width: 1200px) 100vw, 1200px"
             onLoad={() => setStatus("loaded")}
             onError={() => setStatus("error")}

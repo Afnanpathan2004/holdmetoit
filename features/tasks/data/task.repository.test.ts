@@ -152,6 +152,35 @@ describe("task.repository", () => {
       );
     });
 
+    it("creates task with explicit dueDate", async () => {
+      const mockCreated = {
+        id: "task_due",
+        title: "Read Chapter 6",
+        taskType: "DAILY",
+        isComplete: false,
+        dueDate: new Date("2026-10-06"),
+      };
+
+      vi.mocked(prisma.task.create).mockResolvedValue(mockCreated as never);
+
+      await createTask({
+        userId: "user_1",
+        title: "Read Chapter 6",
+        taskType: "DAILY",
+        categoryId: "cat_1",
+        dueDate: "2026-10-06",
+      });
+
+      expect(prisma.task.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            title: "Read Chapter 6",
+            dueDate: expect.any(Date),
+          }),
+        }),
+      );
+    });
+
     it("creates new category if newCategoryName is specified", async () => {
       vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.category.create).mockResolvedValue({
@@ -316,6 +345,165 @@ describe("task.repository", () => {
       expect(prisma.task.update).toHaveBeenCalledWith({
         where: { id: "task_1" },
         data: { title: "New title" },
+        include: { category: true },
+      });
+    });
+
+    it("updates task dueDate", async () => {
+      vi.mocked(prisma.task.findFirst).mockResolvedValue({
+        id: "task_1",
+        userId: "user_1",
+        title: "Current title",
+      } as never);
+      vi.mocked(prisma.task.update).mockResolvedValue({
+        id: "task_1",
+        title: "Current title",
+        dueDate: new Date("2026-10-08"),
+      } as never);
+
+      const result = await updateTask({
+        taskId: "task_1",
+        userId: "user_1",
+        dueDate: "2026-10-08",
+      });
+
+      expect(result).toBeDefined();
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: "task_1" },
+        data: { dueDate: expect.any(Date) },
+        include: { category: true },
+      });
+    });
+
+    it("updates task completion and sets completedAt timestamp", async () => {
+      vi.mocked(prisma.task.findFirst).mockResolvedValue({
+        id: "task_1",
+        userId: "user_1",
+        title: "Current title",
+        isComplete: false,
+      } as never);
+      vi.mocked(prisma.task.update).mockResolvedValue({
+        id: "task_1",
+        title: "Current title",
+        isComplete: true,
+        completedAt: new Date(),
+      } as never);
+
+      const result = await updateTask({
+        taskId: "task_1",
+        userId: "user_1",
+        isComplete: true,
+      });
+
+      expect(result).toBeDefined();
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: "task_1" },
+        data: {
+          isComplete: true,
+          status: "COMPLETED",
+          completedAt: expect.any(Date),
+        },
+        include: { category: true },
+      });
+    });
+
+    it("updates task to incomplete and resets completedAt to null", async () => {
+      vi.mocked(prisma.task.findFirst).mockResolvedValue({
+        id: "task_1",
+        userId: "user_1",
+        title: "Current title",
+        isComplete: true,
+      } as never);
+      vi.mocked(prisma.task.update).mockResolvedValue({
+        id: "task_1",
+        title: "Current title",
+        isComplete: false,
+        status: "TODO",
+        completedAt: null,
+      } as never);
+
+      const result = await updateTask({
+        taskId: "task_1",
+        userId: "user_1",
+        isComplete: false,
+      });
+
+      expect(result).toBeDefined();
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: "task_1" },
+        data: {
+          isComplete: false,
+          status: "TODO",
+          completedAt: null,
+        },
+        include: { category: true },
+      });
+    });
+
+    it("updates task with IN_PROGRESS status", async () => {
+      vi.mocked(prisma.task.findFirst).mockResolvedValue({
+        id: "task_1",
+        userId: "user_1",
+        title: "Current title",
+        isComplete: false,
+        status: "TODO",
+      } as never);
+      vi.mocked(prisma.task.update).mockResolvedValue({
+        id: "task_1",
+        title: "Current title",
+        isComplete: false,
+        status: "IN_PROGRESS",
+        completedAt: null,
+      } as never);
+
+      const result = await updateTask({
+        taskId: "task_1",
+        userId: "user_1",
+        status: "IN_PROGRESS",
+      });
+
+      expect(result).toBeDefined();
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: "task_1" },
+        data: {
+          isComplete: false,
+          status: "IN_PROGRESS",
+          completedAt: null,
+        },
+        include: { category: true },
+      });
+    });
+
+    it("updates task with CROSSED_OUT status", async () => {
+      vi.mocked(prisma.task.findFirst).mockResolvedValue({
+        id: "task_1",
+        userId: "user_1",
+        title: "Current title",
+        isComplete: false,
+        status: "TODO",
+      } as never);
+      vi.mocked(prisma.task.update).mockResolvedValue({
+        id: "task_1",
+        title: "Current title",
+        isComplete: false,
+        status: "CROSSED_OUT",
+        completedAt: null,
+      } as never);
+
+      const result = await updateTask({
+        taskId: "task_1",
+        userId: "user_1",
+        status: "CROSSED_OUT",
+      });
+
+      expect(result).toBeDefined();
+      expect(prisma.task.update).toHaveBeenCalledWith({
+        where: { id: "task_1" },
+        data: {
+          isComplete: false,
+          status: "CROSSED_OUT",
+          completedAt: null,
+        },
         include: { category: true },
       });
     });

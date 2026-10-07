@@ -199,7 +199,103 @@ describe("logStudyTimeAction", () => {
     }
   });
 
-  it("rejects a challenge day outside the current and previous server buckets", async () => {
+  it("rejects future challenge day with FUTURE_DATE_NOT_ALLOWED", async () => {
+    vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValue({
+      id: "usr_1",
+    } as never);
+
+    vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
+      id: "part_1",
+      challenge: {
+        startAt: new Date("2026-10-05T18:00:00.000Z"),
+        endAt: new Date("2026-10-12T18:00:00.000Z"),
+      },
+    } as never);
+
+    // Currently Day 1 (system time is 2026-10-06T00:30:00.000Z)
+    const result = await logStudyTimeAction({
+      challengeId: "chal_1",
+      challengeDay: 2, // Future day
+      hours: 2,
+      minutes: 0,
+      seconds: 0,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      code: "FUTURE_DATE_NOT_ALLOWED",
+      message: "Cannot log study time for future dates.",
+    });
+    expect(dailyStudyLogRepo.upsertDailyStudyLog).not.toHaveBeenCalled();
+  });
+
+  it("allows logging yesterday when currently on Day 4", async () => {
+    // Fast forward to Day 4
+    vi.setSystemTime(new Date("2026-10-08T20:00:00.000Z"));
+
+    vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValue({
+      id: "usr_1",
+    } as never);
+
+    vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
+      id: "part_1",
+      challenge: {
+        startAt: new Date("2026-10-05T18:00:00.000Z"),
+        endAt: new Date("2026-10-12T18:00:00.000Z"),
+      },
+    } as never);
+
+    // Logging Day 3 (yesterday)
+    const result = await logStudyTimeAction({
+      challengeId: "chal_1",
+      challengeDay: 3,
+      hours: 3,
+      minutes: 15,
+      seconds: 0,
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(dailyStudyLogRepo.upsertDailyStudyLog).toHaveBeenCalledWith({
+      participantId: "part_1",
+      logDate: "2026-10-07",
+      durationSeconds: 11_700,
+    });
+  });
+
+  it("rejects logging days before yesterday with ONLY_TODAY_OR_YESTERDAY_ALLOWED", async () => {
+    // Fast forward to Day 4
+    vi.setSystemTime(new Date("2026-10-08T20:00:00.000Z"));
+
+    vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValue({
+      id: "usr_1",
+    } as never);
+
+    vi.mocked(requireParticipantModule.requireOwnedParticipant).mockResolvedValue({
+      id: "part_1",
+      challenge: {
+        startAt: new Date("2026-10-05T18:00:00.000Z"),
+        endAt: new Date("2026-10-12T18:00:00.000Z"),
+      },
+    } as never);
+
+    // Logging Day 1 (3 days ago - not today or yesterday)
+    const result = await logStudyTimeAction({
+      challengeId: "chal_1",
+      challengeDay: 1,
+      hours: 2,
+      minutes: 0,
+      seconds: 0,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      code: "ONLY_TODAY_OR_YESTERDAY_ALLOWED",
+      message: "Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.",
+    });
+    expect(dailyStudyLogRepo.upsertDailyStudyLog).not.toHaveBeenCalled();
+  });
+
+  it("rejects future date string with FUTURE_DATE_NOT_ALLOWED", async () => {
     vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValue({
       id: "usr_1",
     } as never);
@@ -214,7 +310,7 @@ describe("logStudyTimeAction", () => {
 
     const result = await logStudyTimeAction({
       challengeId: "chal_1",
-      challengeDay: 2,
+      date: "2026-10-10",
       hours: 2,
       minutes: 0,
       seconds: 0,
@@ -222,10 +318,11 @@ describe("logStudyTimeAction", () => {
 
     expect(result).toEqual({
       ok: false,
-      code: "INVALID_CHALLENGE_DAY",
-      message: "You can only log the current or previous challenge day.",
+      code: "FUTURE_DATE_NOT_ALLOWED",
+      message: "Cannot log study time for future dates.",
     });
     expect(dailyStudyLogRepo.upsertDailyStudyLog).not.toHaveBeenCalled();
   });
 });
+
 

@@ -32,6 +32,9 @@ export interface DragTaskItem {
   isComplete?: boolean;
   categoryId?: string;
   taskType?: TaskType;
+  status?: string;
+  dueDate?: string | null;
+  createdAt?: string | Date;
 }
 
 export interface DragCategoryGroup<TTask extends DragTaskItem = DragTaskItem> {

@@ -22,6 +22,7 @@ export function ChallengeCardImage({ src, title }: { src: string | null; title: 
           src={src}
           alt={title}
           fill
+          unoptimized
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
           onLoad={() => setStatus("loaded")}
           onError={() => setStatus("error")}

@@ -58,6 +58,7 @@ export interface CockpitViewModel {
   isYesterdayMissed: boolean;
   teamRank: number | null;
   remainingDailyAllowanceSeconds: number;
+  challengeStartDate?: string;
 }
 
 function formatUtcDateKey(date: Date): string {
@@ -174,5 +175,6 @@ export async function getParticipantCockpit(
     isYesterdayMissed,
     teamRank,
     remainingDailyAllowanceSeconds,
+    challengeStartDate: formatUtcDateKey(participant.challenge.startAt),
   };
 }

@@ -1,8 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ChallengeLeaderboardTab } from "./challenge-leaderboard-tab";
 import type { ChallengeScoreboardViewModel } from "../data/leaderboard-data";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
 
 describe("ChallengeLeaderboardTab", () => {
   const mockChallenge: ChallengeScoreboardViewModel = {
@@ -189,5 +196,17 @@ describe("ChallengeLeaderboardTab", () => {
     expect(html).toContain("/35:00:00");
     expect(html).toContain("Serpents");
     expect(html).toContain("@afnan");
+    expect(html).not.toContain("Edit hr");
+  });
+
+  it("renders Edit hr buttons for mods and devs when isAdmin is true", () => {
+    const html = renderToStaticMarkup(
+      createElement(ChallengeLeaderboardTab, {
+        challenge: mockChallenge,
+        isAdmin: true,
+      }),
+    );
+
+    expect(html).toContain("Edit hr");
   });
 });
