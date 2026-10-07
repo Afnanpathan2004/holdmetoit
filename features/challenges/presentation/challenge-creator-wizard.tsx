@@ -21,6 +21,11 @@ import {
 import { createChallengeAction } from "@/features/challenges/api/challenge-admin.actions";
 import { discardChallengeImageUploadAction } from "@/features/challenges/api/punishment-pfp.actions";
 import { ChallengeImageInput } from "@/features/challenges/presentation/challenge-image-input";
+import {
+  formatDateToUtcInputString,
+  isUtcDateRangeValid,
+  parseUtcInputStringToIso,
+} from "@/features/challenges/domain/challenge-date-time";
 
 type Format = "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
 
@@ -86,13 +91,13 @@ export function ChallengeCreatorWizard() {
   const [startAt, setStartAt] = useState(() => {
     const d = new Date();
     d.setMinutes(0, 0, 0);
-    return d.toISOString().slice(0, 16);
+    return formatDateToUtcInputString(d);
   });
   const [endAt, setEndAt] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 7);
     d.setMinutes(0, 0, 0);
-    return d.toISOString().slice(0, 16);
+    return formatDateToUtcInputString(d);
   });
 
   const [selectedPreset, setSelectedPreset] = useState<string>("serpentsVsRaven");
@@ -179,14 +184,19 @@ export function ChallengeCreatorWizard() {
     setPfpError(punishmentPfpUrl ? null : "Please upload a punishment PFP.");
     if (!eventBannerUrl || !punishmentPfpUrl) return;
 
+    if (!isUtcDateRangeValid(startAt, endAt)) {
+      setErrorMsg("End date must be strictly after the start date.");
+      return;
+    }
+
     setIsCreating(true);
     startTransition(async () => {
       try {
         const result = await createChallengeAction({
           title,
           format,
-          startAt,
-          endAt,
+          startAt: parseUtcInputStringToIso(startAt),
+          endAt: parseUtcInputStringToIso(endAt),
           eventBannerUrl,
           punishmentPfpUrl,
           teams,

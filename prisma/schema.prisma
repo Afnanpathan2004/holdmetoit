@@ -42,7 +42,7 @@ model User {
   categories         Category[]
   tasks              Task[]
   feedbacks          Feedback[]
-  auditLogs          AuditLog[]
+  auditLogsWritten   AuditLog[] @relation("AuditLogsWritten")
 }
 
 model Account {
@@ -320,30 +320,33 @@ model Feedback {
   @@index([discordStatus])
   @@index([userId])
   @@map("feedbacks")
-}
+
+// ---------------------------------------------------------------------------
+// Audit Logging (Law L5 — Append-Only Immutable System Audit Trail)
+// ---------------------------------------------------------------------------
 
 model AuditLog {
-  id               String     @id
-  challengeId      String?    @map("challenge_id")
-  actorId          String?    @map("actor_id")
-  actorUsername    String     @map("actor_username")
-  actorDisplayName String?    @map("actor_display_name")
-  actorImage       String?    @map("actor_image")
-  actionType       String     @map("action_type") @db.VarChar(64)
-  targetEntityId   String     @map("target_entity_id")
-  targetEntityType String     @map("target_entity_type") @db.VarChar(64)
-  targetEntityName String?    @map("target_entity_name") @db.VarChar(255)
-  previousValue    Json?      @map("previous_value")
-  newValue         Json?      @map("new_value")
-  auditReason      String?    @map("audit_reason")
-  createdAt        DateTime   @default(now()) @map("created_at")
+  id               String   @id @default(cuid())
+  challengeId      String?  @map("challenge_id")
+  actorId          String?  @map("actor_id")
+  actorUsername    String   @map("actor_username")
+  actorDisplayName String?  @map("actor_display_name")
+  actorImage       String?  @map("actor_image")
+  actionType       String   @map("action_type") @db.VarChar(64)
+  targetEntityId   String   @map("target_entity_id")
+  targetEntityType String   @map("target_entity_type") @db.VarChar(64)
+  targetEntityName String?  @map("target_entity_name") @db.VarChar(255)
+  previousValue    Json?    @map("previous_value")
+  newValue         Json?    @map("new_value")
+  auditReason      String?  @map("audit_reason") @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
 
-  actor            User?      @relation(fields: [actorId], references: [id])
-  challenge        Challenge? @relation(fields: [challengeId], references: [id])
+  challenge Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  actor     User?      @relation("AuditLogsWritten", fields: [actorId], references: [id], onDelete: SetNull)
 
-  @@index([actionType])
-  @@index([actorId])
   @@index([challengeId, createdAt(sort: Desc)])
+  @@index([actorId])
+  @@index([actionType])
   @@map("audit_logs")
 }
 
