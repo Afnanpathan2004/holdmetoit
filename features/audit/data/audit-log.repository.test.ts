@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   _clearAuditTrailForTests,
+  _setUseInMemoryAuditTrailForTests,
   getAuditTrail,
   recordAuditEvent,
 } from "./audit-log.repository";
@@ -9,6 +10,7 @@ import {
 describe("audit log repository (FEAT-AUDIT-01)", () => {
   beforeEach(() => {
     _clearAuditTrailForTests();
+    _setUseInMemoryAuditTrailForTests(true);
   });
 
   it("records and retrieves immutable audit events in chronological descending order", async () => {
