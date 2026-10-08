@@ -271,5 +271,7 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Unit test verification in `app/admin/page.test.tsx`.
    - **Manual Leaderboard Standings (`manual-leaderboard-view.tsx`):**
       - Paginated participant standings to `10` scholars per page.
+    - **Navigation Header (`auth-nav.tsx` & `auth-nav.test.tsx`):**
+       - Renamed the header link from "Admin Console" to "Challenges" button linking to `/admin` for admins/devs (Closes #44).
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (64 files, 674/674 green) · `npx next build` ✅ (8 routes compiled).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).

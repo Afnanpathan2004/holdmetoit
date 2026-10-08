@@ -199,14 +199,13 @@ export function UserNav({
 
   return (
     <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-      {/* Admin Console Button (hidden while previewing as regular participant) */}
+      {/* Challenges Button (hidden while previewing as regular participant) */}
       {showAdminConsole && (
         <Link
           href="/admin"
           className="inline-flex items-center justify-center rounded-full bg-[#1c1c1c] hover:bg-[#292929] px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-medium text-[#f4f3f6] transition-colors border border-[#333333] shrink-0"
         >
-          <span className="sm:hidden">Admin</span>
-          <span className="hidden sm:inline">Admin Console</span>
+          <span>Challenges</span>
         </Link>
       )}
 
