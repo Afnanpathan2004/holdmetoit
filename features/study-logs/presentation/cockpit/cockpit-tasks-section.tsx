@@ -141,6 +141,7 @@ export function CockpitTasksSection({
       completed: boolean;
       status: TaskStatus;
       dueDate?: string | null;
+      createdAt?: string;
       catIdx: number;
       taskType: "daily" | "weekly";
     };
@@ -154,6 +155,7 @@ export function CockpitTasksSection({
     completed: boolean;
     status: TaskStatus;
     dueDate?: string | null;
+    createdAt?: string;
     catIdx: number;
     taskType: "daily" | "weekly";
   } | null>(null);
@@ -279,7 +281,11 @@ export function CockpitTasksSection({
   };
 
   const getTaskDateKey = (task: TaskItem): string => {
-    if (task.dueDate) return task.dueDate;
+    if (task.dueDate) {
+      return typeof task.dueDate === "string"
+        ? task.dueDate.slice(0, 10)
+        : new Date(task.dueDate).toISOString().slice(0, 10);
+    }
     if (task.createdAt) {
       return new Date(task.createdAt).toISOString().slice(0, 10);
     }
@@ -340,12 +346,37 @@ export function CockpitTasksSection({
             tasks: localTasks.length,
           });
 
+          const serverTaskMap = new Map<
+            string,
+            { dueDate?: string | null; status?: TaskStatus; sortOrder?: number }
+          >();
+          if (userTasks) {
+            for (const cat of [
+              ...userTasks.dailyCategories,
+              ...userTasks.weeklyCategories,
+            ]) {
+              for (const t of cat.tasks) {
+                serverTaskMap.set(t.id, {
+                  dueDate: t.dueDate
+                    ? typeof t.dueDate === "string"
+                      ? t.dueDate.slice(0, 10)
+                      : new Date(t.dueDate).toISOString().slice(0, 10)
+                    : null,
+                  status: t.status,
+                  sortOrder: t.sortOrder,
+                });
+              }
+            }
+          }
+
           const sortedCats = [...localCats].sort(
             (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
           );
           const sortedTasks = [...localTasks].sort(
             (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
           );
+
+          const tasksToHeal: LocalTaskRecord[] = [];
 
           const dailyCats = sortedCats
             .filter((c) => c.taskType === "DAILY")
@@ -355,14 +386,38 @@ export function CockpitTasksSection({
               isCollapsed: false,
               tasks: sortedTasks
                 .filter((t) => t.categoryId === c.id)
-                .map((t) => ({
-                  id: t.id,
-                  text: t.title,
-                  completed: t.isComplete,
-                  status: (t.status as TaskStatus) || (t.isComplete ? "COMPLETED" : "TODO"),
-                  dueDate: t.dueDate ?? null,
-                  createdAt: t.createdAt,
-                })),
+                .map((t) => {
+                  const serverInfo = serverTaskMap.get(t.id);
+                  const effectiveDueDate =
+                    (t.dueDate
+                      ? typeof t.dueDate === "string"
+                        ? t.dueDate.slice(0, 10)
+                        : new Date(t.dueDate).toISOString().slice(0, 10)
+                      : null) ??
+                    serverInfo?.dueDate ??
+                    null;
+                  const effectiveStatus =
+                    (t.status as TaskStatus) ||
+                    serverInfo?.status ||
+                    (t.isComplete ? "COMPLETED" : "TODO");
+
+                  if (t.dueDate !== effectiveDueDate || !t.status) {
+                    tasksToHeal.push({
+                      ...t,
+                      dueDate: effectiveDueDate,
+                      status: effectiveStatus,
+                    });
+                  }
+
+                  return {
+                    id: t.id,
+                    text: t.title,
+                    completed: t.isComplete,
+                    status: effectiveStatus,
+                    dueDate: effectiveDueDate,
+                    createdAt: t.createdAt,
+                  };
+                }),
             }));
 
           const weeklyCats = sortedCats
@@ -373,15 +428,43 @@ export function CockpitTasksSection({
               isCollapsed: false,
               tasks: sortedTasks
                 .filter((t) => t.categoryId === c.id)
-                .map((t) => ({
-                  id: t.id,
-                  text: t.title,
-                  completed: t.isComplete,
-                  status: (t.status as TaskStatus) || (t.isComplete ? "COMPLETED" : "TODO"),
-                  dueDate: t.dueDate ?? null,
-                  createdAt: t.createdAt,
-                })),
+                .map((t) => {
+                  const serverInfo = serverTaskMap.get(t.id);
+                  const effectiveDueDate =
+                    (t.dueDate
+                      ? typeof t.dueDate === "string"
+                        ? t.dueDate.slice(0, 10)
+                        : new Date(t.dueDate).toISOString().slice(0, 10)
+                      : null) ??
+                    serverInfo?.dueDate ??
+                    null;
+                  const effectiveStatus =
+                    (t.status as TaskStatus) ||
+                    serverInfo?.status ||
+                    (t.isComplete ? "COMPLETED" : "TODO");
+
+                  if (t.dueDate !== effectiveDueDate || !t.status) {
+                    tasksToHeal.push({
+                      ...t,
+                      dueDate: effectiveDueDate,
+                      status: effectiveStatus,
+                    });
+                  }
+
+                  return {
+                    id: t.id,
+                    text: t.title,
+                    completed: t.isComplete,
+                    status: effectiveStatus,
+                    dueDate: effectiveDueDate,
+                    createdAt: t.createdAt,
+                  };
+                }),
             }));
+
+          if (tasksToHeal.length > 0) {
+            putLocalTasks(tasksToHeal).catch(() => {});
+          }
 
           if (dailyCats.length > 0) {
             setDailyCategories(dailyCats);
@@ -396,6 +479,7 @@ export function CockpitTasksSection({
             userId: userId || null,
             name: c.name,
             taskType: c.taskType,
+            sortOrder: c.sortOrder ?? 0,
             createdAt: new Date(c.createdAt).toISOString(),
             updatedAt: new Date(c.updatedAt).toISOString(),
             syncState: "synced",
@@ -410,6 +494,7 @@ export function CockpitTasksSection({
             categoryId: t.categoryId,
             title: t.title,
             taskType: t.taskType,
+            sortOrder: t.sortOrder ?? 0,
             isComplete: t.isComplete,
             status: (t.status as TaskStatus) || (t.isComplete ? "COMPLETED" : "TODO"),
             dueDate: t.dueDate ?? null,
@@ -734,6 +819,7 @@ export function CockpitTasksSection({
         completed: task.completed,
         status: getTaskStatus(task),
         dueDate: task.dueDate ?? null,
+        createdAt: task.createdAt,
         catIdx,
         taskType,
       },
@@ -760,6 +846,7 @@ export function CockpitTasksSection({
         completed: task.completed,
         status: getTaskStatus(task),
         dueDate: task.dueDate ?? null,
+        createdAt: task.createdAt,
         catIdx,
         taskType,
       },
@@ -828,7 +915,7 @@ export function CockpitTasksSection({
         isComplete: nextCompleted,
         status: newStatus,
         dueDate: resolvedDueDate,
-        createdAt: nowIso,
+        createdAt: editTaskModal.createdAt || nowIso,
         updatedAt: nowIso,
         completedAt: nextCompleted ? nowIso : null,
         syncState: "pending",
@@ -1364,13 +1451,17 @@ export function CockpitTasksSection({
           taskType: res.targetTaskType,
           sortOrder: idx,
           isComplete: t.completed,
-          createdAt: nowIso,
+          status: getTaskStatus(t),
+          dueDate: t.dueDate ?? null,
+          createdAt: t.createdAt || nowIso,
           updatedAt: nowIso,
           completedAt: t.completed ? nowIso : null,
           syncState: "pending",
         }));
         putLocalTasks(tasksToUpdate).catch(() => {});
       } else {
+        const isMovedComplete = Boolean(res.movedTask.completed ?? res.movedTask.isComplete);
+        const movedStatus = (res.movedTask.status as TaskStatus) || (isMovedComplete ? "COMPLETED" : "TODO");
         putLocalTask({
           id: res.movedTask.id,
           userId: userId ?? null,
@@ -1378,10 +1469,12 @@ export function CockpitTasksSection({
           title: res.movedTask.text ?? res.movedTask.title ?? "",
           taskType: res.targetTaskType,
           sortOrder: destIdx,
-          isComplete: Boolean(res.movedTask.completed ?? res.movedTask.isComplete),
-          createdAt: nowIso,
+          isComplete: isMovedComplete,
+          status: movedStatus,
+          dueDate: res.movedTask.dueDate ?? null,
+          createdAt: res.movedTask.createdAt ? new Date(res.movedTask.createdAt).toISOString() : nowIso,
           updatedAt: nowIso,
-          completedAt: (res.movedTask.completed ?? res.movedTask.isComplete) ? nowIso : null,
+          completedAt: isMovedComplete ? nowIso : null,
           syncState: "pending",
         }).catch(() => {});
       }
@@ -1561,16 +1654,21 @@ export function CockpitTasksSection({
 
       if (res.movedTask && res.targetCategoryId) {
         const nowIso = new Date().toISOString();
+        const isMovedComplete = Boolean(res.movedTask.completed ?? res.movedTask.isComplete);
+        const movedStatus = (res.movedTask.status as TaskStatus) || (isMovedComplete ? "COMPLETED" : "TODO");
         putLocalTask({
           id: res.movedTask.id,
           userId: userId ?? null,
           categoryId: res.targetCategoryId,
           title: res.movedTask.text ?? res.movedTask.title ?? "",
           taskType: res.targetTaskType,
-          isComplete: Boolean(res.movedTask.completed ?? res.movedTask.isComplete),
-          createdAt: nowIso,
+          sortOrder: 0,
+          isComplete: isMovedComplete,
+          status: movedStatus,
+          dueDate: res.movedTask.dueDate ?? null,
+          createdAt: res.movedTask.createdAt ? new Date(res.movedTask.createdAt).toISOString() : nowIso,
           updatedAt: nowIso,
-          completedAt: (res.movedTask.completed ?? res.movedTask.isComplete) ? nowIso : null,
+          completedAt: isMovedComplete ? nowIso : null,
           syncState: "pending",
         }).catch(() => {});
 
@@ -1729,16 +1827,21 @@ export function CockpitTasksSection({
 
         if (res.movedTask && res.targetCategoryId) {
           const nowIso = new Date().toISOString();
+          const isMovedComplete = Boolean(res.movedTask.completed ?? res.movedTask.isComplete);
+          const movedStatus = (res.movedTask.status as TaskStatus) || (isMovedComplete ? "COMPLETED" : "TODO");
           putLocalTask({
             id: res.movedTask.id,
             userId: userId ?? null,
             categoryId: res.targetCategoryId,
             title: res.movedTask.text ?? res.movedTask.title ?? "",
             taskType: res.targetTaskType,
-            isComplete: Boolean(res.movedTask.completed ?? res.movedTask.isComplete),
-            createdAt: nowIso,
+            sortOrder: targetCategories[lastCatIdx].tasks.length,
+            isComplete: isMovedComplete,
+            status: movedStatus,
+            dueDate: res.movedTask.dueDate ?? null,
+            createdAt: res.movedTask.createdAt ? new Date(res.movedTask.createdAt).toISOString() : nowIso,
             updatedAt: nowIso,
-            completedAt: (res.movedTask.completed ?? res.movedTask.isComplete) ? nowIso : null,
+            completedAt: isMovedComplete ? nowIso : null,
             syncState: "pending",
           }).catch(() => {});
 

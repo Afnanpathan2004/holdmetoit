@@ -25,7 +25,12 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] text-[#f4f3f6] font-sans flex flex-col">
-      <AppHeader user={session?.user} subtitle="Admin Console" />
+      <AppHeader
+        user={session?.user}
+        subtitle="Admin Console"
+        isActualAdmin={hasAdminPrivileges(session?.user?.role) || isDevBypass}
+        isPreviewActive={false}
+      />
 
       {/* Main Content Area */}
       <main className="relative z-10 mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">

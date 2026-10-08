@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 
 import { EmptyState } from "@/components/state/empty-state";
 import { ErrorState } from "@/components/state/error-state";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/core/auth";
-import { hasAdminPrivileges } from "@/features/auth/domain/auth-roles";
+import {
+  getEffectiveAdminState,
+  PARTICIPANT_PREVIEW_COOKIE,
+} from "@/features/auth/domain/preview-mode";
 import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-data";
 import { ChallengeView } from "@/features/challenges/presentation/challenge-view";
 
@@ -14,6 +18,7 @@ interface ChallengePageProps {
   };
   searchParams?: {
     tab?: "overview" | "leaderboard" | "about" | "manage" | "audit";
+    as?: string;
   };
 }
 
@@ -22,7 +27,14 @@ export default async function ChallengePage({
   searchParams,
 }: ChallengePageProps) {
   const session = await auth();
-  const isAdmin = hasAdminPrivileges(session?.user?.role);
+  const cookieStore = await cookies();
+  const previewCookie = cookieStore.get(PARTICIPANT_PREVIEW_COOKIE)?.value;
+
+  const { isAdmin } = getEffectiveAdminState({
+    userRole: session?.user?.role,
+    previewCookie,
+    searchParamAs: searchParams?.as,
+  });
 
   try {
     const challenge = await getChallengeScoreboard(

@@ -305,6 +305,51 @@ describe("CockpitTasksSection", () => {
     expect(htmlDay1).not.toContain("Day 2 Organic Chemistry");
   });
 
+  it("does not shift a task to the current day when created today with dueDate set to another day", () => {
+    const tasksAddedForOtherDay: UserCategorizedTasks = {
+      ...mockTasks,
+      dailyCategories: [
+        {
+          id: "cat_daily_days",
+          name: "Study Blocks",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_created_today_for_tomorrow",
+              userId: "user_1",
+              categoryId: "cat_daily_days",
+              title: "Tomorrow Physics Exam Review",
+              taskType: "DAILY",
+              isComplete: false,
+              // Created today (2026-10-01), but scheduled for tomorrow (2026-10-02)
+              dueDate: "2026-10-02",
+              createdAt: new Date("2026-10-01T08:00:00Z"),
+              updatedAt: new Date("2026-10-01T08:00:00Z"),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    // Viewing Day 1 (todayDate = 2026-10-01)
+    const htmlDay1 = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: tasksAddedForOtherDay,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-01",
+        todayDayNumber: 1,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    // Should NOT be rendered on Day 1 (Today)
+    expect(htmlDay1).not.toContain("Tomorrow Physics Exam Review");
+    expect(htmlDay1).toContain("No todos scheduled for");
+  });
+
   it("renders empty day state when no tasks are scheduled for the active day", () => {
     const emptyDayTasks: UserCategorizedTasks = {
       ...mockTasks,

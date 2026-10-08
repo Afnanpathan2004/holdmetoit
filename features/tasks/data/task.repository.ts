@@ -8,7 +8,8 @@ import type {
   UserCategorizedTasks,
 } from "@/features/tasks/domain/task.types";
 
-function formatUtcDateKey(date: Date): string {
+function formatUtcDateKey(date: Date | string): string {
+  if (typeof date === "string") return date.slice(0, 10);
   return date.toISOString().slice(0, 10);
 }
 
