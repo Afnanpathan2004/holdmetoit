@@ -2,7 +2,7 @@
 
 > **Target Database:** PostgreSQL 15+ (Supabase / Neon)  
 > **ORM & Tooling:** Prisma ORM 6.x (`prisma/schema.prisma`)  
-> **Last Updated:** 2026-10-06  
+> **Last Updated:** 2026-10-06
 
 ---
 
@@ -10,15 +10,15 @@
 
 The repository tracks the following declarative migrations under `prisma/migrations/`:
 
-| Migration Directory | Applied Date | Core Schema Delta |
-| :--- | :---: | :--- |
-| `20261003000000_baseline` | 2026-10-03 | Baseline schema capturing initial Auth.js models (`User`, `Account`, `Session`, `VerificationToken`), `Challenge`, `Team`, `ChallengeParticipant`, `DailyStudyLog`, `WeeklyGoal`, `PunishmentRecord`, `team_members`, and `leaderboard_entries`. |
-| `20261004000000_add_event_banner_url` | 2026-10-04 | Adds nullable `eventBannerUrl` to `Challenge` and backfills legacy values from `punishmentPfpUrl`. |
-| `20261004010000_make_participant_team_optional` | 2026-10-04 | Allows `ChallengeParticipant.teamId` to be nullable (`SetNull` on delete), supporting unassigned/open challenge enrollment. |
-| `20261004020000_remove_challenge_status` | 2026-10-04 | Drops `status` column and `ChallengeStatus` enum from database. Status (`UPCOMING`, `ACTIVE`, `COMPLETED`) is derived dynamically in application domain via `calculateChallengeStatus(startAt, endAt)`. |
-| `20261004030000_categorizable_todos` | 2026-10-04 | Drops legacy `WeeklyGoal` table. Introduces user-scoped `categories` and `tasks` tables for flexible productivity tracking. |
-| `20261005010000_add_task_type_to_categories` | 2026-10-05 | Adds `task_type` (`DAILY` or `WEEKLY`) to `categories` table with composite unique index `(userId, name, task_type)` to segregate daily and weekly boards. |
-| `20261005020000_add_dev_user_role` | 2026-10-05 | Extends `UserRole` enum with `DEV` for platform developer privilege gating via `DEV_DISCORD_IDS`. |
+| Migration Directory                             | Applied Date | Core Schema Delta                                                                                                                                                                                                                                |
+| :---------------------------------------------- | :----------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `20261003000000_baseline`                       |  2026-10-03  | Baseline schema capturing initial Auth.js models (`User`, `Account`, `Session`, `VerificationToken`), `Challenge`, `Team`, `ChallengeParticipant`, `DailyStudyLog`, `WeeklyGoal`, `PunishmentRecord`, `team_members`, and `leaderboard_entries`. |
+| `20261004000000_add_event_banner_url`           |  2026-10-04  | Adds nullable `eventBannerUrl` to `Challenge` and backfills legacy values from `punishmentPfpUrl`.                                                                                                                                               |
+| `20261004010000_make_participant_team_optional` |  2026-10-04  | Allows `ChallengeParticipant.teamId` to be nullable (`SetNull` on delete), supporting unassigned/open challenge enrollment.                                                                                                                      |
+| `20261004020000_remove_challenge_status`        |  2026-10-04  | Drops `status` column and `ChallengeStatus` enum from database. Status (`UPCOMING`, `ACTIVE`, `COMPLETED`) is derived dynamically in application domain via `calculateChallengeStatus(startAt, endAt)`.                                          |
+| `20261004030000_categorizable_todos`            |  2026-10-04  | Drops legacy `WeeklyGoal` table. Introduces user-scoped `categories` and `tasks` tables for flexible productivity tracking.                                                                                                                      |
+| `20261005010000_add_task_type_to_categories`    |  2026-10-05  | Adds `task_type` (`DAILY` or `WEEKLY`) to `categories` table with composite unique index `(userId, name, task_type)` to segregate daily and weekly boards.                                                                                       |
+| `20261005020000_add_dev_user_role`              |  2026-10-05  | Extends `UserRole` enum with `DEV` for platform developer privilege gating via `DEV_DISCORD_IDS`.                                                                                                                                                |
 
 ---
 
@@ -27,6 +27,7 @@ The repository tracks the following declarative migrations under `prisma/migrati
 > [!WARNING]
 > **Schema Drift Alert (`HANDOFF.md` Defect D5):**  
 > Two subsequent features were synchronized to development databases using `prisma db push` without generating a migration directory:
+>
 > 1. `Feedback` model (`feedbacks` table with `feedback_number`, `type`, `status`, `discord_status`, etc.)
 > 2. `sortOrder` integer columns (`sort_order`) on `categories` and `tasks` models.
 >
@@ -38,13 +39,17 @@ The repository tracks the following declarative migrations under `prisma/migrati
 ## 3. Standard Deployment Procedures
 
 ### 3.1 Fresh Database Deployment
+
 To apply all tracked migrations to an empty PostgreSQL database:
+
 ```bash
 npx prisma migrate deploy --schema prisma/schema.prisma
 ```
 
 ### 3.2 Existing Database Previously Created with `db push`
+
 If a remote database was provisioned via `db push` and lacks migration history records in `_prisma_migrations`:
+
 1. **Back up the database** first.
 2. Mark the baseline and preceding migrations as applied:
    ```bash

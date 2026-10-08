@@ -1,600 +1,614 @@
 import { prisma } from "@/core/db";
 import {
-  evaluateParticipantPunishment,
-  type WeeklyGoalStatus,
+   evaluateParticipantPunishment,
+   type WeeklyGoalStatus,
 } from "@/features/accountability/domain/punishment";
 import {
-  calculateInclusiveDaysRemaining,
-  sumLoggedSeconds,
+   calculateInclusiveDaysRemaining,
+   sumLoggedSeconds,
 } from "@/features/leaderboard/domain/catch-up-presentation";
 import {
-  aggregateTeamScores,
-  calculateLeadMargin,
-  calculateSharePercentages,
-  type TeamRef,
+   aggregateTeamScores,
+   calculateLeadMargin,
+   calculateSharePercentages,
+   type TeamRef,
 } from "@/features/leaderboard/domain/leaderboard";
 import {
-  formatSecondsToClock,
-  formatSecondsToHuman,
+   formatSecondsToClock,
+   formatSecondsToHuman,
 } from "@/features/study-logs/domain/duration";
-import { getChallengeDayBuckets, getChallengeDayNumber } from "@/features/study-logs/domain/challenge-day";
+import {
+   getChallengeDayBuckets,
+   getChallengeDayNumber,
+} from "@/features/study-logs/domain/challenge-day";
 import { calculateChallengeStatus } from "@/features/challenges/domain/challenge-lifecycle";
 
 export interface ScoreboardTeam {
-  id: string;
-  name: string;
-  color: string | null;
-  iconEmoji: string | null;
-  mascotUrl: string | null;
-  sortOrder: number;
-  companionCount: number;
-  totalLoggedSeconds: number;
-  totalLoggedClock: string;
-  targetSeconds: number;
-  targetClock: string;
-  targetHours: number;
-  completionPercentage: number;
-  isLeader: boolean;
+   id: string;
+   name: string;
+   color: string | null;
+   iconEmoji: string | null;
+   mascotUrl: string | null;
+   sortOrder: number;
+   companionCount: number;
+   totalLoggedSeconds: number;
+   totalLoggedClock: string;
+   targetSeconds: number;
+   targetClock: string;
+   targetHours: number;
+   completionPercentage: number;
+   isLeader: boolean;
 }
 
 export interface ScoreboardMatchHeader {
-  hasMatchup: boolean;
-  teamA: ScoreboardTeam | null;
-  teamB: ScoreboardTeam | null;
-  leadMarginSeconds: number;
-  leadMarginClock: string;
-  leadMarginHuman: string;
-  leaderTeamId: string | null;
-  leaderSide: "a" | "b" | "tie";
-  ratioPercentageA: number;
-  ratioPercentageB: number;
+   hasMatchup: boolean;
+   teamA: ScoreboardTeam | null;
+   teamB: ScoreboardTeam | null;
+   leadMarginSeconds: number;
+   leadMarginClock: string;
+   leadMarginHuman: string;
+   leaderTeamId: string | null;
+   leaderSide: "a" | "b" | "tie";
+   ratioPercentageA: number;
+   ratioPercentageB: number;
 }
 
 export type ParticipantPaceStatus =
-  | "serene"
-  | "on-track"
-  | "catch-up"
-  | "punished"
-  | "excused";
+   "serene" | "on-track" | "catch-up" | "punished" | "excused";
 
 export interface ScoreboardStandingEntry {
-  rank: number;
-  participantId: string;
-  userId: string;
-  displayName: string;
-  username: string | null;
-  image: string | null;
-  teamId: string;
-  teamName: string;
-  teamColor: string | null;
-  teamIcon: string | null;
-  totalLoggedSeconds: number;
-  totalLoggedClock: string;
-  todayLoggedSeconds: number;
-  todayLoggedClock: string;
-  targetSeconds: number;
-  targetClock: string;
-  completionPercentage: number;
-  goalsCompletedCount: number;
-  goalsTotalCount: number;
-  paceStatus: ParticipantPaceStatus;
-  paceLabel: string;
-  deficitSeconds: number;
-  dailyLogs?: Record<string, number>;
+   rank: number;
+   participantId: string;
+   userId: string;
+   displayName: string;
+   username: string | null;
+   image: string | null;
+   teamId: string;
+   teamName: string;
+   teamColor: string | null;
+   teamIcon: string | null;
+   totalLoggedSeconds: number;
+   totalLoggedClock: string;
+   todayLoggedSeconds: number;
+   todayLoggedClock: string;
+   targetSeconds: number;
+   targetClock: string;
+   completionPercentage: number;
+   goalsCompletedCount: number;
+   goalsTotalCount: number;
+   paceStatus: ParticipantPaceStatus;
+   paceLabel: string;
+   deficitSeconds: number;
+   dailyLogs?: Record<string, number>;
 }
 
 export interface FlaggedPunishmentMember {
-  participantId: string;
-  userId: string;
-  displayName: string;
-  username: string | null;
-  image: string | null;
-  teamName: string;
-  teamIcon: string | null;
-  hoursDeficitSeconds: number;
-  hoursDeficitClock: string;
-  incompleteGoalsCount: number;
-  isPardoned: boolean;
-  pardonReason: string | null;
-  statusBadge: "Catch-Up" | "Punished" | "Excused";
+   participantId: string;
+   userId: string;
+   displayName: string;
+   username: string | null;
+   image: string | null;
+   teamName: string;
+   teamIcon: string | null;
+   hoursDeficitSeconds: number;
+   hoursDeficitClock: string;
+   incompleteGoalsCount: number;
+   isPardoned: boolean;
+   pardonReason: string | null;
+   statusBadge: "Catch-Up" | "Punished" | "Excused";
 }
 
 export interface PunishmentWallData {
-  punishmentPfpUrl: string;
-  flaggedMembers: FlaggedPunishmentMember[];
-  isEventCompleted: boolean;
+   punishmentPfpUrl: string;
+   flaggedMembers: FlaggedPunishmentMember[];
+   isEventCompleted: boolean;
 }
 
 export interface ChallengeScoreboardViewModel {
-  id: string;
-  title: string;
-  heroImageUrl: string | null;
-  eventBannerUrl: string | null;
-  punishmentPfpUrl: string | null;
-  format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
-  status: "UPCOMING" | "ACTIVE" | "COMPLETED";
-  startAt: string;
-  endAt: string;
-  daysRemaining: number;
-  totalDays: number;
-  currentDayNumber: number;
-  timeRemainingHuman: string;
-  teams: ScoreboardTeam[];
-  matchHeader: ScoreboardMatchHeader;
-  standings: ScoreboardStandingEntry[];
-  punishmentWall: PunishmentWallData;
-  currentUser: {
-    isLoggedIn: boolean;
-    isEnrolled: boolean;
-    participantId: string | null;
-  };
+   id: string;
+   title: string;
+   heroImageUrl: string | null;
+   eventBannerUrl: string | null;
+   punishmentPfpUrl: string | null;
+   format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
+   status: "UPCOMING" | "ACTIVE" | "COMPLETED";
+   startAt: string;
+   endAt: string;
+   daysRemaining: number;
+   totalDays: number;
+   currentDayNumber: number;
+   timeRemainingHuman: string;
+   teams: ScoreboardTeam[];
+   matchHeader: ScoreboardMatchHeader;
+   standings: ScoreboardStandingEntry[];
+   punishmentWall: PunishmentWallData;
+   currentUser: {
+      isLoggedIn: boolean;
+      isEnrolled: boolean;
+      participantId: string | null;
+   };
 }
 
 export interface RawChallengePayload {
-  id: string;
-  title: string;
-  format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
-  status?: "UPCOMING" | "ACTIVE" | "COMPLETED";
-  startAt: Date;
-  endAt: Date;
-  eventBannerUrl: string | null;
-  punishmentPfpUrl: string | null;
-  teams: Array<{
-    id: string;
-    name: string;
-    color: string | null;
-    iconEmoji: string | null;
-    mascotUrl: string | null;
-    sortOrder: number;
-  }>;
-  participants: Array<{
-    id: string;
-    userId: string;
-    teamId: string | null;
-    targetSeconds: number;
-    status: "NORMAL" | "DEFICIT" | "EXCUSED" | "PUNISHED";
-    user: {
+   id: string;
+   title: string;
+   format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
+   status?: "UPCOMING" | "ACTIVE" | "COMPLETED";
+   startAt: Date;
+   endAt: Date;
+   eventBannerUrl: string | null;
+   punishmentPfpUrl: string | null;
+   teams: Array<{
       id: string;
-      displayName: string | null;
-      username: string | null;
-      name: string | null;
-      image: string | null;
-    };
-    dailyStudyLogs: Array<{
-      durationSeconds: number;
-      logDate?: Date | string;
-    }>;
-    punishmentRecord?: {
-      isPunished: boolean;
-      isPardoned: boolean;
-      pardonReason: string | null;
-      hoursDeficitSeconds: number;
-      incompleteGoalsCount: number;
-    } | null;
-  }>;
+      name: string;
+      color: string | null;
+      iconEmoji: string | null;
+      mascotUrl: string | null;
+      sortOrder: number;
+   }>;
+   participants: Array<{
+      id: string;
+      userId: string;
+      teamId: string | null;
+      targetSeconds: number;
+      status: "NORMAL" | "DEFICIT" | "EXCUSED" | "PUNISHED";
+      user: {
+         id: string;
+         displayName: string | null;
+         username: string | null;
+         name: string | null;
+         image: string | null;
+      };
+      dailyStudyLogs: Array<{
+         durationSeconds: number;
+         logDate?: Date | string;
+      }>;
+      punishmentRecord?: {
+         isPunished: boolean;
+         isPardoned: boolean;
+         pardonReason: string | null;
+         hoursDeficitSeconds: number;
+         incompleteGoalsCount: number;
+      } | null;
+   }>;
 }
 
 function formatUtcDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+   return date.toISOString().slice(0, 10);
 }
 
 export function buildScoreboardViewModel(
-  challenge: RawChallengePayload,
-  currentUserId?: string,
-  now = new Date(),
+   challenge: RawChallengePayload,
+   currentUserId?: string,
+   now = new Date()
 ): ChallengeScoreboardViewModel {
-  const status = challenge.status ?? calculateChallengeStatus(challenge, now);
-  const isUpcoming = status === "UPCOMING";
-  const targetDate = isUpcoming ? challenge.startAt : challenge.endAt;
-  const daysRemaining = calculateInclusiveDaysRemaining(targetDate, now);
-  const totalDays = Math.max(
-    1,
-    Math.ceil(
-      (challenge.endAt.getTime() - challenge.startAt.getTime()) / 86_400_000,
-    ),
-  );
-  const elapsedDays = isUpcoming
-    ? 0
-    : Math.min(totalDays, getChallengeDayNumber(challenge.startAt, now));
+   const status = challenge.status ?? calculateChallengeStatus(challenge, now);
+   const isUpcoming = status === "UPCOMING";
+   const targetDate = isUpcoming ? challenge.startAt : challenge.endAt;
+   const daysRemaining = calculateInclusiveDaysRemaining(targetDate, now);
+   const totalDays = Math.max(
+      1,
+      Math.ceil(
+         (challenge.endAt.getTime() - challenge.startAt.getTime()) / 86_400_000
+      )
+   );
+   const elapsedDays = isUpcoming
+      ? 0
+      : Math.min(totalDays, getChallengeDayNumber(challenge.startAt, now));
 
-  // 1. Participant logs mapping
-  const participantScores = challenge.participants.map((p) => {
-    const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
-    return {
-      participantId: p.id,
-      teamId: p.teamId ?? "no-assigned",
-      loggedSeconds: totalLoggedSeconds,
-    };
-  });
+   // 1. Participant logs mapping
+   const participantScores = challenge.participants.map((p) => {
+      const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
+      return {
+         participantId: p.id,
+         teamId: p.teamId ?? "no-assigned",
+         loggedSeconds: totalLoggedSeconds,
+      };
+   });
 
-  // 2. Aggregate team scores (Law L1)
-  const teamRefs: TeamRef[] = challenge.teams.map((t) => ({ id: t.id }));
-  const teamAggregates = aggregateTeamScores(
-    teamRefs,
-    participantScores.map((ps) => ({
-      teamId: ps.teamId,
-      loggedSeconds: ps.loggedSeconds,
-    })),
-  );
+   // 2. Aggregate team scores (Law L1)
+   const teamRefs: TeamRef[] = challenge.teams.map((t) => ({ id: t.id }));
+   const teamAggregates = aggregateTeamScores(
+      teamRefs,
+      participantScores.map((ps) => ({
+         teamId: ps.teamId,
+         loggedSeconds: ps.loggedSeconds,
+      }))
+   );
 
-  const teamScoreMap = new Map(
-    teamAggregates.map((ta) => [ta.teamId, ta.totalSeconds]),
-  );
+   const teamScoreMap = new Map(
+      teamAggregates.map((ta) => [ta.teamId, ta.totalSeconds])
+   );
 
-  const highestTeamScore = teamAggregates[0]?.totalSeconds ?? 0;
+   const highestTeamScore = teamAggregates[0]?.totalSeconds ?? 0;
 
-  const companionCounts = new Map<string, number>();
-  const teamTargetMap = new Map<string, number>();
-  for (const p of challenge.participants) {
-    if (p.teamId) {
-      companionCounts.set(p.teamId, (companionCounts.get(p.teamId) ?? 0) + 1);
-      teamTargetMap.set(
-        p.teamId,
-        (teamTargetMap.get(p.teamId) ?? 0) + (p.targetSeconds ?? 0),
+   const companionCounts = new Map<string, number>();
+   const teamTargetMap = new Map<string, number>();
+   for (const p of challenge.participants) {
+      if (p.teamId) {
+         companionCounts.set(
+            p.teamId,
+            (companionCounts.get(p.teamId) ?? 0) + 1
+         );
+         teamTargetMap.set(
+            p.teamId,
+            (teamTargetMap.get(p.teamId) ?? 0) + (p.targetSeconds ?? 0)
+         );
+      }
+   }
+
+   const teams: ScoreboardTeam[] = challenge.teams.map((team) => {
+      const totalLoggedSeconds = teamScoreMap.get(team.id) ?? 0;
+      const isLeader =
+         teamAggregates.length > 0 &&
+         totalLoggedSeconds === highestTeamScore &&
+         totalLoggedSeconds > 0;
+      const targetSeconds = teamTargetMap.get(team.id) ?? 0;
+      const targetHours = Math.round(targetSeconds / 3600);
+      const completionPercentage =
+         targetSeconds > 0
+            ? Math.min(
+                 100,
+                 Math.round((totalLoggedSeconds / targetSeconds) * 100)
+              )
+            : 0;
+
+      return {
+         id: team.id,
+         name: team.name,
+         color: team.color,
+         iconEmoji: team.iconEmoji,
+         mascotUrl: team.mascotUrl,
+         sortOrder: team.sortOrder,
+         companionCount: companionCounts.get(team.id) ?? 0,
+         totalLoggedSeconds,
+         totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
+         targetSeconds,
+         targetClock: formatSecondsToClock(targetSeconds),
+         targetHours,
+         completionPercentage,
+         isLeader,
+      };
+   });
+
+   // 3. Head-to-Head Banner (FEAT-LEAD-01)
+   const sortedTeams = [...teams].sort(
+      (a, b) =>
+         b.totalLoggedSeconds - a.totalLoggedSeconds ||
+         a.sortOrder - b.sortOrder
+   );
+
+   const teamA = sortedTeams[0] ?? null;
+   const teamB = sortedTeams[1] ?? null;
+
+   let leadMarginResult = {
+      marginSeconds: 0,
+      leader: "tie" as "a" | "b" | "tie",
+      signedMarginSeconds: 0,
+   };
+
+   let sharePercentages = {
+      ratioPercentageA: 0,
+      ratioPercentageB: 0,
+   };
+
+   if (teamA && teamB) {
+      leadMarginResult = calculateLeadMargin(
+         teamA.totalLoggedSeconds,
+         teamB.totalLoggedSeconds
       );
-    }
-  }
+      sharePercentages = calculateSharePercentages(
+         teamA.totalLoggedSeconds,
+         teamB.totalLoggedSeconds
+      );
+   }
 
-  const teams: ScoreboardTeam[] = challenge.teams.map((team) => {
-    const totalLoggedSeconds = teamScoreMap.get(team.id) ?? 0;
-    const isLeader =
-      teamAggregates.length > 0 &&
-      totalLoggedSeconds === highestTeamScore &&
-      totalLoggedSeconds > 0;
-    const targetSeconds = teamTargetMap.get(team.id) ?? 0;
-    const targetHours = Math.round(targetSeconds / 3600);
-    const completionPercentage =
-      targetSeconds > 0
-        ? Math.min(100, Math.round((totalLoggedSeconds / targetSeconds) * 100))
-        : 0;
+   const matchHeader: ScoreboardMatchHeader = {
+      hasMatchup: teams.length >= 2,
+      teamA,
+      teamB,
+      leadMarginSeconds: leadMarginResult.marginSeconds,
+      leadMarginClock: formatSecondsToClock(leadMarginResult.marginSeconds),
+      leadMarginHuman: formatSecondsToHuman(leadMarginResult.marginSeconds),
+      leaderTeamId:
+         leadMarginResult.leader === "a" && teamA
+            ? teamA.id
+            : leadMarginResult.leader === "b" && teamB
+              ? teamB.id
+              : null,
+      leaderSide: leadMarginResult.leader,
+      ratioPercentageA: sharePercentages.ratioPercentageA,
+      ratioPercentageB: sharePercentages.ratioPercentageB,
+   };
 
-    return {
-      id: team.id,
-      name: team.name,
-      color: team.color,
-      iconEmoji: team.iconEmoji,
-      mascotUrl: team.mascotUrl,
-      sortOrder: team.sortOrder,
-      companionCount: companionCounts.get(team.id) ?? 0,
-      totalLoggedSeconds,
-      totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
-      targetSeconds,
-      targetClock: formatSecondsToClock(targetSeconds),
-      targetHours,
-      completionPercentage,
-      isLeader,
-    };
-  });
+   // 4. Standings rows (FEAT-LEAD-02)
+   const teamLookup = new Map(challenge.teams.map((t) => [t.id, t]));
+   const todayDateKey = getChallengeDayBuckets(challenge.startAt, now).current
+      .dateKey;
 
-  // 3. Head-to-Head Banner (FEAT-LEAD-01)
-  const sortedTeams = [...teams].sort(
-    (a, b) =>
-      b.totalLoggedSeconds - a.totalLoggedSeconds || a.sortOrder - b.sortOrder,
-  );
-
-  const teamA = sortedTeams[0] ?? null;
-  const teamB = sortedTeams[1] ?? null;
-
-  let leadMarginResult = {
-    marginSeconds: 0,
-    leader: "tie" as "a" | "b" | "tie",
-    signedMarginSeconds: 0,
-  };
-
-  let sharePercentages = {
-    ratioPercentageA: 0,
-    ratioPercentageB: 0,
-  };
-
-  if (teamA && teamB) {
-    leadMarginResult = calculateLeadMargin(
-      teamA.totalLoggedSeconds,
-      teamB.totalLoggedSeconds,
-    );
-    sharePercentages = calculateSharePercentages(
-      teamA.totalLoggedSeconds,
-      teamB.totalLoggedSeconds,
-    );
-  }
-
-  const matchHeader: ScoreboardMatchHeader = {
-    hasMatchup: teams.length >= 2,
-    teamA,
-    teamB,
-    leadMarginSeconds: leadMarginResult.marginSeconds,
-    leadMarginClock: formatSecondsToClock(leadMarginResult.marginSeconds),
-    leadMarginHuman: formatSecondsToHuman(leadMarginResult.marginSeconds),
-    leaderTeamId:
-      leadMarginResult.leader === "a" && teamA
-        ? teamA.id
-        : leadMarginResult.leader === "b" && teamB
-          ? teamB.id
-          : null,
-    leaderSide: leadMarginResult.leader,
-    ratioPercentageA: sharePercentages.ratioPercentageA,
-    ratioPercentageB: sharePercentages.ratioPercentageB,
-  };
-
-  // 4. Standings rows (FEAT-LEAD-02)
-  const teamLookup = new Map(challenge.teams.map((t) => [t.id, t]));
-  const todayDateKey = getChallengeDayBuckets(challenge.startAt, now).current.dateKey;
-
-  const participantRows = challenge.participants.map((p) => {
-    const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
-    const todayLog = p.dailyStudyLogs.find((log) => {
-      if (!log.logDate) return false;
-      const logDateObj =
-        log.logDate instanceof Date ? log.logDate : new Date(log.logDate);
-      return formatUtcDateKey(logDateObj) === todayDateKey;
-    });
-    const todayLoggedSeconds = todayLog?.durationSeconds ?? 0;
-    const todayLoggedClock = formatSecondsToClock(todayLoggedSeconds);
-    const goalsCompletedCount = 0;
-    const goalsTotalCount = 0;
-    const deficitSeconds = Math.max(0, p.targetSeconds - totalLoggedSeconds);
-
-    const completionPercentage =
-      p.targetSeconds > 0
-        ? Math.min(
-            100,
-            Math.round((totalLoggedSeconds / p.targetSeconds) * 100),
-          )
-        : 100;
-
-    let paceStatus: ParticipantPaceStatus = "on-track";
-    let paceLabel = "On Track";
-
-    if (status === "COMPLETED") {
-      if (p.status === "EXCUSED" || p.punishmentRecord?.isPardoned) {
-        paceStatus = "excused";
-        paceLabel = "Excused";
-      } else if (
-        p.status === "PUNISHED" ||
-        p.punishmentRecord?.isPunished ||
-        deficitSeconds > 0
-      ) {
-        paceStatus = "punished";
-        paceLabel = "Punished";
-      } else {
-        paceStatus = "serene";
-        paceLabel = "Completed";
-      }
-    } else {
-      if (deficitSeconds === 0) {
-        paceStatus = "serene";
-        paceLabel = "Serene";
-      } else {
-        paceStatus = "catch-up";
-        paceLabel = "Catch-Up";
-      }
-    }
-
-    const team = p.teamId ? teamLookup.get(p.teamId) : null;
-
-    const dailyLogs: Record<string, number> = {};
-    for (const log of p.dailyStudyLogs) {
-      if (log.logDate) {
-        const dObj =
-          log.logDate instanceof Date ? log.logDate : new Date(log.logDate);
-        dailyLogs[formatUtcDateKey(dObj)] = log.durationSeconds;
-      }
-    }
-
-    return {
-      participantId: p.id,
-      userId: p.userId,
-      displayName:
-        p.user.displayName ?? p.user.name ?? p.user.username ?? "Anonymous",
-      username: p.user.username,
-      image: p.user.image,
-      teamId: p.teamId ?? "no-assigned",
-      teamName: team?.name ?? "Unassigned",
-      teamColor: team?.color ?? null,
-      teamIcon: team?.iconEmoji ?? "⏳",
-      totalLoggedSeconds,
-      totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
-      todayLoggedSeconds,
-      todayLoggedClock,
-      targetSeconds: p.targetSeconds,
-      targetClock: formatSecondsToClock(p.targetSeconds),
-      completionPercentage,
-      goalsCompletedCount,
-      goalsTotalCount,
-      paceStatus,
-      paceLabel,
-      deficitSeconds,
-      dailyLogs,
-    };
-  });
-
-  // Sort descending by totalLoggedSeconds, then more goals completed
-  participantRows.sort((a, b) => {
-    if (b.totalLoggedSeconds !== a.totalLoggedSeconds) {
-      return b.totalLoggedSeconds - a.totalLoggedSeconds;
-    }
-    if (b.goalsCompletedCount !== a.goalsCompletedCount) {
-      return b.goalsCompletedCount - a.goalsCompletedCount;
-    }
-    return a.displayName.localeCompare(b.displayName);
-  });
-
-  const standings: ScoreboardStandingEntry[] = participantRows.map(
-    (row, idx) => ({
-      ...row,
-      rank: idx + 1,
-    }),
-  );
-
-  // 5. Punishment Wall data (FEAT-PUN-02, FEAT-PUN-03, Law L6)
-  const isEventCompleted = status === "COMPLETED";
-  const defaultPunishmentPfp = "/assets/punishment_pfp.jpg";
-
-  const flaggedMembers: FlaggedPunishmentMember[] = [];
-
-  for (const p of challenge.participants) {
-    const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
-
-    const evaluation = evaluateParticipantPunishment(
-      p.targetSeconds,
-      totalLoggedSeconds,
-      [],
-    );
-
-    const isExplicitlyPunished =
-      p.status === "PUNISHED" || Boolean(p.punishmentRecord?.isPunished);
-    const isPardoned =
-      p.status === "EXCUSED" || Boolean(p.punishmentRecord?.isPardoned);
-
-    const shouldFlag = isEventCompleted
-      ? evaluation.isPunished || isExplicitlyPunished
-      : evaluation.isPunished &&
-        (evaluation.hoursDeficitSeconds > 0 || evaluation.incompleteGoals > 0);
-
-    if (shouldFlag) {
-      const team = p.teamId ? teamLookup.get(p.teamId) : null;
-      const hoursDeficitSeconds =
-        p.punishmentRecord?.hoursDeficitSeconds ??
-        evaluation.hoursDeficitSeconds;
-      const incompleteGoalsCount =
-        p.punishmentRecord?.incompleteGoalsCount ?? evaluation.incompleteGoals;
-
-      let statusBadge: "Catch-Up" | "Punished" | "Excused" = "Catch-Up";
-      if (isPardoned) {
-        statusBadge = "Excused";
-      } else if (isEventCompleted || isExplicitlyPunished) {
-        statusBadge = "Punished";
-      }
-
-      flaggedMembers.push({
-        participantId: p.id,
-        userId: p.userId,
-        displayName:
-          p.user.displayName ?? p.user.name ?? p.user.username ?? "Anonymous",
-        username: p.user.username,
-        image: p.user.image,
-        teamName: team?.name ?? "Unassigned",
-        teamIcon: team?.iconEmoji ?? "⏳",
-        hoursDeficitSeconds,
-        hoursDeficitClock: formatSecondsToClock(hoursDeficitSeconds),
-        incompleteGoalsCount,
-        isPardoned,
-        pardonReason: p.punishmentRecord?.pardonReason ?? null,
-        statusBadge,
+   const participantRows = challenge.participants.map((p) => {
+      const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
+      const todayLog = p.dailyStudyLogs.find((log) => {
+         if (!log.logDate) return false;
+         const logDateObj =
+            log.logDate instanceof Date ? log.logDate : new Date(log.logDate);
+         return formatUtcDateKey(logDateObj) === todayDateKey;
       });
-    }
-  }
+      const todayLoggedSeconds = todayLog?.durationSeconds ?? 0;
+      const todayLoggedClock = formatSecondsToClock(todayLoggedSeconds);
+      const goalsCompletedCount = 0;
+      const goalsTotalCount = 0;
+      const deficitSeconds = Math.max(0, p.targetSeconds - totalLoggedSeconds);
 
-  // Sort flagged members by deficit descending
-  flaggedMembers.sort(
-    (a, b) =>
-      b.hoursDeficitSeconds - a.hoursDeficitSeconds ||
-      b.incompleteGoalsCount - a.incompleteGoalsCount,
-  );
+      const completionPercentage =
+         p.targetSeconds > 0
+            ? Math.min(
+                 100,
+                 Math.round((totalLoggedSeconds / p.targetSeconds) * 100)
+              )
+            : 100;
 
-  const currentUserParticipant = currentUserId
-    ? challenge.participants.find((p) => p.userId === currentUserId)
-    : undefined;
+      let paceStatus: ParticipantPaceStatus = "on-track";
+      let paceLabel = "On Track";
 
-  let timeRemainingHuman = "Event concluded";
-  if (isUpcoming) {
-    const timeUntilStartMs = challenge.startAt.getTime() - now.getTime();
-    if (timeUntilStartMs > 0) {
-      const totalRemainingSecs = Math.floor(timeUntilStartMs / 1000);
-      const remDays = Math.floor(totalRemainingSecs / 86400);
-      const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
-      const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
-      timeRemainingHuman = `Starts in ${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
-    } else {
-      timeRemainingHuman = "Starts today";
-    }
-  } else if (!isEventCompleted) {
-    const timeRemainingMs = challenge.endAt.getTime() - now.getTime();
-    if (timeRemainingMs > 0) {
-      const totalRemainingSecs = Math.floor(timeRemainingMs / 1000);
-      const remDays = Math.floor(totalRemainingSecs / 86400);
-      const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
-      const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
-      timeRemainingHuman = `${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
-    }
-  }
+      if (status === "COMPLETED") {
+         if (p.status === "EXCUSED" || p.punishmentRecord?.isPardoned) {
+            paceStatus = "excused";
+            paceLabel = "Excused";
+         } else if (
+            p.status === "PUNISHED" ||
+            p.punishmentRecord?.isPunished ||
+            deficitSeconds > 0
+         ) {
+            paceStatus = "punished";
+            paceLabel = "Punished";
+         } else {
+            paceStatus = "serene";
+            paceLabel = "Completed";
+         }
+      } else {
+         if (deficitSeconds === 0) {
+            paceStatus = "serene";
+            paceLabel = "Serene";
+         } else {
+            paceStatus = "catch-up";
+            paceLabel = "Catch-Up";
+         }
+      }
 
-  return {
-    id: challenge.id,
-    title: challenge.title,
-    heroImageUrl: challenge.eventBannerUrl?.trim() || null,
-    eventBannerUrl: challenge.eventBannerUrl,
-    punishmentPfpUrl: challenge.punishmentPfpUrl,
-    format: challenge.format,
-    status,
-    startAt: challenge.startAt.toISOString(),
-    endAt: challenge.endAt.toISOString(),
-    daysRemaining,
-    totalDays,
-    currentDayNumber: elapsedDays,
-    timeRemainingHuman,
-    teams,
-    matchHeader,
-    standings,
-    punishmentWall: {
-      punishmentPfpUrl: challenge.punishmentPfpUrl ?? defaultPunishmentPfp,
-      flaggedMembers,
-      isEventCompleted,
-    },
-    currentUser: {
-      isLoggedIn: Boolean(currentUserId),
-      isEnrolled: Boolean(currentUserParticipant),
-      participantId: currentUserParticipant?.id ?? null,
-    },
-  };
+      const team = p.teamId ? teamLookup.get(p.teamId) : null;
+
+      const dailyLogs: Record<string, number> = {};
+      for (const log of p.dailyStudyLogs) {
+         if (log.logDate) {
+            const dObj =
+               log.logDate instanceof Date
+                  ? log.logDate
+                  : new Date(log.logDate);
+            dailyLogs[formatUtcDateKey(dObj)] = log.durationSeconds;
+         }
+      }
+
+      return {
+         participantId: p.id,
+         userId: p.userId,
+         displayName:
+            p.user.displayName ?? p.user.name ?? p.user.username ?? "Anonymous",
+         username: p.user.username,
+         image: p.user.image,
+         teamId: p.teamId ?? "no-assigned",
+         teamName: team?.name ?? "Unassigned",
+         teamColor: team?.color ?? null,
+         teamIcon: team?.iconEmoji ?? "⏳",
+         totalLoggedSeconds,
+         totalLoggedClock: formatSecondsToClock(totalLoggedSeconds),
+         todayLoggedSeconds,
+         todayLoggedClock,
+         targetSeconds: p.targetSeconds,
+         targetClock: formatSecondsToClock(p.targetSeconds),
+         completionPercentage,
+         goalsCompletedCount,
+         goalsTotalCount,
+         paceStatus,
+         paceLabel,
+         deficitSeconds,
+         dailyLogs,
+      };
+   });
+
+   // Sort descending by totalLoggedSeconds, then more goals completed
+   participantRows.sort((a, b) => {
+      if (b.totalLoggedSeconds !== a.totalLoggedSeconds) {
+         return b.totalLoggedSeconds - a.totalLoggedSeconds;
+      }
+      if (b.goalsCompletedCount !== a.goalsCompletedCount) {
+         return b.goalsCompletedCount - a.goalsCompletedCount;
+      }
+      return a.displayName.localeCompare(b.displayName);
+   });
+
+   const standings: ScoreboardStandingEntry[] = participantRows.map(
+      (row, idx) => ({
+         ...row,
+         rank: idx + 1,
+      })
+   );
+
+   // 5. Punishment Wall data (FEAT-PUN-02, FEAT-PUN-03, Law L6)
+   const isEventCompleted = status === "COMPLETED";
+   const defaultPunishmentPfp = "/assets/punishment_pfp.jpg";
+
+   const flaggedMembers: FlaggedPunishmentMember[] = [];
+
+   for (const p of challenge.participants) {
+      const totalLoggedSeconds = sumLoggedSeconds(p.dailyStudyLogs);
+
+      const evaluation = evaluateParticipantPunishment(
+         p.targetSeconds,
+         totalLoggedSeconds,
+         []
+      );
+
+      const isExplicitlyPunished =
+         p.status === "PUNISHED" || Boolean(p.punishmentRecord?.isPunished);
+      const isPardoned =
+         p.status === "EXCUSED" || Boolean(p.punishmentRecord?.isPardoned);
+
+      const shouldFlag = isEventCompleted
+         ? evaluation.isPunished || isExplicitlyPunished
+         : evaluation.isPunished &&
+           (evaluation.hoursDeficitSeconds > 0 ||
+              evaluation.incompleteGoals > 0);
+
+      if (shouldFlag) {
+         const team = p.teamId ? teamLookup.get(p.teamId) : null;
+         const hoursDeficitSeconds =
+            p.punishmentRecord?.hoursDeficitSeconds ??
+            evaluation.hoursDeficitSeconds;
+         const incompleteGoalsCount =
+            p.punishmentRecord?.incompleteGoalsCount ??
+            evaluation.incompleteGoals;
+
+         let statusBadge: "Catch-Up" | "Punished" | "Excused" = "Catch-Up";
+         if (isPardoned) {
+            statusBadge = "Excused";
+         } else if (isEventCompleted || isExplicitlyPunished) {
+            statusBadge = "Punished";
+         }
+
+         flaggedMembers.push({
+            participantId: p.id,
+            userId: p.userId,
+            displayName:
+               p.user.displayName ??
+               p.user.name ??
+               p.user.username ??
+               "Anonymous",
+            username: p.user.username,
+            image: p.user.image,
+            teamName: team?.name ?? "Unassigned",
+            teamIcon: team?.iconEmoji ?? "⏳",
+            hoursDeficitSeconds,
+            hoursDeficitClock: formatSecondsToClock(hoursDeficitSeconds),
+            incompleteGoalsCount,
+            isPardoned,
+            pardonReason: p.punishmentRecord?.pardonReason ?? null,
+            statusBadge,
+         });
+      }
+   }
+
+   // Sort flagged members by deficit descending
+   flaggedMembers.sort(
+      (a, b) =>
+         b.hoursDeficitSeconds - a.hoursDeficitSeconds ||
+         b.incompleteGoalsCount - a.incompleteGoalsCount
+   );
+
+   const currentUserParticipant = currentUserId
+      ? challenge.participants.find((p) => p.userId === currentUserId)
+      : undefined;
+
+   let timeRemainingHuman = "Event concluded";
+   if (isUpcoming) {
+      const timeUntilStartMs = challenge.startAt.getTime() - now.getTime();
+      if (timeUntilStartMs > 0) {
+         const totalRemainingSecs = Math.floor(timeUntilStartMs / 1000);
+         const remDays = Math.floor(totalRemainingSecs / 86400);
+         const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
+         const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
+         timeRemainingHuman = `Starts in ${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
+      } else {
+         timeRemainingHuman = "Starts today";
+      }
+   } else if (!isEventCompleted) {
+      const timeRemainingMs = challenge.endAt.getTime() - now.getTime();
+      if (timeRemainingMs > 0) {
+         const totalRemainingSecs = Math.floor(timeRemainingMs / 1000);
+         const remDays = Math.floor(totalRemainingSecs / 86400);
+         const remHours = Math.floor((totalRemainingSecs % 86400) / 3600);
+         const remMins = Math.floor((totalRemainingSecs % 3600) / 60);
+         timeRemainingHuman = `${remDays}d ${remHours.toString().padStart(2, "0")}h ${remMins.toString().padStart(2, "0")}m`;
+      }
+   }
+
+   return {
+      id: challenge.id,
+      title: challenge.title,
+      heroImageUrl: challenge.eventBannerUrl?.trim() || null,
+      eventBannerUrl: challenge.eventBannerUrl,
+      punishmentPfpUrl: challenge.punishmentPfpUrl,
+      format: challenge.format,
+      status,
+      startAt: challenge.startAt.toISOString(),
+      endAt: challenge.endAt.toISOString(),
+      daysRemaining,
+      totalDays,
+      currentDayNumber: elapsedDays,
+      timeRemainingHuman,
+      teams,
+      matchHeader,
+      standings,
+      punishmentWall: {
+         punishmentPfpUrl: challenge.punishmentPfpUrl ?? defaultPunishmentPfp,
+         flaggedMembers,
+         isEventCompleted,
+      },
+      currentUser: {
+         isLoggedIn: Boolean(currentUserId),
+         isEnrolled: Boolean(currentUserParticipant),
+         participantId: currentUserParticipant?.id ?? null,
+      },
+   };
 }
 
 export async function getChallengeScoreboard(
-  challengeId: string,
-  currentUserId?: string,
+   challengeId: string,
+   currentUserId?: string
 ): Promise<ChallengeScoreboardViewModel | null> {
-  const challenge = await prisma.challenge.findUnique({
-    where: { id: challengeId },
-    include: {
-      teams: {
-        orderBy: { sortOrder: "asc" },
+   const challenge = await prisma.challenge.findUnique({
+      where: { id: challengeId },
+      include: {
+         teams: {
+            orderBy: { sortOrder: "asc" },
+         },
+         participants: {
+            include: {
+               user: {
+                  select: {
+                     id: true,
+                     displayName: true,
+                     username: true,
+                     name: true,
+                     image: true,
+                  },
+               },
+               dailyStudyLogs: {
+                  select: {
+                     durationSeconds: true,
+                     logDate: true,
+                  },
+               },
+               punishmentRecord: {
+                  select: {
+                     isPunished: true,
+                     isPardoned: true,
+                     pardonReason: true,
+                     hoursDeficitSeconds: true,
+                     incompleteGoalsCount: true,
+                  },
+               },
+            },
+         },
       },
-      participants: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              displayName: true,
-              username: true,
-              name: true,
-              image: true,
-            },
-          },
-          dailyStudyLogs: {
-            select: {
-              durationSeconds: true,
-              logDate: true,
-            },
-          },
-          punishmentRecord: {
-            select: {
-              isPunished: true,
-              isPardoned: true,
-              pardonReason: true,
-              hoursDeficitSeconds: true,
-              incompleteGoalsCount: true,
-            },
-          },
-        },
-      },
-    },
-  });
+   });
 
-  if (!challenge) {
-    return null;
-  }
+   if (!challenge) {
+      return null;
+   }
 
-  return buildScoreboardViewModel(
-    challenge as unknown as RawChallengePayload,
-    currentUserId,
-  );
+   return buildScoreboardViewModel(
+      challenge as unknown as RawChallengePayload,
+      currentUserId
+   );
 }

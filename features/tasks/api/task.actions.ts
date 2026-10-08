@@ -1,342 +1,347 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { AuthError, requireSessionUser } from "@/features/auth/api/require-session";
 import {
-  createCategorySchema,
-  createTaskSchema,
-  deleteCategorySchema,
-  deleteTaskSchema,
-  toggleTaskSchema,
-  updateCategorySchema,
-  updateTaskSchema,
-  type CreateCategoryInput,
-  type CreateTaskInput,
-  type DeleteCategoryInput,
-  type DeleteTaskInput,
-  type ToggleTaskInput,
-  type UpdateCategoryInput,
-  type UpdateTaskInput,
+   AuthError,
+   requireSessionUser,
+} from "@/features/auth/api/require-session";
+import {
+   createCategorySchema,
+   createTaskSchema,
+   deleteCategorySchema,
+   deleteTaskSchema,
+   toggleTaskSchema,
+   updateCategorySchema,
+   updateTaskSchema,
+   type CreateCategoryInput,
+   type CreateTaskInput,
+   type DeleteCategoryInput,
+   type DeleteTaskInput,
+   type ToggleTaskInput,
+   type UpdateCategoryInput,
+   type UpdateTaskInput,
 } from "@/features/tasks/domain/task.validation";
 import {
-  createCategory,
-  createTask,
-  deleteCategory,
-  deleteTask,
-  toggleTask,
-  updateCategory,
-  updateTask,
+   createCategory,
+   createTask,
+   deleteCategory,
+   deleteTask,
+   toggleTask,
+   updateCategory,
+   updateTask,
 } from "@/features/tasks/data/task.repository";
 
 export interface TaskActionResult<T = unknown> {
-  ok: boolean;
-  message?: string;
-  code?: string;
-  data?: T;
+   ok: boolean;
+   message?: string;
+   code?: string;
+   data?: T;
 }
 
 export async function createTaskAction(
-  input: CreateTaskInput,
+   input: CreateTaskInput
 ): Promise<TaskActionResult> {
-  try {
-    const user = await requireSessionUser();
-    const parsed = createTaskSchema.safeParse(input);
+   try {
+      const user = await requireSessionUser();
+      const parsed = createTaskSchema.safeParse(input);
 
-    if (!parsed.success) {
+      if (!parsed.success) {
+         return {
+            ok: false,
+            code: "INVALID_INPUT",
+            message: parsed.error.issues[0]?.message || "Invalid task input.",
+         };
+      }
+
+      const task = await createTask({
+         userId: user.id,
+         title: parsed.data.title,
+         taskType: parsed.data.taskType,
+         categoryId: parsed.data.categoryId,
+         newCategoryName: parsed.data.newCategoryName,
+         isComplete: parsed.data.isComplete,
+         status: parsed.data.status,
+         dueDate: parsed.data.dueDate,
+      });
+
+      revalidatePath("/");
+      revalidatePath("/dashboard");
+      return { ok: true, data: task };
+   } catch (error) {
+      if (error instanceof AuthError) {
+         return { ok: false, code: "UNAUTHORIZED", message: error.message };
+      }
       return {
-        ok: false,
-        code: "INVALID_INPUT",
-        message: parsed.error.issues[0]?.message || "Invalid task input.",
+         ok: false,
+         code: "PERSISTENCE_ERROR",
+         message: "Could not create task. Please try again.",
       };
-    }
-
-    const task = await createTask({
-      userId: user.id,
-      title: parsed.data.title,
-      taskType: parsed.data.taskType,
-      categoryId: parsed.data.categoryId,
-      newCategoryName: parsed.data.newCategoryName,
-      isComplete: parsed.data.isComplete,
-      status: parsed.data.status,
-      dueDate: parsed.data.dueDate,
-    });
-
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    return { ok: true, data: task };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { ok: false, code: "UNAUTHORIZED", message: error.message };
-    }
-    return {
-      ok: false,
-      code: "PERSISTENCE_ERROR",
-      message: "Could not create task. Please try again.",
-    };
-  }
+   }
 }
 
 export async function toggleTaskAction(
-  input: ToggleTaskInput,
+   input: ToggleTaskInput
 ): Promise<TaskActionResult> {
-  try {
-    const user = await requireSessionUser();
-    const parsed = toggleTaskSchema.safeParse(input);
+   try {
+      const user = await requireSessionUser();
+      const parsed = toggleTaskSchema.safeParse(input);
 
-    if (!parsed.success) {
+      if (!parsed.success) {
+         return {
+            ok: false,
+            code: "INVALID_INPUT",
+            message: parsed.error.issues[0]?.message || "Invalid task update.",
+         };
+      }
+
+      const updated = await toggleTask({
+         taskId: parsed.data.taskId,
+         userId: user.id,
+         isComplete: parsed.data.isComplete,
+         status: parsed.data.status,
+      });
+
+      if (!updated) {
+         return {
+            ok: false,
+            code: "NOT_FOUND",
+            message: "Task not found or access denied.",
+         };
+      }
+
+      revalidatePath("/");
+      revalidatePath("/dashboard");
+      return { ok: true, data: updated };
+   } catch (error) {
+      if (error instanceof AuthError) {
+         return { ok: false, code: "UNAUTHORIZED", message: error.message };
+      }
       return {
-        ok: false,
-        code: "INVALID_INPUT",
-        message: parsed.error.issues[0]?.message || "Invalid task update.",
+         ok: false,
+         code: "PERSISTENCE_ERROR",
+         message: "Could not update task.",
       };
-    }
-
-    const updated = await toggleTask({
-      taskId: parsed.data.taskId,
-      userId: user.id,
-      isComplete: parsed.data.isComplete,
-      status: parsed.data.status,
-    });
-
-    if (!updated) {
-      return {
-        ok: false,
-        code: "NOT_FOUND",
-        message: "Task not found or access denied.",
-      };
-    }
-
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    return { ok: true, data: updated };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { ok: false, code: "UNAUTHORIZED", message: error.message };
-    }
-    return {
-      ok: false,
-      code: "PERSISTENCE_ERROR",
-      message: "Could not update task.",
-    };
-  }
+   }
 }
 
 export async function deleteTaskAction(
-  input: DeleteTaskInput,
+   input: DeleteTaskInput
 ): Promise<TaskActionResult> {
-  try {
-    const user = await requireSessionUser();
-    const parsed = deleteTaskSchema.safeParse(input);
+   try {
+      const user = await requireSessionUser();
+      const parsed = deleteTaskSchema.safeParse(input);
 
-    if (!parsed.success) {
+      if (!parsed.success) {
+         return {
+            ok: false,
+            code: "INVALID_INPUT",
+            message: parsed.error.issues[0]?.message || "Invalid task id.",
+         };
+      }
+
+      const deleted = await deleteTask({
+         taskId: parsed.data.taskId,
+         userId: user.id,
+      });
+
+      if (!deleted) {
+         return {
+            ok: false,
+            code: "NOT_FOUND",
+            message: "Task not found or access denied.",
+         };
+      }
+
+      revalidatePath("/");
+      revalidatePath("/dashboard");
+      return { ok: true };
+   } catch (error) {
+      if (error instanceof AuthError) {
+         return { ok: false, code: "UNAUTHORIZED", message: error.message };
+      }
       return {
-        ok: false,
-        code: "INVALID_INPUT",
-        message: parsed.error.issues[0]?.message || "Invalid task id.",
+         ok: false,
+         code: "PERSISTENCE_ERROR",
+         message: "Could not delete task.",
       };
-    }
-
-    const deleted = await deleteTask({
-      taskId: parsed.data.taskId,
-      userId: user.id,
-    });
-
-    if (!deleted) {
-      return {
-        ok: false,
-        code: "NOT_FOUND",
-        message: "Task not found or access denied.",
-      };
-    }
-
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    return { ok: true };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { ok: false, code: "UNAUTHORIZED", message: error.message };
-    }
-    return {
-      ok: false,
-      code: "PERSISTENCE_ERROR",
-      message: "Could not delete task.",
-    };
-  }
+   }
 }
 
 export async function createCategoryAction(
-  input: CreateCategoryInput,
+   input: CreateCategoryInput
 ): Promise<TaskActionResult> {
-  try {
-    const user = await requireSessionUser();
-    const parsed = createCategorySchema.safeParse(input);
+   try {
+      const user = await requireSessionUser();
+      const parsed = createCategorySchema.safeParse(input);
 
-    if (!parsed.success) {
+      if (!parsed.success) {
+         return {
+            ok: false,
+            code: "INVALID_INPUT",
+            message:
+               parsed.error.issues[0]?.message || "Invalid category name.",
+         };
+      }
+
+      const category = await createCategory({
+         userId: user.id,
+         name: parsed.data.name,
+         taskType: parsed.data.taskType,
+      });
+
+      revalidatePath("/");
+      revalidatePath("/dashboard");
+      return { ok: true, data: category };
+   } catch (error) {
+      if (error instanceof AuthError) {
+         return { ok: false, code: "UNAUTHORIZED", message: error.message };
+      }
       return {
-        ok: false,
-        code: "INVALID_INPUT",
-        message: parsed.error.issues[0]?.message || "Invalid category name.",
+         ok: false,
+         code: "PERSISTENCE_ERROR",
+         message: "Could not create category.",
       };
-    }
-
-    const category = await createCategory({
-      userId: user.id,
-      name: parsed.data.name,
-      taskType: parsed.data.taskType,
-    });
-
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    return { ok: true, data: category };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { ok: false, code: "UNAUTHORIZED", message: error.message };
-    }
-    return {
-      ok: false,
-      code: "PERSISTENCE_ERROR",
-      message: "Could not create category.",
-    };
-  }
+   }
 }
 
 export async function updateTaskAction(
-  input: UpdateTaskInput,
+   input: UpdateTaskInput
 ): Promise<TaskActionResult> {
-  try {
-    const user = await requireSessionUser();
-    const parsed = updateTaskSchema.safeParse(input);
+   try {
+      const user = await requireSessionUser();
+      const parsed = updateTaskSchema.safeParse(input);
 
-    if (!parsed.success) {
+      if (!parsed.success) {
+         return {
+            ok: false,
+            code: "INVALID_INPUT",
+            message: parsed.error.issues[0]?.message || "Invalid task input.",
+         };
+      }
+
+      const updated = await updateTask({
+         taskId: parsed.data.taskId,
+         userId: user.id,
+         title: parsed.data.title,
+         isComplete: parsed.data.isComplete,
+         status: parsed.data.status,
+         dueDate: parsed.data.dueDate,
+      });
+
+      if (!updated) {
+         return {
+            ok: false,
+            code: "NOT_FOUND",
+            message: "Task not found or access denied.",
+         };
+      }
+
+      revalidatePath("/");
+      revalidatePath("/dashboard");
+      return { ok: true, data: updated };
+   } catch (error) {
+      if (error instanceof AuthError) {
+         return { ok: false, code: "UNAUTHORIZED", message: error.message };
+      }
       return {
-        ok: false,
-        code: "INVALID_INPUT",
-        message: parsed.error.issues[0]?.message || "Invalid task input.",
+         ok: false,
+         code: "PERSISTENCE_ERROR",
+         message: "Could not update task.",
       };
-    }
-
-    const updated = await updateTask({
-      taskId: parsed.data.taskId,
-      userId: user.id,
-      title: parsed.data.title,
-      isComplete: parsed.data.isComplete,
-      status: parsed.data.status,
-      dueDate: parsed.data.dueDate,
-    });
-
-    if (!updated) {
-      return {
-        ok: false,
-        code: "NOT_FOUND",
-        message: "Task not found or access denied.",
-      };
-    }
-
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    return { ok: true, data: updated };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { ok: false, code: "UNAUTHORIZED", message: error.message };
-    }
-    return {
-      ok: false,
-      code: "PERSISTENCE_ERROR",
-      message: "Could not update task.",
-    };
-  }
+   }
 }
 
 export async function updateCategoryAction(
-  input: UpdateCategoryInput,
+   input: UpdateCategoryInput
 ): Promise<TaskActionResult> {
-  try {
-    const user = await requireSessionUser();
-    const parsed = updateCategorySchema.safeParse(input);
+   try {
+      const user = await requireSessionUser();
+      const parsed = updateCategorySchema.safeParse(input);
 
-    if (!parsed.success) {
+      if (!parsed.success) {
+         return {
+            ok: false,
+            code: "INVALID_INPUT",
+            message:
+               parsed.error.issues[0]?.message || "Invalid category input.",
+         };
+      }
+
+      const updated = await updateCategory({
+         categoryId: parsed.data.categoryId,
+         userId: user.id,
+         name: parsed.data.name,
+      });
+
+      if (!updated) {
+         return {
+            ok: false,
+            code: "NOT_FOUND",
+            message: "Category not found or access denied.",
+         };
+      }
+
+      revalidatePath("/");
+      revalidatePath("/dashboard");
+      return { ok: true, data: updated };
+   } catch (error) {
+      if (error instanceof AuthError) {
+         return { ok: false, code: "UNAUTHORIZED", message: error.message };
+      }
+      if (error instanceof Error && error.message.includes("already exists")) {
+         return {
+            ok: false,
+            code: "CONFLICT",
+            message: error.message,
+         };
+      }
       return {
-        ok: false,
-        code: "INVALID_INPUT",
-        message: parsed.error.issues[0]?.message || "Invalid category input.",
+         ok: false,
+         code: "PERSISTENCE_ERROR",
+         message: "Could not update category.",
       };
-    }
-
-    const updated = await updateCategory({
-      categoryId: parsed.data.categoryId,
-      userId: user.id,
-      name: parsed.data.name,
-    });
-
-    if (!updated) {
-      return {
-        ok: false,
-        code: "NOT_FOUND",
-        message: "Category not found or access denied.",
-      };
-    }
-
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    return { ok: true, data: updated };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { ok: false, code: "UNAUTHORIZED", message: error.message };
-    }
-    if (error instanceof Error && error.message.includes("already exists")) {
-      return {
-        ok: false,
-        code: "CONFLICT",
-        message: error.message,
-      };
-    }
-    return {
-      ok: false,
-      code: "PERSISTENCE_ERROR",
-      message: "Could not update category.",
-    };
-  }
+   }
 }
 
 export async function deleteCategoryAction(
-  input: DeleteCategoryInput,
+   input: DeleteCategoryInput
 ): Promise<TaskActionResult> {
-  try {
-    const user = await requireSessionUser();
-    const parsed = deleteCategorySchema.safeParse(input);
+   try {
+      const user = await requireSessionUser();
+      const parsed = deleteCategorySchema.safeParse(input);
 
-    if (!parsed.success) {
+      if (!parsed.success) {
+         return {
+            ok: false,
+            code: "INVALID_INPUT",
+            message: parsed.error.issues[0]?.message || "Invalid category ID.",
+         };
+      }
+
+      const deleted = await deleteCategory({
+         categoryId: parsed.data.categoryId,
+         userId: user.id,
+      });
+
+      if (!deleted) {
+         return {
+            ok: false,
+            code: "NOT_FOUND",
+            message: "Category not found or access denied.",
+         };
+      }
+
+      revalidatePath("/");
+      revalidatePath("/dashboard");
+      return { ok: true };
+   } catch (error) {
+      if (error instanceof AuthError) {
+         return { ok: false, code: "UNAUTHORIZED", message: error.message };
+      }
       return {
-        ok: false,
-        code: "INVALID_INPUT",
-        message: parsed.error.issues[0]?.message || "Invalid category ID.",
+         ok: false,
+         code: "PERSISTENCE_ERROR",
+         message: "Could not delete category.",
       };
-    }
-
-    const deleted = await deleteCategory({
-      categoryId: parsed.data.categoryId,
-      userId: user.id,
-    });
-
-    if (!deleted) {
-      return {
-        ok: false,
-        code: "NOT_FOUND",
-        message: "Category not found or access denied.",
-      };
-    }
-
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    return { ok: true };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      return { ok: false, code: "UNAUTHORIZED", message: error.message };
-    }
-    return {
-      ok: false,
-      code: "PERSISTENCE_ERROR",
-      message: "Could not delete category.",
-    };
-  }
+   }
 }

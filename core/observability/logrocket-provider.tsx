@@ -3,36 +3,32 @@
 import { useEffect } from "react";
 
 import {
-  identifyLogRocketUser,
-  initLogRocket,
+   identifyLogRocketUser,
+   initLogRocket,
 } from "@/core/observability/logrocket";
 
 export type LogRocketSessionUser = {
-  id?: string | null;
-  name?: string | null;
-  displayName?: string | null;
-  role?: string | null;
-  discordId?: string | null;
+   id?: string | null;
+   name?: string | null;
+   displayName?: string | null;
+   role?: string | null;
+   discordId?: string | null;
 } | null;
 
-export function LogRocketProvider({
-  user,
-}: {
-  user?: LogRocketSessionUser;
-}) {
-  useEffect(() => {
-    initLogRocket();
+export function LogRocketProvider({ user }: { user?: LogRocketSessionUser }) {
+   useEffect(() => {
+      initLogRocket();
 
-    if (!user?.id) {
-      return;
-    }
+      if (!user?.id) {
+         return;
+      }
 
-    identifyLogRocketUser(user.id, {
-      name: user.displayName || user.name || null,
-      role: user.role ?? null,
-      discordId: user.discordId ?? null,
-    });
-  }, [user?.id, user?.name, user?.displayName, user?.role, user?.discordId]);
+      identifyLogRocketUser(user.id, {
+         name: user.displayName || user.name || null,
+         role: user.role ?? null,
+         discordId: user.discordId ?? null,
+      });
+   }, [user?.id, user?.name, user?.displayName, user?.role, user?.discordId]);
 
-  return null;
+   return null;
 }

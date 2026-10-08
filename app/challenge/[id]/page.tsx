@@ -9,55 +9,55 @@ import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-
 import { ChallengeView } from "@/features/challenges/presentation/challenge-view";
 
 interface ChallengePageProps {
-  params: {
-    id: string;
-  };
-  searchParams?: {
-    tab?: "overview" | "leaderboard" | "about" | "manage" | "audit";
-  };
+   params: {
+      id: string;
+   };
+   searchParams?: {
+      tab?: "overview" | "leaderboard" | "about" | "manage" | "audit";
+   };
 }
 
 export default async function ChallengePage({
-  params,
-  searchParams,
+   params,
+   searchParams,
 }: ChallengePageProps) {
-  const session = await auth();
-  const isAdmin = hasAdminPrivileges(session?.user?.role);
+   const session = await auth();
+   const isAdmin = hasAdminPrivileges(session?.user?.role);
 
-  try {
-    const challenge = await getChallengeScoreboard(
-      params.id,
-      session?.user?.id,
-    );
-
-    if (!challenge) {
-      return (
-        <EmptyState
-          title="Challenge not found"
-          description="We couldn't locate this study challenge in our records. It may not exist or might still be in draft setup."
-          action={
-            <Button asChild variant="secondary" className="min-h-[44px]">
-              <Link href="/">Return to Study Lounge</Link>
-            </Button>
-          }
-        />
+   try {
+      const challenge = await getChallengeScoreboard(
+         params.id,
+         session?.user?.id
       );
-    }
 
-    return (
-      <ChallengeView
-        challenge={challenge}
-        initialTab={searchParams?.tab ?? "overview"}
-        isAdmin={isAdmin}
-      />
-    );
-  } catch (error) {
-    console.error("Failed to load challenge scoreboard:", error);
-    return (
-      <ErrorState
-        title="Could not load scoreboard"
-        message="Something went wrong while fetching the live standings. Please refresh the page."
-      />
-    );
-  }
+      if (!challenge) {
+         return (
+            <EmptyState
+               title="Challenge not found"
+               description="We couldn't locate this study challenge in our records. It may not exist or might still be in draft setup."
+               action={
+                  <Button asChild variant="secondary" className="min-h-[44px]">
+                     <Link href="/">Return to Study Lounge</Link>
+                  </Button>
+               }
+            />
+         );
+      }
+
+      return (
+         <ChallengeView
+            challenge={challenge}
+            initialTab={searchParams?.tab ?? "overview"}
+            isAdmin={isAdmin}
+         />
+      );
+   } catch (error) {
+      console.error("Failed to load challenge scoreboard:", error);
+      return (
+         <ErrorState
+            title="Could not load scoreboard"
+            message="Something went wrong while fetching the live standings. Please refresh the page."
+         />
+      );
+   }
 }
