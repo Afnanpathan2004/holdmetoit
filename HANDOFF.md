@@ -143,33 +143,17 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 ### Sessions 1–55 (Summarized)
 - Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, and admin 7-day hours overrides.
 
-### Session 57 — 2026-10-08 (krish)
-- **Agent Role:** Admin Operations & Broadcaster Agent.
-- **Event Audit Log (Mod Log) Integration & Main Branch Sync:**
-  - Pulled and cleanly merged `origin/main` into `krish`, integrating the complete **Event Audit Log** system (`FEAT-AUDIT-01`):
-    - `EventAuditTab` UI ([`event-audit-tab.tsx`](features/audit/presentation/event-audit-tab.tsx)) added to `/challenge/[id]` alongside the "Manage" tab for admins/mods/devs.
-    - Full action filtering, moderator search, field-level before/after JSON visual diffs, and 1-click JSON log export.
-    - Zero-drift UTC timetable serialization (`challenge-date-time.ts`) and database audit trail (`audit_logs` table via Prisma).
-  - Maintained the restored full-week Daily Todos access and clean 2-card (`Yesterday` & `Today`) study hours logging UX.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 623/623 green).
-
-### Session 58 — 2026-10-08 (krish)
-- **Agent Role:** Participant UI & Scoring / Engine Agent.
-- **Fixed Daily Todo Shift-to-Today Bug on Page Refresh:**
-  - Preserved `dueDate`, `status`, and `sortOrder` across background sync reconciliation (`task-sync.service.ts`), guest migration (`task-idb.ts`), and local hydration (`cockpit-tasks-section.tsx`).
-  - Added self-healing in `hydrateFromIndexedDB` to restore `dueDate` from server tasks on refresh.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 625/625 green).
-
-### Session 59 — 2026-10-08 (krish)
-- **Agent Role:** Participant UI & Admin Operations Agent.
-- **Global Participant Preview Toggle in Header (Replacing Disruptive Body Banner):**
-  - **Removed Body Banners:** Removed the full-width dark `Developer / Moderator Mode Active` banner and orange preview alert banner from `app/page.tsx` that pushed down the cockpit content.
-  - **Global Header Button:** Added `ParticipantPreviewButton` to the global `AppHeader` / `UserNav` ([`auth-nav.tsx`](features/auth/presentation/auth-nav.tsx)) directly next to the "Admin Console" link.
-  - **Persistent State:** Uses `PARTICIPANT_PREVIEW_COOKIE` (`holdmetoit_preview_as_participant`) + server action (`toggleParticipantPreviewAction`) so preview mode applies globally across `/`, `/challenge/[id]`, etc.
-  - **Dynamic State Representation:**
-    - In normal dev/admin mode: displays "Admin Console" link + "Preview as Participant" pill button.
-    - When preview mode is active: hides "Admin Console" and `DEV` badge, displays an amber "Exit Preview" pill button with `EyeOff` icon allowing instant 1-click return to admin mode.
-    - Across `/challenge/[id]`, preview mode hides admin-only tabs ("Manage", "Event Audit") and host hours override controls.
-  - **Testing:** Added unit test coverage for `ParticipantPreviewButton` in [`auth-nav.test.tsx`](features/auth/presentation/auth-nav.test.tsx).
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 626/626 green).
+### Session 60 — 2026-10-08 (krish)
+- **Agent Role:** Admin Operations & Participant UI Agent.
+- **Admin Hours Override UX & Law Labels Cleanup:**
+  - Removed hour preset pills (`0h`, `1h`, `2h`, `4h`) from `AdminHoursOverrideModal` and replaced them with a single "Clear Time" button to reset hours/minutes/seconds to 0.
+  - Removed "Law L5 Audit" from the modal header.
+  - Performed a site-wide audit and stripped internal "Law" labels from the UI across all components (`challenge-manage-tab.tsx`, `cockpit-progress-card.tsx`, etc.).
+- **Weekly & Daily Task Category Sharing:**
+  - Configured Daily tasks to inherit Weekly categories as parent categories while preserving the ability to create independent categories for Daily tasks.
+- **Merged `origin/dev` into `krish`:**
+  - Merged incoming changes from `origin/dev` (commit `044bd81` introducing prettier/eslint precommit hooks and formatting).
+  - Resolved conflicts in `features/challenges/presentation/challenge-manage-tab.tsx`, preserving Danger Zone / Delete Challenge functionality and clean UI free of internal Law labels.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 629/629 green).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+

@@ -39,7 +39,11 @@ export async function getUserCategorizedTasks(
   }));
 
   const dailyCategories: CategoryGroup[] = categories
-    .filter((c) => c.taskType === "DAILY")
+    .filter(
+      (c) =>
+        c.taskType === "DAILY" ||
+        c.tasks.some((t) => t.taskType === "DAILY"),
+    )
     .map((c) => {
       const dailyTasks: TaskItem[] = c.tasks
         .filter((t) => t.taskType === "DAILY")
@@ -127,13 +131,23 @@ export async function createTask(params: {
 
   if (params.newCategoryName && params.newCategoryName.trim()) {
     const trimmedName = params.newCategoryName.trim();
-    const existing = await prisma.category.findFirst({
+    let existing = await prisma.category.findFirst({
       where: {
         userId: params.userId,
         taskType: params.taskType,
         name: { equals: trimmedName, mode: "insensitive" },
       },
     });
+
+    if (!existing && params.taskType === "DAILY") {
+      existing = await prisma.category.findFirst({
+        where: {
+          userId: params.userId,
+          taskType: "WEEKLY",
+          name: { equals: trimmedName, mode: "insensitive" },
+        },
+      });
+    }
 
     if (existing) {
       resolvedCategoryId = existing.id;
@@ -150,13 +164,24 @@ export async function createTask(params: {
   }
 
   if (!resolvedCategoryId) {
-    const fallback = await prisma.category.findFirst({
+    let fallback = await prisma.category.findFirst({
       where: {
         userId: params.userId,
         taskType: params.taskType,
       },
       orderBy: { createdAt: "asc" },
     });
+
+    if (!fallback && params.taskType === "DAILY") {
+      fallback = await prisma.category.findFirst({
+        where: {
+          userId: params.userId,
+          taskType: "WEEKLY",
+        },
+        orderBy: { createdAt: "asc" },
+      });
+    }
+
     if (fallback) {
       resolvedCategoryId = fallback.id;
     } else {
