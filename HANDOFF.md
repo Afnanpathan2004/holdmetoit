@@ -145,9 +145,21 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ## 7. Session Changelog (Last 3–5 Sessions)
 
-### Sessions 1–61 (Summarized)
+### Sessions 1–60 (Summarized)
 
-- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, and moderator future hours prevention.
+- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, and law labels UI cleanup.
+
+### Session 61 — 2026-10-08 (krish)
+
+- **Agent Role:** Admin Operations & Scoring Engine Agent.
+- **Moderator Future Hours Prevention:**
+   - Implemented strict guards across domain, API, and UI layers so even moderators/admins cannot add or edit future hours for participants:
+      - **Domain (`challenge-day.ts`):** `getChallengeDayOptions` correctly flags future days as `isFuture: true` even if a challenge is upcoming. Added `validateAdminOverrideChallengeDay` which allows earlier past days (unlike participants who are locked to today/yesterday) while strictly rejecting future challenge days or future dates with `FUTURE_DATE_NOT_ALLOWED`.
+      - **Server Action (`admin-override.actions.ts`):** Added a future date check on `parsed.data.logDate > todayDateKey` returning `{ ok: false, code: "FUTURE_DATE_NOT_ALLOWED", message: "Cannot log or edit study time for future dates." }`.
+      - **Repository (`admin-override.repository.ts`):** Added safety invariant throwing an error if attempting to execute an override on a future date.
+      - **Admin Override Modal (`admin-hours-override-modal.tsx`):** Clamped initial day selection, disabled future day buttons, and guarded submit.
+      - **Challenge Manage Tab (`challenge-manage-tab.tsx`):** Disabled future day buttons in 7-day breakdown strip.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 639/639 green) · `npm run build` ✅.
 
 ### Session 62 — 2026-10-08 (krish)
 
@@ -174,6 +186,25 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
             - Deleting tasks or categories containing tasks on past days is strictly blocked with disabled buttons and locked tooltips.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 647/647 green) · `npx next build` ✅ (8 routes compiled).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+
+### Session 63 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring Engine Agent.
+- **Fix Weekly-to-Daily Drag-and-Drop Due Date Bug:**
+   - Resolved bug where dragging a task from Weekly Todos to Daily Todos assigned it to Day 1 of the challenge (due to fallback to `task.createdAt`) instead of the active/selected challenge day:
+      - **Domain (`task-reorder.ts`):**
+         - Added optional `targetDueDate?: string | null` to `MoveTaskParams` and `MoveCategoryParams`.
+         - In `moveTaskBetweenCategories`, resolved `dueDate`: if `targetDueDate` is provided, assign `targetDueDate`; if moving to `"weekly"`, reset `dueDate: null`; otherwise preserve existing `dueDate`.
+         - In `moveCategoryBetweenColumns`, cascaded `targetDueDate` to member tasks when moving cross-column.
+         - Added unit tests in `task-reorder.test.ts` verifying `targetDueDate` assignment when moving tasks or categories.
+      - **Presentation (`cockpit-tasks-section.tsx`):**
+         - In `handleTaskDrop`, `handleCategoryDrop`, and `handleColumnDrop`: passed `targetDueDate: selectedDateKey` when moving from Weekly to Daily (`isMovingWeeklyToDaily`), and `targetDueDate: null` when moving from Daily to Weekly.
+         - Updated local IndexedDB persistence (`putLocalTasks` / `putLocalTask`) to store the resolved `dueDate`.
+         - Included `dueDate: res.movedTask.dueDate ?? null` in `enqueueMutation` payload for `action: "MOVE"` to synchronize the assigned day with the server.
+         - Added unit tests in `cockpit-tasks-section.test.tsx` verifying that a daily task with Day 1 `createdAt` and Day 4 `dueDate` renders under Day 4 in Daily Todos.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+
 
 ### Session 63 — 2026-10-09 (krish)
 

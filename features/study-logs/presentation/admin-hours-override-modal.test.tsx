@@ -57,7 +57,9 @@ describe("AdminHoursOverrideModal", () => {
     expect(html).toContain("@alice");
     expect(html).toContain("Honey Bees");
     expect(html).toContain("Edit Participant Study Hours");
-    expect(html).toContain("Law L5 Audit");
+    expect(html).not.toContain("Law L5 Audit");
+    expect(html).toContain("Clear Time");
+    expect(html).not.toContain("Presets:");
     expect(html).toContain("Mandatory Reason for Override");
     // All 7 days should be present in the day grid
     expect(html).toContain("D1");
@@ -126,5 +128,48 @@ describe("AdminHoursOverrideModal", () => {
     const dayButtonsHtml = html.slice(html.indexOf("Select Challenge Day"));
     // Ensure D1, D2, D3 etc. do not have "disabled" in their button markup
     expect(dayButtonsHtml).not.toMatch(/<button[^>]*disabled[^>]*>[^<]*<span[^>]*>[^<]*<\/span><span[^>]*>D1<\/span>/);
+  });
+
+  it("disables future day buttons in the 7-day selector with disabled attribute and Locked status", () => {
+    // Challenge starting today or with future days
+    const html = renderToStaticMarkup(
+      createElement(AdminHoursOverrideModal, {
+        isOpen: true,
+        onClose: vi.fn(),
+        challengeId: "chal-1",
+        challengeStartDate: new Date().toISOString().slice(0, 10),
+        totalChallengeDays: 7,
+        participant: sampleParticipant,
+        initialDayNumber: 1, // Today is Day 1; Days 2..7 are future
+      }),
+    );
+
+    // Day 1 (today) is active, Day 2..7 are future and disabled
+    expect(html).toContain("D1");
+    expect(html).toContain("D2");
+    expect(html).toContain("Locked");
+    // Ensure future day button has disabled attribute and cursor-not-allowed
+    expect(html).toContain("cursor-not-allowed");
+    expect(html).toContain("Future date (cannot log or edit yet)");
+  });
+
+  it("disables input fields and displays warning banner when all challenge days are in the future", () => {
+    // Challenge starting in the future (UPCOMING)
+    const futureDate = "2099-01-01";
+    const html = renderToStaticMarkup(
+      createElement(AdminHoursOverrideModal, {
+        isOpen: true,
+        onClose: vi.fn(),
+        challengeId: "chal-1",
+        challengeStartDate: futureDate,
+        totalChallengeDays: 7,
+        participant: sampleParticipant,
+        initialDayNumber: 1,
+      }),
+    );
+
+    expect(html).toContain("Future date (2099-01-01): moderators cannot add or edit study hours for future dates.");
+    // Submit button is disabled
+    expect(html).toContain("Save Override");
   });
 });

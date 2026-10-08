@@ -179,7 +179,7 @@ export function DailyHoursModal({
       const isAllowedDay =
         initialDayNumber !== undefined &&
         (isAdmin
-          ? initialDayNumber >= 1 && initialDayNumber <= totalChallengeDays
+          ? initialDayNumber >= 1 && initialDayNumber <= todayDayNumber
           : initialDayNumber === todayDayNumber ||
             (showYesterdayOption &&
               effectiveYesterdayDayNumber !== undefined &&
@@ -241,12 +241,12 @@ export function DailyHoursModal({
 
     const isToday = newDayNumber === todayDayNumber;
     const isYesterday = yesterdayDayNumber !== undefined && newDayNumber === yesterdayDayNumber;
+    if (newDayNumber > todayDayNumber) {
+      setFeedback("Cannot log study time for future dates.");
+      return;
+    }
     if (!isAdmin && !isToday && !isYesterday) {
-      if (newDayNumber > todayDayNumber) {
-        setFeedback("Cannot log study time for future dates.");
-      } else {
-        setFeedback("Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.");
-      }
+      setFeedback("Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.");
       return;
     }
 
@@ -262,12 +262,12 @@ export function DailyHoursModal({
       (yesterdayDayNumber !== undefined && dayNum === yesterdayDayNumber) ||
       (yesterdayDate !== undefined && dateKey === yesterdayDate);
 
+    if (dayNum > todayDayNumber || dateKey > todayDate) {
+      setFeedback("Cannot log study time for future dates.");
+      return;
+    }
     if (!isAdmin && !isToday && !isYesterday) {
-      if (dayNum > todayDayNumber || dateKey > todayDate) {
-        setFeedback("Cannot log study time for future dates.");
-      } else {
-        setFeedback("Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.");
-      }
+      setFeedback("Participants can only log study time for today or yesterday. Contact a moderator to adjust earlier days.");
       return;
     }
 

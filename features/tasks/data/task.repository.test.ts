@@ -116,6 +116,63 @@ describe("task.repository", () => {
          expect(result.completedWeeklyTasks).toBe(0);
       });
 
+      it("includes weekly parent categories in dailyCategories when they contain daily tasks", async () => {
+         const mockCategories = [
+            {
+               id: "cat_weekly_parent",
+               userId: "user_1",
+               name: "Algorithms & DS",
+               taskType: "WEEKLY",
+               createdAt: new Date("2026-10-01"),
+               updatedAt: new Date("2026-10-01"),
+               tasks: [
+                  {
+                     id: "t_w",
+                     userId: "user_1",
+                     categoryId: "cat_weekly_parent",
+                     title: "Solve 15 dynamic programming problems",
+                     taskType: "WEEKLY",
+                     isComplete: false,
+                     createdAt: new Date("2026-10-01"),
+                     updatedAt: new Date("2026-10-01"),
+                     completedAt: null,
+                  },
+                  {
+                     id: "t_d",
+                     userId: "user_1",
+                     categoryId: "cat_weekly_parent",
+                     title: "Solve 2 DP problems today",
+                     taskType: "DAILY",
+                     isComplete: true,
+                     createdAt: new Date("2026-10-01"),
+                     updatedAt: new Date("2026-10-01"),
+                     completedAt: new Date("2026-10-01"),
+                  },
+               ],
+            },
+         ];
+
+         vi.mocked(prisma.category.findMany).mockResolvedValue(
+            mockCategories as never
+         );
+
+         const result = await getUserCategorizedTasks("user_1");
+
+         expect(result.dailyCategories).toHaveLength(1);
+         expect(result.dailyCategories[0].name).toBe("Algorithms & DS");
+         expect(result.dailyCategories[0].tasks).toHaveLength(1);
+         expect(result.dailyCategories[0].tasks[0].title).toBe(
+            "Solve 2 DP problems today"
+         );
+
+         expect(result.weeklyCategories).toHaveLength(1);
+         expect(result.weeklyCategories[0].name).toBe("Algorithms & DS");
+         expect(result.weeklyCategories[0].tasks).toHaveLength(1);
+         expect(result.weeklyCategories[0].tasks[0].title).toBe(
+            "Solve 15 dynamic programming problems"
+         );
+      });
+
       it("returns empty arrays without seeding default categories if user has no categories", async () => {
          vi.mocked(prisma.category.findMany).mockResolvedValue([] as never);
 
@@ -224,6 +281,42 @@ describe("task.repository", () => {
             expect.objectContaining({
                data: expect.objectContaining({
                   categoryId: "cat_biology",
+               }),
+            })
+         );
+      });
+
+      it("inherits parent weekly category when creating a daily task with matching category name", async () => {
+         vi.mocked(prisma.category.findFirst)
+            .mockResolvedValueOnce(null) // no DAILY category with this name
+            .mockResolvedValueOnce({
+               id: "cat_weekly_math",
+               userId: "user_1",
+               name: "Mathematics",
+               taskType: "WEEKLY",
+            } as never); // found parent WEEKLY category
+
+         vi.mocked(prisma.task.create).mockResolvedValue({
+            id: "task_math_daily",
+            userId: "user_1",
+            categoryId: "cat_weekly_math",
+            title: "Calculus Homework",
+            taskType: "DAILY",
+         } as never);
+
+         await createTask({
+            userId: "user_1",
+            title: "Calculus Homework",
+            taskType: "DAILY",
+            newCategoryName: "Mathematics",
+         });
+
+         expect(prisma.category.create).not.toHaveBeenCalled();
+         expect(prisma.task.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+               data: expect.objectContaining({
+                  categoryId: "cat_weekly_math",
+                  taskType: "DAILY",
                }),
             })
          );

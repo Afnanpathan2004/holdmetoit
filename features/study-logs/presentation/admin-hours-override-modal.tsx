@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Clock, X, AlertTriangle, Check, Loader2, ShieldAlert, User as UserIcon } from "lucide-react";
+import { Clock, X, AlertTriangle, Check, Loader2, ShieldAlert, User as UserIcon, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -68,10 +68,18 @@ export function AdminHoursOverrideModal({
     );
   }, [effectiveStartDate, totalChallengeDays]);
 
-  const initialDayNumberToUse =
-    initialDayNumber >= 1 && initialDayNumber <= totalChallengeDays
-      ? initialDayNumber
-      : 1;
+  const initialDayNumberToUse = useMemo(() => {
+    const requested =
+      initialDayNumber >= 1 && initialDayNumber <= totalChallengeDays
+        ? initialDayNumber
+        : 1;
+    const requestedOption = dayOptions.find((d) => d.dayNumber === requested);
+    if (requestedOption && !requestedOption.isFuture) {
+      return requested;
+    }
+    const lastNonFuture = [...dayOptions].reverse().find((d) => !d.isFuture);
+    return lastNonFuture ? lastNonFuture.dayNumber : 1;
+  }, [dayOptions, initialDayNumber, totalChallengeDays]);
 
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(initialDayNumberToUse);
 
@@ -140,8 +148,14 @@ export function AdminHoursOverrideModal({
         initialDayNumber >= 1 && initialDayNumber <= totalChallengeDays
           ? initialDayNumber
           : 1;
-      setSelectedDayNumber(safeDayNum);
-      const opt = dayOptions.find((d) => d.dayNumber === safeDayNum);
+      const requestedOption = dayOptions.find((d) => d.dayNumber === safeDayNum);
+      const chosenDayNum =
+        requestedOption && !requestedOption.isFuture
+          ? safeDayNum
+          : [...dayOptions].reverse().find((d) => !d.isFuture)?.dayNumber ?? 1;
+
+      setSelectedDayNumber(chosenDayNum);
+      const opt = dayOptions.find((d) => d.dayNumber === chosenDayNum);
       const dateKey = opt ? opt.dateKey : effectiveStartDate;
       const existing = participant.dailyLogs?.[dateKey] ?? 0;
       if (existing > 0) {
@@ -164,20 +178,36 @@ export function AdminHoursOverrideModal({
   const currentDayExistingSeconds = getExistingSecondsForDate(selectedDayOption.dateKey);
 
   const handleSelectDay = (dayNum: number) => {
+    const opt = dayOptions.find((d) => d.dayNumber === dayNum);
+    if (opt?.isFuture) {
+      setFeedback({
+        type: "error",
+        message: "Cannot add or edit study time for future dates.",
+      });
+      return;
+    }
     setSelectedDayNumber(dayNum);
     populateInputsForDay(dayNum);
     setFeedback(null);
   };
 
-  const handleApplyPreset = (h: number, m: number, s: number) => {
-    setHours(String(h));
-    setMinutes(String(m));
-    setSeconds(String(s));
+  const handleClearTime = () => {
+    setHours("0");
+    setMinutes("0");
+    setSeconds("0");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback(null);
+
+    if (selectedDayOption.isFuture) {
+      setFeedback({
+        type: "error",
+        message: "Cannot add or edit study time for future dates.",
+      });
+      return;
+    }
 
     const h = parseInt(hours || "0", 10);
     const m = parseInt(minutes || "0", 10);
@@ -274,7 +304,6 @@ export function AdminHoursOverrideModal({
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#3b82f6]/20 text-[#60a5fa] border border-[#3b82f6]/30">
                 Host / Mod Override
               </span>
-              <span className="text-[11px] text-[#868686]">Law L5 Audit</span>
             </div>
             <h3 className="text-lg sm:text-xl font-bold text-white">
               Edit Participant Study Hours
@@ -341,18 +370,26 @@ export function AdminHoursOverrideModal({
               const isSelected = selectedDayNumber === opt.dayNumber;
               const loggedSec = getExistingSecondsForDate(opt.dateKey);
               const hasHours = loggedSec > 0;
+              const isFuture = opt.isFuture;
 
               return (
                 <button
                   key={opt.dayNumber}
                   type="button"
+                  disabled={isFuture}
                   onClick={() => handleSelectDay(opt.dayNumber)}
                   className={`w-full min-w-0 py-2 px-1 rounded-xl text-center flex flex-col items-center justify-center transition-all ${
                     isSelected
                       ? "bg-white text-black font-bold shadow-md ring-2 ring-white/20"
-                      : "bg-[#1c1c1c] text-[#d1d1d1] hover:bg-[#292929] hover:text-white border border-[#2e2e2e]"
+                      : isFuture
+                        ? "bg-[#1c1c1c]/40 text-[#545454] cursor-not-allowed border border-transparent opacity-50"
+                        : "bg-[#1c1c1c] text-[#d1d1d1] hover:bg-[#292929] hover:text-white border border-[#2e2e2e]"
                   }`}
-                  title={`${opt.label} (${opt.dateKey}) - ${formatSecondsToClock(loggedSec)} logged`}
+                  title={
+                    isFuture
+                      ? `Day ${opt.dayNumber} (${opt.dateKey}) - Future date (cannot log or edit yet)`
+                      : `${opt.label} (${opt.dateKey}) - ${formatSecondsToClock(loggedSec)} logged`
+                  }
                 >
                   <span className="text-[10px] uppercase tracking-wider opacity-75 leading-none">
                     {opt.weekday}
@@ -364,12 +401,14 @@ export function AdminHoursOverrideModal({
                     className={`text-[9px] mt-1 font-mono leading-none ${
                       isSelected
                         ? "text-black font-semibold"
-                        : hasHours
-                          ? "text-[#4ade80]"
-                          : "text-[#666666]"
+                        : isFuture
+                          ? "text-[#404040]"
+                          : hasHours
+                            ? "text-[#4ade80]"
+                            : "text-[#666666]"
                     }`}
                   >
-                    {hasHours ? `${Math.floor(loggedSec / 3600)}h` : "-"}
+                    {isFuture ? "Locked" : hasHours ? `${Math.floor(loggedSec / 3600)}h` : "-"}
                   </span>
                 </button>
               );
@@ -385,6 +424,16 @@ export function AdminHoursOverrideModal({
             </span>
           </div>
         </div>
+
+        {/* Future date lock warning */}
+        {selectedDayOption.isFuture && (
+          <div className="flex items-center gap-2.5 p-3 rounded-xl text-xs font-medium bg-[#450a0a]/40 border border-[#ef4444]/40 text-[#f87171]">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>
+              Future date ({selectedDayOption.dateKey}): moderators cannot add or edit study hours for future dates.
+            </span>
+          </div>
+        )}
 
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -402,8 +451,9 @@ export function AdminHoursOverrideModal({
                   max="24"
                   placeholder="0"
                   value={hours}
+                  disabled={isPending || selectedDayOption.isFuture}
                   onChange={(e) => setHours(e.target.value)}
-                  className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base"
+                  className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base disabled:opacity-40"
                 />
               </div>
               <div>
@@ -414,8 +464,9 @@ export function AdminHoursOverrideModal({
                   max="59"
                   placeholder="0"
                   value={minutes}
+                  disabled={isPending || selectedDayOption.isFuture}
                   onChange={(e) => setMinutes(e.target.value)}
-                  className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base"
+                  className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base disabled:opacity-40"
                 />
               </div>
               <div>
@@ -426,42 +477,23 @@ export function AdminHoursOverrideModal({
                   max="59"
                   placeholder="0"
                   value={seconds}
+                  disabled={isPending || selectedDayOption.isFuture}
                   onChange={(e) => setSeconds(e.target.value)}
-                  className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base"
+                  className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base disabled:opacity-40"
                 />
               </div>
             </div>
 
-            {/* Quick Presets */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[11px] text-[#868686] mr-1">Presets:</span>
+            {/* Quick Clear Action */}
+            <div className="flex items-center pt-1">
               <button
                 type="button"
-                onClick={() => handleApplyPreset(0, 0, 0)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-[#ef4444] border border-[#383838] transition-colors"
+                onClick={handleClearTime}
+                disabled={isPending || selectedDayOption.isFuture}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-[#ef4444] hover:text-[#f87171] border border-[#383838] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                0h (Clear)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(1, 0, 0)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-white border border-[#383838] transition-colors"
-              >
-                1h
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(2, 0, 0)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-white border border-[#383838] transition-colors"
-              >
-                2h
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(4, 0, 0)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-white border border-[#383838] transition-colors"
-              >
-                4h
+                <RotateCcw className="h-3 w-3" />
+                Clear Time
               </button>
             </div>
           </div>
@@ -475,8 +507,9 @@ export function AdminHoursOverrideModal({
               type="text"
               placeholder="e.g. Timer sync glitch, approved offline study, host correction"
               value={reason}
+              disabled={isPending || selectedDayOption.isFuture}
               onChange={(e) => setReason(e.target.value)}
-              className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-xs px-3.5"
+              className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-xs px-3.5 disabled:opacity-40"
             />
             <p className="text-[11px] text-[#868686] flex items-center gap-1.5 pt-0.5">
               <ShieldAlert className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
@@ -517,7 +550,7 @@ export function AdminHoursOverrideModal({
             </Button>
             <Button
               type="submit"
-              disabled={isPending || reason.trim().length < 3}
+              disabled={isPending || selectedDayOption.isFuture || reason.trim().length < 3}
               className="h-10 px-5 rounded-xl bg-white text-black hover:bg-[#e0e0e0] text-xs font-bold gap-2 shadow-sm disabled:opacity-50"
             >
               {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

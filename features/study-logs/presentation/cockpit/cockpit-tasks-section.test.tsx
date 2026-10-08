@@ -405,5 +405,255 @@ describe("CockpitTasksSection", () => {
 
     expect(html).not.toContain('aria-label="Log study hours for');
   });
+
+  it("renders daily tasks under inherited weekly parent categories", () => {
+    const sharedTasks: UserCategorizedTasks = {
+      ...mockTasks,
+      categories: [
+        {
+          id: "cat_shared_math",
+          userId: "user_1",
+          name: "Mathematics",
+          taskType: "WEEKLY",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      weeklyCategories: [
+        {
+          id: "cat_shared_math",
+          name: "Mathematics",
+          taskType: "WEEKLY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_w_math",
+              userId: "user_1",
+              categoryId: "cat_shared_math",
+              title: "Weekly Calculus Problem Set",
+              taskType: "WEEKLY",
+              isComplete: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+      dailyCategories: [
+        {
+          id: "cat_shared_math",
+          name: "Mathematics",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_d_math",
+              userId: "user_1",
+              categoryId: "cat_shared_math",
+              title: "Do Integration by Parts 1-5",
+              taskType: "DAILY",
+              isComplete: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+      totalDailyTasks: 1,
+      completedDailyTasks: 0,
+      totalWeeklyTasks: 1,
+      completedWeeklyTasks: 0,
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: sharedTasks,
+      }),
+    );
+
+    const [dailySection, weeklySection] = html.split("Weekly Todos");
+
+    // "Mathematics" shows up in daily section with its daily task
+    expect(dailySection).toContain("Mathematics");
+    expect(dailySection).toContain("Do Integration by Parts 1-5");
+
+    // "Mathematics" shows up in weekly section with its weekly task
+    expect(weeklySection).toContain("Mathematics");
+    expect(weeklySection).toContain("Weekly Calculus Problem Set");
+  });
+
+  it("blocks adding tasks to past challenge days in empty state and bottom button", () => {
+    // Challenge started 2026-10-01, today is Day 3 (2026-10-03)
+    // When no tasks exist for Day 1 (which is past)
+    const htmlPastDay = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: {
+          ...mockTasks,
+          dailyCategories: [],
+        },
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-03",
+        todayDayNumber: 3,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    // Initial view is Today (Day 3), which allows adding tasks
+    expect(htmlPastDay).toContain("+ Add todo for Day 3");
+  });
+
+  it("renders locked past day empty state when today is after challenge end or viewing past day", () => {
+    // If a challenge has ended (e.g. today is 2026-10-10, started 2026-10-01, 7 days)
+    // Then Day 7 ended on 2026-10-07. Today (2026-10-10) is Day 10 (past the challenge).
+    // All challenge days (D1..D7) are past days!
+    const htmlCompleted = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: {
+          ...mockTasks,
+          dailyCategories: [],
+        },
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-10",
+        todayDayNumber: 10,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    const [dailySection, weeklySection] = htmlCompleted.split("Weekly Todos");
+
+    // Empty state displays locked past day messaging in Daily Todos
+    expect(dailySection).toContain("This challenge day has passed. New tasks cannot be added to past days.");
+    expect(dailySection).toContain("Adding tasks to past days is locked");
+    expect(dailySection).toContain("Past day locked (new tasks blocked)");
+    expect(dailySection).not.toContain("+ Add todo for");
+    expect(dailySection).not.toContain("+ Add first todo for");
+    expect(dailySection).not.toContain("+ Add more todos for");
+    // Weekly column still functions independently
+    expect(weeklySection).toContain("+ Add more todos");
+  });
+
+  it("preserves task editing and status controls for tasks on past days", () => {
+    const pastCompletedTasks: UserCategorizedTasks = {
+      ...mockTasks,
+      dailyCategories: [
+        {
+          id: "cat_past_done",
+          name: "Past Records",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_past_record",
+              userId: "user_1",
+              categoryId: "cat_past_done",
+              title: "Day 1 Historic Study Task",
+              taskType: "DAILY",
+              isComplete: true,
+              status: "COMPLETED",
+              dueDate: "2026-10-01",
+              createdAt: new Date("2026-10-01T10:00:00Z"),
+              updatedAt: new Date("2026-10-01T10:00:00Z"),
+              completedAt: new Date("2026-10-01T11:00:00Z"),
+            },
+          ],
+        },
+      ],
+    };
+
+    const htmlCompleted = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: pastCompletedTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-10",
+        todayDayNumber: 10,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    const [dailySection] = htmlCompleted.split("Weekly Todos");
+
+    // Existing task is rendered and has checkbox + status pill
+    expect(dailySection).toContain("Day 1 Historic Study Task");
+    expect(dailySection).toContain('role="checkbox"');
+    expect(dailySection).toContain("Completed");
+    expect(dailySection).toContain('aria-label="Options for task Day 1 Historic Study Task"');
+
+    // Bottom button is locked in daily section
+    expect(dailySection).toContain("Past day locked (new tasks blocked)");
+    expect(dailySection).not.toContain("+ Add more todos for");
+    expect(dailySection).not.toContain("+ Add first todo for");
+  });
+
+  it("renders daily task on the day matching its dueDate even if createdAt was Day 1", () => {
+    const taskCreatedDay1DueDay4: UserCategorizedTasks = {
+      ...mockTasks,
+      dailyCategories: [
+        {
+          id: "cat_daily_moved",
+          name: "Moved From Weekly",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_moved_weekly",
+              userId: "user_1",
+              categoryId: "cat_daily_moved",
+              title: "Weekly Task Assigned To Day 4",
+              taskType: "DAILY",
+              isComplete: false,
+              status: "TODO",
+              dueDate: "2026-10-04",
+              createdAt: new Date("2026-10-01T10:00:00Z"), // Created on Day 1
+              updatedAt: new Date("2026-10-04T10:00:00Z"),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+    };
+
+    // Render cockpit when active day is Day 4 (2026-10-04)
+    const htmlDay4 = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: taskCreatedDay1DueDay4,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-04",
+        todayDayNumber: 4,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    const [dailySection] = htmlDay4.split("Weekly Todos");
+
+    // The task should be visible in Daily Todos under Day 4 because dueDate is Day 4
+    expect(dailySection).toContain("Weekly Task Assigned To Day 4");
+    expect(dailySection).toContain("Moved From Weekly");
+  });
+
+  it("renders 7-day pill switcher with tablist and day tabs for challenge days", () => {
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-04",
+        todayDayNumber: 4,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('aria-label="Challenge Day Tabs"');
+    expect(html).toContain("Today");
+    expect(html).toContain('role="tab"');
+  });
 });
+
 
