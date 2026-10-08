@@ -405,5 +405,84 @@ describe("CockpitTasksSection", () => {
 
     expect(html).not.toContain('aria-label="Log study hours for');
   });
+
+  it("renders daily tasks under inherited weekly parent categories", () => {
+    const sharedTasks: UserCategorizedTasks = {
+      ...mockTasks,
+      categories: [
+        {
+          id: "cat_shared_math",
+          userId: "user_1",
+          name: "Mathematics",
+          taskType: "WEEKLY",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      weeklyCategories: [
+        {
+          id: "cat_shared_math",
+          name: "Mathematics",
+          taskType: "WEEKLY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_w_math",
+              userId: "user_1",
+              categoryId: "cat_shared_math",
+              title: "Weekly Calculus Problem Set",
+              taskType: "WEEKLY",
+              isComplete: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+      dailyCategories: [
+        {
+          id: "cat_shared_math",
+          name: "Mathematics",
+          taskType: "DAILY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_d_math",
+              userId: "user_1",
+              categoryId: "cat_shared_math",
+              title: "Do Integration by Parts 1-5",
+              taskType: "DAILY",
+              isComplete: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              completedAt: null,
+            },
+          ],
+        },
+      ],
+      totalDailyTasks: 1,
+      completedDailyTasks: 0,
+      totalWeeklyTasks: 1,
+      completedWeeklyTasks: 0,
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: sharedTasks,
+      }),
+    );
+
+    const [dailySection, weeklySection] = html.split("Weekly Todos");
+
+    // "Mathematics" shows up in daily section with its daily task
+    expect(dailySection).toContain("Mathematics");
+    expect(dailySection).toContain("Do Integration by Parts 1-5");
+
+    // "Mathematics" shows up in weekly section with its weekly task
+    expect(weeklySection).toContain("Mathematics");
+    expect(weeklySection).toContain("Weekly Calculus Problem Set");
+  });
 });
 
