@@ -629,14 +629,9 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
         {/* SECTION 4: PARTICIPANT ROSTERS & HOURS MANAGEMENT (ADMIN OVERRIDE) */}
         <section className="space-y-5 pt-4 border-t border-[#262626]">
           <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
-                Participant Rosters & Study Hours Management
-              </h3>
-              <span className="text-[11px] text-[#868686]">
-                Law L5 Host Override
-              </span>
-            </div>
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
+              Participant Rosters & Study Hours Management
+            </h3>
             <p className="text-xs text-[#868686]">
               Reassign houses or override participant logged hours for throughout the challenge week (D1–D7). All manual adjustments require an audit reason.
             </p>
@@ -882,7 +877,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
         </div>
       )}
 
-      {/* Admin Hours Override Modal (Law L5 / FEAT-LOG-04) */}
+      {/* Admin Hours Override Modal (FEAT-LOG-04) */}
       <AdminHoursOverrideModal
         isOpen={isOverrideModalOpen}
         onClose={() => setIsOverrideModalOpen(false)}

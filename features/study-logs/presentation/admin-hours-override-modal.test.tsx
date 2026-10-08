@@ -57,7 +57,9 @@ describe("AdminHoursOverrideModal", () => {
     expect(html).toContain("@alice");
     expect(html).toContain("Honey Bees");
     expect(html).toContain("Edit Participant Study Hours");
-    expect(html).toContain("Law L5 Audit");
+    expect(html).not.toContain("Law L5 Audit");
+    expect(html).toContain("Clear Time");
+    expect(html).not.toContain("Presets:");
     expect(html).toContain("Mandatory Reason for Override");
     // All 7 days should be present in the day grid
     expect(html).toContain("D1");

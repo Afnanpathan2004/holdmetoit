@@ -119,7 +119,7 @@ export function ChallengeView({
           </h3>
           <p className="text-sm leading-relaxed text-[#d1d1d1]">
             {challenge.title} is an automated study battle governed by the
-            HoldMeToIt dual-failure invariant (Law L6). All scholars declare
+            HoldMeToIt dual-failure accountability system. All scholars declare
             their individual target hours and weekly milestone intentions before
             kickoff.
           </p>
