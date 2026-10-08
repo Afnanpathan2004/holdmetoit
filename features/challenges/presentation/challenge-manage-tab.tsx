@@ -412,7 +412,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
 
       if (res.ok) {
          setShowDeleteModal(false);
-         router.push("/admin");
+         router.push("/challenges");
       } else {
          setIsDeleting(false);
          setShowDeleteModal(false);
@@ -802,8 +802,12 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                        onClick={() =>
                                           handleOpenOverride(
                                              participant,
-                                             dayOptions.find((d) => d.isToday)?.dayNumber ??
-                                                [...dayOptions].reverse().find((d) => !d.isFuture)?.dayNumber ??
+                                             dayOptions.find((d) => d.isToday)
+                                                ?.dayNumber ??
+                                                [...dayOptions]
+                                                   .reverse()
+                                                   .find((d) => !d.isFuture)
+                                                   ?.dayNumber ??
                                                 1
                                           )
                                        }
@@ -853,8 +857,8 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                                 isFuture
                                                    ? "bg-[#1c1c1c]/30 border border-transparent text-[#545454] cursor-not-allowed opacity-50"
                                                    : hasHours
-                                                      ? "bg-[#144520]/30 hover:bg-[#144520]/60 border border-[#22c55e]/30 text-[#4ade80]"
-                                                      : "bg-[#242424]/40 hover:bg-[#2f2f2f] border border-[#2e2e2e] text-[#868686] hover:text-[#d1d1d1]"
+                                                     ? "bg-[#144520]/30 hover:bg-[#144520]/60 border border-[#22c55e]/30 text-[#4ade80]"
+                                                     : "bg-[#242424]/40 hover:bg-[#2f2f2f] border border-[#2e2e2e] text-[#868686] hover:text-[#d1d1d1]"
                                              }`}
                                              title={
                                                 isFuture
@@ -872,8 +876,8 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                                 {isFuture
                                                    ? "-"
                                                    : hasHours
-                                                      ? `${Math.floor(loggedSec / 3600)}h`
-                                                      : "-"}
+                                                     ? `${Math.floor(loggedSec / 3600)}h`
+                                                     : "-"}
                                              </div>
                                           </button>
                                        );
