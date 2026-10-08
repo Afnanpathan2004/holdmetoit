@@ -11,23 +11,24 @@
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-09, branch `dev`)                                                                                                                                                                             |
-| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                              |
-| `npm run test`                               | ✅ 63 files, 667/667 tests green                                                                                                                                                                              |
-| `npm run build`                              | ✅ 8 routes compiled                                                                                                                                                                                          |
-| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~80%** — Global participant preview toggle in header, core daily/weekly loop, 2-card participant hours logging, full-week daily todos, mod/dev Event Audit Log & full-week hours override tools complete |
-| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                    |
-| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                |
+| Gate                                         | Result (2026-10-09, branch `dev`)                                                                                                                                                                            |
+| :------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                             |
+| `npm run test`                               | ✅ 65 files, 675/675 tests green                                                                                                                                                                             |
+| `npm run build`                              | ✅ 9 routes compiled                                                                                                                                                                                         |
+| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~82%** — Dedicated public /challenges catalog with role-gated admin controls, global participant preview toggle, core daily/weekly loop, 2-card hours logging, mod audit log & hours overrides complete |
+| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                   |
+| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                               |
 
 ### 1.1 Live Routes
 
 | Route                    | Purpose                                                                                        | Access                                 |
 | :----------------------- | :--------------------------------------------------------------------------------------------- | :------------------------------------- |
 | `/`                      | Home cockpit: banner variants, progress/deficit card, Log Hours modal, Daily/Weekly task board | Guest (local tasks only) / Participant |
+| `/challenges`            | Dedicated public challenges directory (Events card grid, role-gated Create Challenge button)   | Public spectator / Participant / Admin |
 | `/challenge/[id]`        | Tabs: Overview · Leaderboard · About · Manage (admin only)                                     | Public spectator                       |
 | `/challenge/[id]/manual` | Manual weekly slot-hours leaderboard (host-entered)                                            | Public view, admin entry               |
-| `/admin`                 | Admin console: events list, Create Challenge button                                            | `ADMIN` / `DEV`                        |
+| `/admin`                 | Server redirect to `/challenges`                                                               | `ADMIN` / `DEV`                        |
 | `/admin/challenges/new`  | Challenge creator wizard (2 required image uploads)                                            | `ADMIN` / `DEV`                        |
 | `POST /api/feedback`     | Bug/suggestion intake → DB + Discord embed                                                     | Anyone                                 |
 | `POST /api/tasks/sync`   | Offline task queue batch sync                                                                  | Authenticated                          |
@@ -204,6 +205,25 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
 
+
+### Session 63 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring Engine Agent.
+- **Fix Weekly-to-Daily Drag-and-Drop Due Date Bug:**
+   - Resolved bug where dragging a task from Weekly Todos to Daily Todos assigned it to Day 1 of the challenge (due to fallback to `task.createdAt`) instead of the active/selected challenge day:
+      - **Domain (`task-reorder.ts`):**
+         - Added optional `targetDueDate?: string | null` to `MoveTaskParams` and `MoveCategoryParams`.
+         - In `moveTaskBetweenCategories`, resolved `dueDate`: if `targetDueDate` is provided, assign `targetDueDate`; if moving to `"weekly"`, reset `dueDate: null`; otherwise preserve existing `dueDate`.
+         - In `moveCategoryBetweenColumns`, cascaded `targetDueDate` to member tasks when moving cross-column.
+         - Added unit tests in `task-reorder.test.ts` verifying `targetDueDate` assignment when moving tasks or categories.
+      - **Presentation (`cockpit-tasks-section.tsx`):**
+         - In `handleTaskDrop`, `handleCategoryDrop`, and `handleColumnDrop`: passed `targetDueDate: selectedDateKey` when moving from Weekly to Daily (`isMovingWeeklyToDaily`), and `targetDueDate: null` when moving from Daily to Weekly.
+         - Updated local IndexedDB persistence (`putLocalTasks` / `putLocalTask`) to store the resolved `dueDate`.
+         - Included `dueDate: res.movedTask.dueDate ?? null` in `enqueueMutation` payload for `action: "MOVE"` to synchronize the assigned day with the server.
+         - Added unit tests in `cockpit-tasks-section.test.tsx` verifying that a daily task with Day 1 `createdAt` and Day 4 `dueDate` renders under Day 4 in Daily Todos.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+
 ### Session 64 — 2026-10-09 (krish)
 
 - **Agent Role:** Participant UI & Scoring Engine Agent.
@@ -243,4 +263,19 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - **Hidden by default**: When viewing `"All Actions"`, study hour logs are excluded so the administrative timeline remains clean. They only appear when an admin/mod explicitly clicks on the `"Study Hour Logs"` tab.
    - Added full test coverage across domain, repository, server actions, and UI components.
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (63 files, 667/667 green) · `npm run build` ✅.
+
+### Session 66 — 2026-10-09 (afnan-jr)
+
+- **Agent Role:** Participant UI & Admin Operations Agent.
+- **Dedicated Public Challenges Directory (`/challenges`) with Role-Gated Admin Controls:**
+   - Moved challenge catalog out of the admin-restricted zone into a dedicated public page at `/challenges` ([`challenges-list-view.tsx`](features/challenges/presentation/challenges-list-view.tsx), [`page.tsx`](app/challenges/page.tsx), [`layout.tsx`](app/challenges/layout.tsx), [`loading.tsx`](app/challenges/loading.tsx)):
+      - Accessible to public spectators, enrolled participants, and moderators/admins alike.
+      - **Role-Gated Actions:** "Create Challenge" (linking to `/admin/challenges/new`) and "Change Accent Color" buttons are only rendered when `canManageChallenges` is true (`ADMIN`/`DEV` in non-preview mode). They are completely hidden for participants, spectators, and admins previewing as participants.
+      - Preserved the full Obsidian dark styling, 3-column responsive card grid, status badges, participant counts, formatted UTC start dates, and "View Challenge" links.
+      - Added participant-friendly empty state when no challenges exist.
+   - **Header & Navigation Integration:**
+      - Added "Challenges" navigation link in `AppHeader` ([`auth-nav.tsx`](features/auth/presentation/auth-nav.tsx)) for 1-click discovery by all users.
+      - Redirected `/admin` to `/challenges` via server-side redirect ([`app/admin/page.tsx`](app/admin/page.tsx)).
+      - Updated back links in `/admin/challenges/new` and post-deletion redirects to `/challenges`.
+   - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (65 files, 675/675 green) · `npm run build` ✅ (9 routes compiled).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
