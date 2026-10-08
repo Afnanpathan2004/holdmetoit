@@ -43,6 +43,15 @@ export async function adminOverrideStudyHoursAction(
       };
     }
 
+    const todayDateKey = new Date().toISOString().slice(0, 10);
+    if (parsed.data.logDate > todayDateKey) {
+      return {
+        ok: false,
+        code: "FUTURE_DATE_NOT_ALLOWED",
+        message: "Cannot log or edit study time for future dates.",
+      };
+    }
+
     const durationSeconds = composeDurationSeconds(
       parsed.data.hours,
       parsed.data.minutes,

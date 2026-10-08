@@ -14,7 +14,7 @@
 | Gate | Result (2026-10-08, branch `krish`) |
 | :--- | :--- |
 | `npm run typecheck` | ✅ 0 errors (`npx tsc --noEmit`) |
-| `npm run test` | ✅ 62 files, 626/626 tests green |
+| `npm run test` | ✅ 62 files, 639/639 tests green |
 | `npm run build` | ✅ 8 routes compiled |
 | Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~80%** — Global participant preview toggle in header, core daily/weekly loop, 2-card participant hours logging, full-week daily todos, mod/dev Event Audit Log & full-week hours override tools complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo |
@@ -155,5 +155,27 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
   - Merged incoming changes from `origin/dev` (commit `044bd81` introducing prettier/eslint precommit hooks and formatting).
   - Resolved conflicts in `features/challenges/presentation/challenge-manage-tab.tsx`, preserving Danger Zone / Delete Challenge functionality and clean UI free of internal Law labels.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 629/629 green).
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+
+### Session 61 — 2026-10-08 (krish)
+- **Agent Role:** Admin Operations & Scoring Engine Agent.
+- **Moderator Future Hours Prevention:**
+  - Implemented strict guards across domain, API, and UI layers so even moderators/admins cannot add or edit future hours for participants:
+    - **Domain (`challenge-day.ts`):** `getChallengeDayOptions` correctly flags future days as `isFuture: true` even if a challenge is upcoming. Added `validateAdminOverrideChallengeDay` which allows earlier past days (unlike participants who are locked to today/yesterday) while strictly rejecting future challenge days or future dates with `FUTURE_DATE_NOT_ALLOWED`.
+    - **Server Action (`admin-override.actions.ts`):** Added a future date check on `parsed.data.logDate > todayDateKey` returning `{ ok: false, code: "FUTURE_DATE_NOT_ALLOWED", message: "Cannot log or edit study time for future dates." }`.
+    - **Repository (`admin-override.repository.ts`):** Added safety invariant throwing an error if attempting to execute an override on a future date.
+    - **Admin Override Modal (`admin-hours-override-modal.tsx`):**
+      - Clamped initial day selection to the latest non-future day.
+      - Disabled future day buttons in the 7-day selector with `disabled` attribute, `cursor-not-allowed`, and `Locked` indicator.
+      - Blocked selecting future days in `handleSelectDay`.
+      - Guarded `handleSubmit` against future dates.
+      - Disabled hours/minutes/seconds inputs, Clear Time button, reason input, and Save Override button if a future day is active.
+      - Rendered an alert warning when a future date is viewed.
+    - **Challenge Manage Tab (`challenge-manage-tab.tsx`):**
+      - Disabled future day buttons in the 7-day breakdown strip on the roster table.
+      - Defaulted "Edit hr" button to the current/latest valid challenge day instead of hardcoded Day 1.
+    - **Daily Hours Modal (`daily-hours-modal.tsx`):**
+      - Ensured admins cannot select or log future dates when using the daily modal.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 639/639 green) · `npm run build` ✅.
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
 

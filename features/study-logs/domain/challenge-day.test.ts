@@ -8,6 +8,7 @@ import {
   getChallengeDayOptions,
   getCalendarWeekDayOptions,
   validateStudyLogChallengeDay,
+  validateAdminOverrideChallengeDay,
 } from "./challenge-day";
 
 describe("challenge day calculation", () => {
@@ -220,6 +221,97 @@ describe("validateStudyLogChallengeDay", () => {
       code: "MISMATCHED_DATE_AND_DAY",
       message: "The provided challenge day and date do not match.",
     });
+  });
+});
+
+describe("validateAdminOverrideChallengeDay (Moderator Future Date Lock)", () => {
+  const startAt = new Date("2026-10-05T18:00:00.000Z");
+  const nowDay3 = new Date("2026-10-07T20:00:00.000Z"); // Day 3 (2026-10-07)
+
+  it("allows moderator to override earlier past days (Day 1) that are locked for normal participants", () => {
+    const result = validateAdminOverrideChallengeDay(startAt, { challengeDay: 1 }, nowDay3);
+    expect(result).toEqual({
+      ok: true,
+      dayNumber: 1,
+      dateKey: "2026-10-05",
+    });
+  });
+
+  it("allows moderator to override yesterday (Day 2) and today (Day 3)", () => {
+    const day2Result = validateAdminOverrideChallengeDay(startAt, { challengeDay: 2 }, nowDay3);
+    expect(day2Result).toEqual({
+      ok: true,
+      dayNumber: 2,
+      dateKey: "2026-10-06",
+    });
+
+    const day3Result = validateAdminOverrideChallengeDay(startAt, { challengeDay: 3 }, nowDay3);
+    expect(day3Result).toEqual({
+      ok: true,
+      dayNumber: 3,
+      dateKey: "2026-10-07",
+    });
+  });
+
+  it("STRICTLY REJECTS moderators trying to override future days (Day 4..7)", () => {
+    const resultDay4 = validateAdminOverrideChallengeDay(startAt, { challengeDay: 4 }, nowDay3);
+    expect(resultDay4).toEqual({
+      ok: false,
+      code: "FUTURE_DATE_NOT_ALLOWED",
+      message: "Cannot log study time for future dates.",
+    });
+
+    const resultDay7 = validateAdminOverrideChallengeDay(startAt, { challengeDay: 7 }, nowDay3);
+    expect(resultDay7).toEqual({
+      ok: false,
+      code: "FUTURE_DATE_NOT_ALLOWED",
+      message: "Cannot log study time for future dates.",
+    });
+  });
+
+  it("STRICTLY REJECTS moderators trying to override by future date string", () => {
+    const result = validateAdminOverrideChallengeDay(startAt, { date: "2026-10-08" }, nowDay3);
+    expect(result).toEqual({
+      ok: false,
+      code: "FUTURE_DATE_NOT_ALLOWED",
+      message: "Cannot log study time for future dates.",
+    });
+  });
+
+  it("STRICTLY REJECTS all days if the challenge is UPCOMING (has not started yet)", () => {
+    const futureStart = new Date("2026-10-15T00:00:00.000Z");
+    const nowBeforeStart = new Date("2026-10-08T12:00:00.000Z");
+
+    const result = validateAdminOverrideChallengeDay(futureStart, { challengeDay: 1 }, nowBeforeStart);
+    expect(result).toEqual({
+      ok: false,
+      code: "FUTURE_DATE_NOT_ALLOWED",
+      message: "Cannot log study time for future dates.",
+    });
+  });
+
+  it("rejects dates before challenge start with DATE_BEFORE_CHALLENGE", () => {
+    const result = validateAdminOverrideChallengeDay(startAt, { date: "2026-10-04" }, nowDay3);
+    expect(result).toEqual({
+      ok: false,
+      code: "DATE_BEFORE_CHALLENGE",
+      message: "Cannot log study time for dates before the challenge started.",
+    });
+  });
+});
+
+describe("getChallengeDayOptions with UPCOMING challenges", () => {
+  it("marks all days as isFuture = true and isToday = false when now < startAt", () => {
+    const futureStart = new Date("2026-10-15T00:00:00.000Z");
+    const nowBeforeStart = new Date("2026-10-08T12:00:00.000Z");
+
+    const options = getChallengeDayOptions(futureStart, nowBeforeStart, 7);
+    expect(options).toHaveLength(7);
+    for (const opt of options) {
+      expect(opt.isFuture).toBe(true);
+      expect(opt.isToday).toBe(false);
+      expect(opt.isYesterday).toBe(false);
+    }
   });
 });
 

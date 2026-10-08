@@ -84,4 +84,27 @@ describe("adminOverrideStudyHoursAction (Law L5 / FEAT-LOG-04)", () => {
       code: "INVALID_INPUT",
     });
   });
+
+  it("STRICTLY REJECTS future dates with FUTURE_DATE_NOT_ALLOWED even for moderators", async () => {
+    // Tomorrow or far future date
+    const futureDate = "2099-12-31";
+
+    const result = await adminOverrideStudyHoursAction({
+      challengeId: "c_1",
+      participantId: "p_1",
+      logDate: futureDate,
+      hours: 3,
+      minutes: 0,
+      seconds: 0,
+      reason: "Trying to log future study session",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result).toEqual({
+      ok: false,
+      code: "FUTURE_DATE_NOT_ALLOWED",
+      message: "Cannot log or edit study time for future dates.",
+    });
+    expect(overrideRepoModule.executeAdminHoursOverride).not.toHaveBeenCalled();
+  });
 });

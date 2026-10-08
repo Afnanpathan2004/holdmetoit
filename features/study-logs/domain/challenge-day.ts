@@ -114,8 +114,8 @@ export function getChallengeDayOptions(
   now: Date | string = new Date(),
   totalDays = 7,
 ): ChallengeDayOption[] {
-  const currentDayNumber = Math.max(1, getChallengeDayNumber(startAt, now));
-  const daysCount = Math.max(totalDays, currentDayNumber);
+  const rawCurrentDayNumber = getChallengeDayNumber(startAt, now);
+  const daysCount = Math.max(totalDays, rawCurrentDayNumber);
   const options: ChallengeDayOption[] = [];
 
   const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -126,9 +126,9 @@ export function getChallengeDayOptions(
     const dateObj = new Date(Date.UTC(year, month - 1, day));
     const weekday = WEEKDAYS[dateObj.getUTCDay()];
 
-    const isToday = d === currentDayNumber;
-    const isYesterday = d === currentDayNumber - 1;
-    const isFuture = d > currentDayNumber;
+    const isToday = rawCurrentDayNumber > 0 && d === rawCurrentDayNumber;
+    const isYesterday = rawCurrentDayNumber > 1 && d === rawCurrentDayNumber - 1;
+    const isFuture = rawCurrentDayNumber === 0 || d > rawCurrentDayNumber;
 
     let label = `Day ${d} (${weekday})`;
     if (isToday) label = `Today (Day ${d})`;
@@ -205,8 +205,17 @@ export function validateStudyLogChallengeDay(
   startAt: Date | string,
   input: { challengeDay?: number; date?: string },
   now: Date | string = new Date(),
+  options: { allowPastDays?: boolean } = {},
 ): ValidateChallengeDayResult {
-  const currentDayNumber = Math.max(1, getChallengeDayNumber(startAt, now));
+  const currentDayNumber = getChallengeDayNumber(startAt, now);
+  if (currentDayNumber === 0) {
+    return {
+      ok: false,
+      code: "FUTURE_DATE_NOT_ALLOWED",
+      message: "Cannot log study time for future dates.",
+    };
+  }
+
   const todayDateKey = getChallengeDayDateKey(startAt, currentDayNumber);
   const day1DateKey = getChallengeDayDateKey(startAt, 1);
   const yesterdayDayNumber = currentDayNumber > 1 ? currentDayNumber - 1 : null;
@@ -262,7 +271,11 @@ export function validateStudyLogChallengeDay(
     };
   }
 
-  if (resolvedDayNumber > currentDayNumber || resolvedDateKey > todayDateKey) {
+  if (
+    currentDayNumber === 0 ||
+    resolvedDayNumber > currentDayNumber ||
+    resolvedDateKey > todayDateKey
+  ) {
     return {
       ok: false,
       code: "FUTURE_DATE_NOT_ALLOWED",
@@ -270,7 +283,18 @@ export function validateStudyLogChallengeDay(
     };
   }
 
-  const isToday = resolvedDayNumber === currentDayNumber && resolvedDateKey === todayDateKey;
+  if (options.allowPastDays) {
+    return {
+      ok: true,
+      dayNumber: resolvedDayNumber,
+      dateKey: resolvedDateKey,
+    };
+  }
+
+  const isToday =
+    currentDayNumber > 0 &&
+    resolvedDayNumber === currentDayNumber &&
+    resolvedDateKey === todayDateKey;
   const isYesterday =
     yesterdayDayNumber !== null &&
     resolvedDayNumber === yesterdayDayNumber &&
@@ -289,5 +313,13 @@ export function validateStudyLogChallengeDay(
     dayNumber: resolvedDayNumber,
     dateKey: resolvedDateKey,
   };
+}
+
+export function validateAdminOverrideChallengeDay(
+  startAt: Date | string,
+  input: { challengeDay?: number; date?: string },
+  now: Date | string = new Date(),
+): ValidateChallengeDayResult {
+  return validateStudyLogChallengeDay(startAt, input, now, { allowPastDays: true });
 }
 
