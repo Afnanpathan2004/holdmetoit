@@ -751,7 +751,12 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                        type="button"
                                        variant="outline"
                                        onClick={() =>
-                                          handleOpenOverride(participant, 1)
+                                          handleOpenOverride(
+                                             participant,
+                                             dayOptions.find((d) => d.isToday)?.dayNumber ??
+                                                [...dayOptions].reverse().find((d) => !d.isFuture)?.dayNumber ??
+                                                1
+                                          )
                                        }
                                        className="h-9 px-3 rounded-xl border-[#383838] bg-[#292929] hover:bg-[#333333] text-white text-xs font-semibold gap-1.5 shrink-0"
                                        title="Admin: Edit Participant Study Hours"
@@ -783,10 +788,12 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                              opt.dateKey
                                           ] ?? 0;
                                        const hasHours = loggedSec > 0;
+                                       const isFuture = opt.isFuture;
                                        return (
                                           <button
                                              key={opt.dayNumber}
                                              type="button"
+                                             disabled={isFuture}
                                              onClick={() =>
                                                 handleOpenOverride(
                                                    participant,
@@ -794,11 +801,17 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                                 )
                                              }
                                              className={`py-1.5 px-0.5 rounded-lg text-center transition-all ${
-                                                hasHours
-                                                   ? "bg-[#144520]/30 hover:bg-[#144520]/60 border border-[#22c55e]/30 text-[#4ade80]"
-                                                   : "bg-[#242424]/40 hover:bg-[#2f2f2f] border border-[#2e2e2e] text-[#868686] hover:text-[#d1d1d1]"
+                                                isFuture
+                                                   ? "bg-[#1c1c1c]/30 border border-transparent text-[#545454] cursor-not-allowed opacity-50"
+                                                   : hasHours
+                                                      ? "bg-[#144520]/30 hover:bg-[#144520]/60 border border-[#22c55e]/30 text-[#4ade80]"
+                                                      : "bg-[#242424]/40 hover:bg-[#2f2f2f] border border-[#2e2e2e] text-[#868686] hover:text-[#d1d1d1]"
                                              }`}
-                                             title={`Click to edit Day ${opt.dayNumber} (${opt.dateKey}) - ${formatSecondsToClock(loggedSec)}`}
+                                             title={
+                                                isFuture
+                                                   ? `Day ${opt.dayNumber} (${opt.dateKey}) - Future date (cannot edit)`
+                                                   : `Click to edit Day ${opt.dayNumber} (${opt.dateKey}) - ${formatSecondsToClock(loggedSec)}`
+                                             }
                                           >
                                              <div className="text-[9px] uppercase tracking-wider text-[#a1a1a1] leading-none">
                                                 {opt.weekday}
@@ -807,9 +820,11 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                                 D{opt.dayNumber}
                                              </div>
                                              <div className="text-[9px] font-mono mt-1 leading-none truncate">
-                                                {hasHours
-                                                   ? `${Math.floor(loggedSec / 3600)}h`
-                                                   : "-"}
+                                                {isFuture
+                                                   ? "-"
+                                                   : hasHours
+                                                      ? `${Math.floor(loggedSec / 3600)}h`
+                                                      : "-"}
                                              </div>
                                           </button>
                                        );

@@ -55,6 +55,7 @@ export interface MoveTaskParams<
   targetCategoryIndex: number;
   targetColumn: "daily" | "weekly";
   targetTaskIndex?: number;
+  targetDueDate?: string | null;
   dailyCategories: TCat[];
   weeklyCategories: TCat[];
 }
@@ -83,6 +84,7 @@ export function moveTaskBetweenCategories<
   targetCategoryIndex,
   targetColumn,
   targetTaskIndex,
+  targetDueDate,
   dailyCategories,
   weeklyCategories,
 }: MoveTaskParams<TTask, TCat>): MoveTaskResult<TTask, TCat> {
@@ -116,10 +118,18 @@ export function moveTaskBetweenCategories<
   const originalTask = sourceCat.tasks[taskIndex];
   const targetTaskType: TaskType = targetColumn === "daily" ? "DAILY" : "WEEKLY";
 
+  const resolvedDueDate =
+    targetDueDate !== undefined
+      ? targetDueDate
+      : targetColumn === "weekly"
+        ? null
+        : originalTask.dueDate ?? null;
+
   const updatedTask: TTask = {
     ...originalTask,
     categoryId: targetCat.id || originalTask.categoryId,
     taskType: targetTaskType,
+    dueDate: resolvedDueDate,
   };
 
   // Case 1: Same category reorder
@@ -209,6 +219,7 @@ export interface MoveCategoryParams<
   sourceColumn: "daily" | "weekly";
   targetColumn: "daily" | "weekly";
   targetIndex?: number;
+  targetDueDate?: string | null;
   dailyCategories: TCat[];
   weeklyCategories: TCat[];
 }
@@ -235,6 +246,7 @@ export function moveCategoryBetweenColumns<
   sourceColumn,
   targetColumn,
   targetIndex,
+  targetDueDate,
   dailyCategories,
   weeklyCategories,
 }: MoveCategoryParams<TTask, TCat>): MoveCategoryResult<TTask, TCat> {
@@ -267,9 +279,17 @@ export function moveCategoryBetweenColumns<
   }
 
   // Cross column move (Daily <-> Weekly)
+  const resolvedDueDate =
+    targetDueDate !== undefined
+      ? targetDueDate
+      : targetColumn === "weekly"
+        ? null
+        : undefined;
+
   const updatedTasks = category.tasks.map((t) => ({
     ...t,
     taskType: targetTaskType,
+    ...(resolvedDueDate !== undefined ? { dueDate: resolvedDueDate } : {}),
   })) as TTask[];
 
   const updatedCategory = {

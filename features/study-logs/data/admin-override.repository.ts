@@ -33,6 +33,12 @@ export interface AdminOverrideInput {
  */
 export async function executeAdminHoursOverride(params: AdminOverrideInput) {
   const logDate = toUtcDateOnly(params.logDate);
+  const logDateKey = logDate.toISOString().slice(0, 10);
+  const todayDateKey = new Date().toISOString().slice(0, 10);
+
+  if (logDateKey > todayDateKey) {
+    throw new Error("Cannot log or edit study time for future dates.");
+  }
 
   const existingLog = await prisma.dailyStudyLog.findUnique({
     where: {
