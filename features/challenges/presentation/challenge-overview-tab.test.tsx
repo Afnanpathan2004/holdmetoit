@@ -135,4 +135,29 @@ describe("ChallengeOverviewTab", () => {
     expect(html).toContain("Edit hr");
     expect(html).toContain("Admin: Edit hours for Alice Scholar");
   });
+
+  it("renders compact pagination controls when participants exceed 8", () => {
+    const manyStandings = Array.from({ length: 12 }, (_, i) => ({
+      ...mockChallenge.standings[0]!,
+      participantId: `part-${i + 1}`,
+      userId: `user-${i + 1}`,
+      displayName: `Scholar ${i + 1}`,
+      username: `scholar_${i + 1}`,
+      rank: i + 1,
+    }));
+
+    const html = renderToStaticMarkup(
+      createElement(ChallengeOverviewTab, {
+        challenge: {
+          ...mockChallenge,
+          standings: manyStandings,
+        },
+      }),
+    );
+
+    expect(html).toContain("1–8");
+    expect(html).toContain("12");
+    expect(html).toContain("1/2");
+    expect(html).toContain("Next");
+  });
 });

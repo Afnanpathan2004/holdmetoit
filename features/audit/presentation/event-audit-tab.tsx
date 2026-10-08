@@ -24,6 +24,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DataPagination } from "@/components/ui/data-pagination";
 import { getChallengeAuditTrailAction } from "@/features/audit/api/audit.actions";
 import {
    exportAuditTrailToJson,
@@ -118,6 +119,8 @@ export function EventAuditTab({
    const [isPending, startTransition] = useTransition();
 
    const [searchQuery, setSearchQuery] = useState("");
+   const [currentPage, setCurrentPage] = useState(1);
+   const pageSize = 10;
    const [selectedCategory, setSelectedCategory] =
       useState<FilterCategory>("ALL");
    const [expandedLogIds, setExpandedLogIds] = useState<Set<string>>(new Set());
@@ -221,6 +224,13 @@ export function EventAuditTab({
       });
    }, [logs, selectedCategory, searchQuery]);
 
+   const totalPages = Math.ceil(filteredLogs.length / pageSize);
+   const safePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+   const paginatedLogs = filteredLogs.slice(
+      (safePage - 1) * pageSize,
+      safePage * pageSize
+   );
+
    return (
       <div className="space-y-6 max-w-5xl mx-auto pb-16">
          {/* Header Container */}
@@ -278,7 +288,10 @@ export function EventAuditTab({
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#868686]" />
                   <Input
                      value={searchQuery}
-                     onChange={(e) => setSearchQuery(e.target.value)}
+                     onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setCurrentPage(1);
+                     }}
                      placeholder="Search audit trail by admin, action, target entity, or reason..."
                      className="h-11 rounded-2xl bg-[#1d1d1d] border-[#2e2e2e] focus:border-[#483c30] text-white pl-10 pr-4 text-xs"
                   />
@@ -299,7 +312,10 @@ export function EventAuditTab({
                      <button
                         key={cat}
                         type="button"
-                        onClick={() => setSelectedCategory(cat)}
+                        onClick={() => {
+                           setSelectedCategory(cat);
+                           setCurrentPage(1);
+                        }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                            selectedCategory === cat
                               ? "bg-[#e08a32] text-black shadow-sm"
@@ -371,8 +387,9 @@ export function EventAuditTab({
 
             {/* Audit Log Entries List */}
             {!isLoading && !errorMessage && filteredLogs.length > 0 && (
-               <div className="space-y-3">
-                  {filteredLogs.map((log) => {
+               <>
+                  <div className="space-y-3">
+                     {paginatedLogs.map((log) => {
                      const isExpanded = expandedLogIds.has(log.id);
                      const badgeStyle = getActionBadgeStyle(log.actionType);
                      const actionLabel = formatAuditActionHuman(log.actionType);
@@ -526,7 +543,18 @@ export function EventAuditTab({
                      );
                   })}
                </div>
-            )}
+
+               {/* Pagination Controls */}
+               <DataPagination
+                  currentPage={safePage}
+                  totalPages={totalPages}
+                  totalItems={filteredLogs.length}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  itemLabel="audit logs"
+               />
+            </>
+         )}
          </div>
       </div>
    );

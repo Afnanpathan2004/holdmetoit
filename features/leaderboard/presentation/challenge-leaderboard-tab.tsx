@@ -12,6 +12,7 @@ import {
   AdminHoursOverrideModal,
   type AdminHoursOverrideParticipant,
 } from "@/features/study-logs/presentation/admin-hours-override-modal";
+import { DataPagination } from "@/components/ui/data-pagination";
 
 interface ChallengeLeaderboardTabProps {
   challenge: ChallengeScoreboardViewModel;
@@ -23,6 +24,8 @@ export function ChallengeLeaderboardTab({
   isAdmin = false,
 }: ChallengeLeaderboardTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [overrideParticipant, setOverrideParticipant] =
     useState<AdminHoursOverrideParticipant | null>(null);
   const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
@@ -55,6 +58,13 @@ export function ChallengeLeaderboardTab({
       entry.teamName.toLowerCase().includes(q)
     );
   });
+
+  const totalPages = Math.ceil(filteredStandings.length / pageSize);
+  const safePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+  const paginatedStandings = filteredStandings.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   const totalSecondsCombined =
     (teamA?.totalLoggedSeconds ?? 0) + (teamB?.totalLoggedSeconds ?? 0);
@@ -274,7 +284,10 @@ export function ChallengeLeaderboardTab({
               type="text"
               placeholder="Search scholar..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="h-9 pl-9 pr-3 bg-[#1c1c1c] border-[#333333] text-[#ffffff] placeholder-[#868686] text-xs rounded-full"
             />
           </div>
@@ -299,7 +312,7 @@ export function ChallengeLeaderboardTab({
 
               {/* Participant Cards */}
               <div className="space-y-2.5">
-                {filteredStandings.map((entry) => {
+                {paginatedStandings.map((entry) => {
                   const isTeamA = teamA && entry.teamName === teamA.name;
                   return (
                     <div
@@ -396,7 +409,7 @@ export function ChallengeLeaderboardTab({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#222222]">
-                  {filteredStandings.map((entry) => {
+                  {paginatedStandings.map((entry) => {
                     const isTeamA = teamA && entry.teamName === teamA.name;
                     const rowTintClass = isTeamA
                       ? "bg-[#144520]/15 hover:bg-[#144520]/25"
@@ -496,6 +509,16 @@ export function ChallengeLeaderboardTab({
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            <DataPagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              totalItems={filteredStandings.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              itemLabel="scholars"
+            />
           </>
         )}
       </div>

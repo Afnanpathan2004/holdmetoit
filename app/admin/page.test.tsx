@@ -119,4 +119,35 @@ describe("admin event card images", () => {
     expect(html).not.toContain("<img");
     expect(html).toContain('href="/challenge/challenge-1"');
   });
+
+  it("renders pagination controls when challenge count exceeds 9", () => {
+    const manyChallenges = Array.from({ length: 12 }, (_, i) => ({
+      id: `challenge-${i + 1}`,
+      title: `Challenge ${i + 1}`,
+      eventBannerUrl: null,
+      punishmentPfpUrl: null,
+      format: "TEAM_VS_TEAM" as const,
+      status: "ACTIVE" as const,
+      startAt: new Date("2026-10-01T00:00:00.000Z"),
+      endAt: new Date("2026-10-08T00:00:00.000Z"),
+      createdAt: new Date("2026-10-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-10-01T00:00:00.000Z"),
+      hostId: "host-1",
+      host: { id: "host-1", displayName: "Host", username: "host", image: null },
+      teams: [],
+      _count: { participants: 2 },
+    }));
+
+    vi.mocked(listAllChallengesForAdmin).mockResolvedValue(
+      manyChallenges as unknown as Awaited<ReturnType<typeof listAllChallengesForAdmin>>
+    );
+
+    return render().then((html) => {
+      expect(html).toContain("Showing");
+      expect(html).toContain("1–9");
+      expect(html).toContain("12");
+      expect(html).toContain("challenges");
+      expect(html).toContain("Next");
+    });
+  });
 });
