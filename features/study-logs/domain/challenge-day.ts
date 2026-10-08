@@ -107,6 +107,7 @@ export interface ChallengeDayOption {
   isToday: boolean;
   isYesterday: boolean;
   isFuture: boolean;
+  isPast: boolean;
 }
 
 export function getChallengeDayOptions(
@@ -129,6 +130,7 @@ export function getChallengeDayOptions(
     const isToday = rawCurrentDayNumber > 0 && d === rawCurrentDayNumber;
     const isYesterday = rawCurrentDayNumber > 1 && d === rawCurrentDayNumber - 1;
     const isFuture = rawCurrentDayNumber === 0 || d > rawCurrentDayNumber;
+    const isPast = rawCurrentDayNumber > 0 && d < rawCurrentDayNumber;
 
     let label = `Day ${d} (${weekday})`;
     if (isToday) label = `Today (Day ${d})`;
@@ -143,6 +145,7 @@ export function getChallengeDayOptions(
       isToday,
       isYesterday,
       isFuture,
+      isPast,
     });
   }
 
@@ -177,6 +180,7 @@ export function getCalendarWeekDayOptions(
     const isToday = dateKey === todayDateKey;
     const isYesterday = dayUtc === todayUtc - MILLISECONDS_PER_DAY;
     const isFuture = dayUtc > todayUtc;
+    const isPast = dayUtc < todayUtc;
 
     let label = `Day ${dayNumber} (${weekday})`;
     if (isToday) label = `Today (${weekday})`;
@@ -191,10 +195,45 @@ export function getCalendarWeekDayOptions(
       isToday,
       isYesterday,
       isFuture,
+      isPast,
     });
   }
 
   return options;
+}
+
+export function isChallengeDayInPast(
+  startAt: Date | string,
+  target: { dayNumber?: number; dateKey?: string },
+  now: Date | string = new Date(),
+): boolean {
+  const currentDay = getChallengeDayNumber(startAt, now);
+  if (currentDay === 0) return false;
+  if (target.dayNumber !== undefined) {
+    return target.dayNumber < currentDay;
+  }
+  if (target.dateKey) {
+    const todayKey = getChallengeDayDateKey(startAt, currentDay);
+    return target.dateKey < todayKey;
+  }
+  return false;
+}
+
+export type ValidateAddTaskDayResult =
+  | { ok: true }
+  | { ok: false; code: "PAST_DAY_NOT_ALLOWED"; message: string };
+
+export function validateAddTaskChallengeDay(
+  isPastDay: boolean,
+): ValidateAddTaskDayResult {
+  if (isPastDay) {
+    return {
+      ok: false,
+      code: "PAST_DAY_NOT_ALLOWED",
+      message: "Adding new todo tasks to past challenge days is locked.",
+    };
+  }
+  return { ok: true };
 }
 
 export type ValidateChallengeDayResult =

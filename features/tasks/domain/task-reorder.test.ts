@@ -109,6 +109,26 @@ describe("task-reorder domain logic", () => {
       expect(res.weeklyCategories[0].tasks.map((t) => t.id)).toEqual(["t1", "t3"]);
       expect(res.weeklyCategories[0].tasks[0].taskType).toBe("WEEKLY");
       expect(res.weeklyCategories[0].tasks[0].categoryId).toBe("cat_w1");
+      expect(res.weeklyCategories[0].tasks[0].dueDate).toBeNull();
+    });
+
+    it("assigns targetDueDate when moving task from Weekly to Daily", () => {
+      const res = moveTaskBetweenCategories({
+        taskId: "t3",
+        sourceCategoryIndex: 0,
+        sourceColumn: "weekly",
+        targetCategoryIndex: 0,
+        targetColumn: "daily",
+        targetTaskIndex: 0,
+        targetDueDate: "2026-10-09",
+        dailyCategories: dailyCats,
+        weeklyCategories: weeklyCats,
+      });
+
+      expect(res.dailyCategories[0].tasks[0].id).toBe("t3");
+      expect(res.dailyCategories[0].tasks[0].taskType).toBe("DAILY");
+      expect(res.dailyCategories[0].tasks[0].dueDate).toBe("2026-10-09");
+      expect(res.movedTask?.dueDate).toBe("2026-10-09");
     });
   });
 
@@ -160,6 +180,47 @@ describe("task-reorder domain logic", () => {
       expect(res.weeklyCategories[1].name).toBe("Math");
       expect(res.weeklyCategories[1].taskType).toBe("WEEKLY");
       expect(res.weeklyCategories[1].tasks[0].taskType).toBe("WEEKLY");
+      expect(res.weeklyCategories[1].tasks[0].dueDate).toBeNull();
+    });
+
+    it("moves category from Weekly to Daily and assigns targetDueDate to tasks", () => {
+      const customWeeklyCats: CategoryGroup[] = [
+        {
+          id: "cat_w_custom",
+          name: "Literature",
+          taskType: "WEEKLY",
+          isCollapsed: false,
+          tasks: [
+            {
+              id: "t_lit",
+              userId: "u1",
+              categoryId: "cat_w_custom",
+              title: "Essay",
+              taskType: "WEEKLY",
+              isComplete: false,
+              dueDate: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              completedAt: null,
+            },
+          ],
+        },
+      ];
+
+      const res = moveCategoryBetweenColumns({
+        categoryIndex: 0,
+        sourceColumn: "weekly",
+        targetColumn: "daily",
+        targetIndex: 0,
+        targetDueDate: "2026-10-09",
+        dailyCategories: [],
+        weeklyCategories: customWeeklyCats,
+      });
+
+      expect(res.dailyCategories).toHaveLength(1);
+      expect(res.dailyCategories[0].name).toBe("Literature");
+      expect(res.dailyCategories[0].tasks[0].dueDate).toBe("2026-10-09");
+      expect(res.dailyCategories[0].tasks[0].taskType).toBe("DAILY");
     });
   });
 });

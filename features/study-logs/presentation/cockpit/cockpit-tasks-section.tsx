@@ -12,6 +12,7 @@ import {
   GripVertical,
   RotateCcw,
   Calendar,
+  Lock,
 } from "lucide-react";
 import {
   getChallengeDayOptions,
@@ -267,6 +268,7 @@ export function CockpitTasksSection({
   }, [dayOptions, selectedDateKey, todayDayOption]);
 
   const isActiveDayToday = activeDayOption?.isToday ?? (selectedDateKey === effectiveTodayDate);
+  const isActiveDayPast = activeDayOption?.isPast ?? (selectedDateKey < effectiveTodayDate);
 
   const handleSelectDay = (opt: ChallengeDayOption) => {
     setSelectedDateKey(opt.dateKey);
@@ -293,7 +295,16 @@ export function CockpitTasksSection({
   };
 
   const openAddDailyModal = (targetDateKey?: string) => {
-    setAddTodoDateKey(targetDateKey || selectedDateKey);
+    const rawDateKey = targetDateKey || selectedDateKey;
+    const targetOpt = dayOptions.find((d) => d.dateKey === rawDateKey);
+    const isTargetPast = targetOpt?.isPast ?? (rawDateKey < effectiveTodayDate);
+
+    // If target day is in the past, clamp to today or the first available non-past day
+    const initialDateKey = isTargetPast
+      ? (todayDayOption?.dateKey || dayOptions.find((d) => !d.isPast)?.dateKey || effectiveTodayDate)
+      : rawDateKey;
+
+    setAddTodoDateKey(initialDateKey);
     setNewTodoText("");
     if (dailyCategoryOptions.length > 0) {
       setSelectedCategory(dailyCategoryOptions[0]);
@@ -712,6 +723,15 @@ export function CockpitTasksSection({
 
   const handleDeleteTask = (catIndex: number, taskId: string, taskType: "daily" | "weekly") => {
     if (taskType === "daily") {
+      const taskToDelete = dailyCategories[catIndex]?.tasks.find((t) => t.id === taskId);
+      if (taskToDelete) {
+        const dateKey = getTaskDateKey(taskToDelete);
+        const opt = dayOptions.find((d) => d.dateKey === dateKey);
+        const isPast = opt?.isPast ?? (dateKey < effectiveTodayDate);
+        if (isPast) {
+          return;
+        }
+      }
       setDailyCategories((prev) =>
         prev.map((cat, i) =>
           i === catIndex
@@ -885,6 +905,19 @@ export function CockpitTasksSection({
         ? (newDueDate !== undefined ? newDueDate : (editTaskModal.dueDate ?? selectedDateKey))
         : null;
 
+    if (taskType === "daily" && resolvedDueDate) {
+      const originalDateKey = editTaskModal.dueDate
+        ? (typeof editTaskModal.dueDate === "string"
+            ? editTaskModal.dueDate.slice(0, 10)
+            : new Date(editTaskModal.dueDate).toISOString().slice(0, 10))
+        : null;
+      const targetOpt = dayOptions.find((d) => d.dateKey === resolvedDueDate);
+      const isTargetPast = targetOpt?.isPast ?? (resolvedDueDate < effectiveTodayDate);
+      if (isTargetPast && resolvedDueDate !== originalDateKey) {
+        return;
+      }
+    }
+
     if (taskType === "daily") {
       setDailyCategories((prev) =>
         prev.map((cat, i) =>
@@ -1053,6 +1086,19 @@ export function CockpitTasksSection({
       dailyCategories.find((c) => c.name === targetName)?.id ||
       weeklyCategories.find((c) => c.name === targetName)?.id;
 
+    const allRelevantCats = catType === "daily" ? dailyCategories : [...dailyCategories, ...weeklyCategories];
+    const targetCat = allRelevantCats.find((c) => (catId ? c.id === catId : c.name === targetName));
+    const hasPastTasks = targetCat?.tasks.some((t) => {
+      const dateKey = getTaskDateKey(t);
+      const opt = dayOptions.find((d) => d.dateKey === dateKey);
+      return opt?.isPast ?? (dateKey < effectiveTodayDate);
+    });
+
+    if (hasPastTasks) {
+      setDeleteCategoryModal(null);
+      return;
+    }
+
     if (catType === "weekly") {
       setWeeklyCategories((prev) =>
         prev.filter((cat) => (catId ? cat.id !== catId : cat.name !== targetName)),
@@ -1159,6 +1205,14 @@ export function CockpitTasksSection({
     const taskType = addModalType === "daily" ? "DAILY" : "WEEKLY";
     const resolvedDueDate =
       addModalType === "daily" ? (addTodoDateKey || selectedDateKey) : null;
+
+    if (addModalType === "daily" && resolvedDueDate) {
+      const targetOpt = dayOptions.find((d) => d.dateKey === resolvedDueDate);
+      const isPast = targetOpt?.isPast ?? (resolvedDueDate < effectiveTodayDate);
+      if (isPast) {
+        return;
+      }
+    }
 
     const newTaskId = crypto.randomUUID();
     const nextCompleted = newTodoStatus === "COMPLETED";
@@ -1455,6 +1509,11 @@ export function CockpitTasksSection({
       return;
     }
 
+    if (targetColumn === "daily" && draggedItem.sourceColumn === "weekly" && isActiveDayPast) {
+      handleDragEnd();
+      return;
+    }
+
     const targetCategories =
       targetColumn === "daily" ? dailyCategories : weeklyCategories;
     const targetCat = targetCategories[targetCatIdx];
@@ -1467,6 +1526,14 @@ export function CockpitTasksSection({
     const destIdx =
       dragOverInfo?.position === "below" ? targetIndexInCat + 1 : targetIndexInCat;
 
+    const isMovingWeeklyToDaily = draggedItem.sourceColumn === "weekly" && targetColumn === "daily";
+    const isMovingDailyToWeekly = draggedItem.sourceColumn === "daily" && targetColumn === "weekly";
+    const targetDueDate = isMovingWeeklyToDaily
+      ? selectedDateKey
+      : isMovingDailyToWeekly
+        ? null
+        : undefined;
+
     const res = moveTaskBetweenCategories({
       taskId: draggedItem.id,
       sourceCategoryIndex: draggedItem.sourceCatIdx,
@@ -1474,6 +1541,7 @@ export function CockpitTasksSection({
       targetCategoryIndex: targetCatIdx,
       targetColumn,
       targetTaskIndex: Math.max(0, destIdx),
+      targetDueDate,
       dailyCategories,
       weeklyCategories,
     });
@@ -1534,6 +1602,7 @@ export function CockpitTasksSection({
             categoryId: res.targetCategoryId,
             taskType: res.targetTaskType,
             sortOrder: destIdx,
+            dueDate: res.movedTask.dueDate ?? null,
           },
           createdAt: Date.now(),
           retryCount: 0,
@@ -1572,15 +1641,29 @@ export function CockpitTasksSection({
       return;
     }
 
+    if (targetColumn === "daily" && draggedItem.sourceColumn === "weekly" && isActiveDayPast) {
+      handleDragEnd();
+      return;
+    }
+
     if (draggedItem.type === "category") {
       const destIndex =
         dragOverInfo?.position === "below" ? targetCatIdx + 1 : targetCatIdx;
+
+      const isMovingWeeklyToDaily = draggedItem.sourceColumn === "weekly" && targetColumn === "daily";
+      const isMovingDailyToWeekly = draggedItem.sourceColumn === "daily" && targetColumn === "weekly";
+      const targetDueDate = isMovingWeeklyToDaily
+        ? selectedDateKey
+        : isMovingDailyToWeekly
+          ? null
+          : undefined;
 
       const res = moveCategoryBetweenColumns({
         categoryIndex: draggedItem.sourceCatIdx,
         sourceColumn: draggedItem.sourceColumn,
         targetColumn,
         targetIndex: destIndex,
+        targetDueDate,
         dailyCategories,
         weeklyCategories,
       });
@@ -1604,7 +1687,7 @@ export function CockpitTasksSection({
           syncState: "pending",
         }).catch(() => {});
 
-        // Cascade taskType to all tasks inside this category in IndexedDB
+        // Cascade taskType and dueDate to all tasks inside this category in IndexedDB
         if (res.movedCategory.tasks && res.movedCategory.tasks.length > 0) {
           const tasksToUpdate: LocalTaskRecord[] = res.movedCategory.tasks.map((t, idx) => ({
             id: t.id,
@@ -1614,7 +1697,9 @@ export function CockpitTasksSection({
             taskType: targetType,
             sortOrder: idx,
             isComplete: t.completed,
-            createdAt: nowIso,
+            status: getTaskStatus(t),
+            dueDate: t.dueDate ?? null,
+            createdAt: t.createdAt || nowIso,
             updatedAt: nowIso,
             completedAt: t.completed ? nowIso : null,
             syncState: "pending",
@@ -1683,6 +1768,14 @@ export function CockpitTasksSection({
       }
     } else if (draggedItem.type === "task" && draggedItem.id) {
       // Dropping a task into a category header
+      const isMovingWeeklyToDaily = draggedItem.sourceColumn === "weekly" && targetColumn === "daily";
+      const isMovingDailyToWeekly = draggedItem.sourceColumn === "daily" && targetColumn === "weekly";
+      const targetDueDate = isMovingWeeklyToDaily
+        ? selectedDateKey
+        : isMovingDailyToWeekly
+          ? null
+          : undefined;
+
       const res = moveTaskBetweenCategories({
         taskId: draggedItem.id,
         sourceCategoryIndex: draggedItem.sourceCatIdx,
@@ -1690,6 +1783,7 @@ export function CockpitTasksSection({
         targetCategoryIndex: targetCatIdx,
         targetColumn,
         targetTaskIndex: 0,
+        targetDueDate,
         dailyCategories,
         weeklyCategories,
       });
@@ -1727,6 +1821,7 @@ export function CockpitTasksSection({
               categoryId: res.targetCategoryId,
               taskType: res.targetTaskType,
               sortOrder: 0,
+              dueDate: res.movedTask.dueDate ?? null,
             },
             createdAt: Date.now(),
             retryCount: 0,
@@ -1754,16 +1849,30 @@ export function CockpitTasksSection({
       return;
     }
 
+    if (targetColumn === "daily" && draggedItem.sourceColumn === "weekly" && isActiveDayPast) {
+      handleDragEnd();
+      return;
+    }
+
     const targetCategories =
       targetColumn === "daily" ? dailyCategories : weeklyCategories;
 
     if (draggedItem.type === "category") {
       const destIndex = targetCategories.length;
+      const isMovingWeeklyToDaily = draggedItem.sourceColumn === "weekly" && targetColumn === "daily";
+      const isMovingDailyToWeekly = draggedItem.sourceColumn === "daily" && targetColumn === "weekly";
+      const targetDueDate = isMovingWeeklyToDaily
+        ? selectedDateKey
+        : isMovingDailyToWeekly
+          ? null
+          : undefined;
+
       const res = moveCategoryBetweenColumns({
         categoryIndex: draggedItem.sourceCatIdx,
         sourceColumn: draggedItem.sourceColumn,
         targetColumn,
         targetIndex: destIndex,
+        targetDueDate,
         dailyCategories,
         weeklyCategories,
       });
@@ -1796,7 +1905,9 @@ export function CockpitTasksSection({
             taskType: targetType,
             sortOrder: idx,
             isComplete: t.completed,
-            createdAt: nowIso,
+            status: getTaskStatus(t),
+            dueDate: t.dueDate ?? null,
+            createdAt: t.createdAt || nowIso,
             updatedAt: nowIso,
             completedAt: t.completed ? nowIso : null,
             syncState: "pending",
@@ -1861,14 +1972,42 @@ export function CockpitTasksSection({
           );
           let currentDailyCats = dailyCategories;
           if (targetDailyIdx === -1) {
+            const newCatId = crypto.randomUUID();
             const newDailyCat: CategoryGroup = {
-              id: sourceCat.id,
+              id: newCatId,
               name: sourceCat.name,
               isCollapsed: false,
               tasks: [],
             };
             currentDailyCats = [...dailyCategories, newDailyCat];
             targetDailyIdx = currentDailyCats.length - 1;
+
+            putLocalCategory({
+              id: newCatId,
+              userId: userId ?? null,
+              name: sourceCat.name,
+              taskType: "DAILY",
+              sortOrder: targetDailyIdx,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              syncState: "pending",
+            }).catch(() => {});
+
+            if (isLoggedIn && userId) {
+              enqueueMutation({
+                id: crypto.randomUUID(),
+                entityType: "CATEGORY",
+                action: "CREATE",
+                payload: {
+                  id: newCatId,
+                  name: sourceCat.name,
+                  taskType: "DAILY",
+                  sortOrder: targetDailyIdx,
+                },
+                createdAt: Date.now(),
+                retryCount: 0,
+              }).catch(() => {});
+            }
           }
 
           const res = moveTaskBetweenCategories({
@@ -1878,6 +2017,7 @@ export function CockpitTasksSection({
             targetCategoryIndex: targetDailyIdx,
             targetColumn: "daily",
             targetTaskIndex: currentDailyCats[targetDailyIdx].tasks.length,
+            targetDueDate: selectedDateKey,
             dailyCategories: currentDailyCats,
             weeklyCategories,
           });
@@ -1929,6 +2069,14 @@ export function CockpitTasksSection({
         }
       } else if (targetCategories.length > 0) {
         const lastCatIdx = targetCategories.length - 1;
+        const isMovingWeeklyToDaily = draggedItem.sourceColumn === "weekly" && targetColumn === "daily";
+        const isMovingDailyToWeekly = draggedItem.sourceColumn === "daily" && targetColumn === "weekly";
+        const targetDueDate = isMovingWeeklyToDaily
+          ? selectedDateKey
+          : isMovingDailyToWeekly
+            ? null
+            : undefined;
+
         const res = moveTaskBetweenCategories({
           taskId: draggedItem.id,
           sourceCategoryIndex: draggedItem.sourceCatIdx,
@@ -1936,6 +2084,7 @@ export function CockpitTasksSection({
           targetCategoryIndex: lastCatIdx,
           targetColumn,
           targetTaskIndex: targetCategories[lastCatIdx].tasks.length,
+          targetDueDate,
           dailyCategories,
           weeklyCategories,
         });
@@ -1973,6 +2122,7 @@ export function CockpitTasksSection({
                 categoryId: res.targetCategoryId,
                 taskType: res.targetTaskType,
                 sortOrder: targetCategories[lastCatIdx].tasks.length,
+                dueDate: res.movedTask.dueDate ?? null,
               },
               createdAt: Date.now(),
               retryCount: 0,
@@ -2010,6 +2160,12 @@ export function CockpitTasksSection({
                   {activeDayOption.shortLabel}
                   {isActiveDayToday && (
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" title="Today" />
+                  )}
+                  {isActiveDayPast && (
+                    <span className="text-[10px] text-[#868686] flex items-center gap-1 font-normal">
+                      <Lock className="h-3 w-3 text-[#777]" />
+                      Locked
+                    </span>
                   )}
                 </span>
                 {!isActiveDayToday && (
@@ -2105,19 +2261,28 @@ export function CockpitTasksSection({
                     No todos scheduled for {activeDayOption.shortLabel} ({formatDayDate(activeDayOption.dateKey)})
                   </p>
                   <p className="text-xs text-[#868686]">
-                    {isActiveDayToday
-                      ? "Organize your daily study commitments by adding your first task."
-                      : `Plan ahead for ${activeDayOption.shortLabel} of the challenge.`}
+                    {isActiveDayPast
+                      ? "This challenge day has passed. New tasks cannot be added to past days."
+                      : isActiveDayToday
+                        ? "Organize your daily study commitments by adding your first task."
+                        : `Plan ahead for ${activeDayOption.shortLabel} of the challenge.`}
                   </p>
-                  <div className="pt-2">
-                    <Button
-                      type="button"
-                      onClick={() => openAddDailyModal(selectedDateKey)}
-                      className="h-8 px-4 rounded-full bg-[#2a2a2a] hover:bg-[#383838] text-white text-xs font-semibold border border-[#444]"
-                    >
-                      + Add todo for {activeDayOption.shortLabel}
-                    </Button>
-                  </div>
+                  {isActiveDayPast ? (
+                    <div className="pt-2 flex items-center justify-center gap-1.5 text-xs text-[#777777]">
+                      <Lock className="h-3.5 w-3.5 text-[#868686]" />
+                      <span>Adding tasks to past days is locked</span>
+                    </div>
+                  ) : (
+                    <div className="pt-2">
+                      <Button
+                        type="button"
+                        onClick={() => openAddDailyModal(selectedDateKey)}
+                        className="h-8 px-4 rounded-full bg-[#2a2a2a] hover:bg-[#383838] text-white text-xs font-semibold border border-[#444]"
+                      >
+                        + Add todo for {activeDayOption.shortLabel}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 dailyCategories.map((cat, catIdx) => {
@@ -2366,15 +2531,27 @@ export function CockpitTasksSection({
           </div>
 
           <div className="pt-2 text-center">
-            <Button
-              type="button"
-              onClick={() => openAddDailyModal(selectedDateKey)}
-              className="h-10 px-6 rounded-full bg-[#ffffff] text-[#000000] text-xs font-bold hover:bg-[#e0e0e0] shadow-sm inline-flex items-center gap-1.5"
-            >
-              {totalDailyTasksForDay === 0
-                ? `+ Add first todo for ${activeDayOption.shortLabel}`
-                : `+ Add more todos for ${activeDayOption.shortLabel}`}
-            </Button>
+            {isActiveDayPast ? (
+              <Button
+                type="button"
+                disabled
+                className="h-10 px-6 rounded-full bg-[#1c1c1c] text-[#666666] text-xs font-semibold border border-[#2c2c2c] cursor-not-allowed inline-flex items-center gap-1.5 shadow-none"
+                title="Adding tasks to past challenge days is locked"
+              >
+                <Lock className="h-3.5 w-3.5 text-[#666666]" />
+                <span>Past day locked (new tasks blocked)</span>
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={() => openAddDailyModal(selectedDateKey)}
+                className="h-10 px-6 rounded-full bg-[#ffffff] text-[#000000] text-xs font-bold hover:bg-[#e0e0e0] shadow-sm inline-flex items-center gap-1.5"
+              >
+                {totalDailyTasksForDay === 0
+                  ? `+ Add first todo for ${activeDayOption.shortLabel}`
+                  : `+ Add more todos for ${activeDayOption.shortLabel}`}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -2803,6 +2980,34 @@ export function CockpitTasksSection({
                   <div className="grid grid-cols-7 gap-1 w-full pb-1">
                     {dayOptions.map((opt) => {
                       const isSelected = (addTodoDateKey || selectedDateKey) === opt.dateKey;
+                      const isPastDay = opt.isPast ?? (opt.dateKey < effectiveTodayDate);
+
+                      if (isPastDay) {
+                        return (
+                          <button
+                            key={opt.dateKey}
+                            type="button"
+                            disabled
+                            title={`${opt.label} (Past Day — Locked for new tasks)`}
+                            className="py-1.5 px-1 flex flex-col items-center justify-center rounded-xl text-xs font-semibold border border-[#262626] bg-[#141414] text-[#555555] opacity-40 cursor-not-allowed overflow-hidden"
+                          >
+                            <span className="text-[10px] uppercase font-bold tracking-wider leading-none truncate max-w-full">
+                              {opt.isToday
+                                ? "Today"
+                                : opt.shortLabel.startsWith("Day ")
+                                  ? `D${opt.dayNumber}`
+                                  : opt.shortLabel.slice(0, 3)}
+                            </span>
+                            <span className="text-[9px] opacity-60 mt-0.5 leading-none truncate max-w-full">
+                              {formatDayDate(opt.dateKey)}
+                            </span>
+                            <span className="text-[8px] text-[#666] mt-1 flex items-center justify-center">
+                              <Lock className="h-2 w-2" />
+                            </span>
+                          </button>
+                        );
+                      }
+
                       return (
                         <button
                           key={opt.dateKey}
@@ -3087,18 +3292,50 @@ export function CockpitTasksSection({
                 <Pencil className="h-3.5 w-3.5 text-[#868686]" />
                 <span>Edit Task</span>
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const t = contextMenu.task!;
-                  setContextMenu(null);
-                  handleDeleteTask(t.catIdx, t.id, t.taskType);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-400 rounded-lg hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                <span>Delete Task</span>
-              </button>
+              {(() => {
+                const isTaskOnPastDay =
+                  contextMenu.task.taskType === "daily" &&
+                  (() => {
+                    const dateKey = contextMenu.task.dueDate
+                      ? (typeof contextMenu.task.dueDate === "string"
+                          ? contextMenu.task.dueDate.slice(0, 10)
+                          : new Date(contextMenu.task.dueDate).toISOString().slice(0, 10))
+                      : contextMenu.task.createdAt
+                        ? new Date(contextMenu.task.createdAt).toISOString().slice(0, 10)
+                        : effectiveTodayDate;
+                    const targetOpt = dayOptions.find((d) => d.dateKey === dateKey);
+                    return targetOpt?.isPast ?? (dateKey < effectiveTodayDate);
+                  })();
+
+                if (isTaskOnPastDay) {
+                  return (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#555555] cursor-not-allowed text-left opacity-50"
+                      title="Tasks on past challenge days cannot be deleted"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-[#555555]" />
+                      <span>Delete Task (Locked)</span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const t = contextMenu.task!;
+                      setContextMenu(null);
+                      handleDeleteTask(t.catIdx, t.id, t.taskType);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-400 rounded-lg hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                    <span>Delete Task</span>
+                  </button>
+                );
+              })()}
             </>
           )}
 
@@ -3117,18 +3354,52 @@ export function CockpitTasksSection({
                 <Pencil className="h-3.5 w-3.5 text-[#868686]" />
                 <span>Rename Category</span>
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const c = contextMenu.category!;
-                  setContextMenu(null);
-                  setDeleteCategoryModal(c);
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-400 rounded-lg hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                <span>Delete Category</span>
-              </button>
+              {(() => {
+                const targetCat =
+                  contextMenu.category!.taskType === "daily"
+                    ? dailyCategories.find(
+                        (c) =>
+                          (contextMenu.category!.id ? c.id === contextMenu.category!.id : c.name === contextMenu.category!.name),
+                      )
+                    : [...dailyCategories, ...weeklyCategories].find(
+                        (c) =>
+                          (contextMenu.category!.id ? c.id === contextMenu.category!.id : c.name === contextMenu.category!.name),
+                      );
+                const hasPastTasks = targetCat?.tasks.some((t) => {
+                  const dateKey = getTaskDateKey(t);
+                  const opt = dayOptions.find((d) => d.dateKey === dateKey);
+                  return opt?.isPast ?? (dateKey < effectiveTodayDate);
+                });
+
+                if (hasPastTasks) {
+                  return (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[#555555] cursor-not-allowed text-left opacity-50"
+                      title="Categories containing tasks on past challenge days cannot be deleted"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-[#555555]" />
+                      <span>Delete Category (Locked)</span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const c = contextMenu.category!;
+                      setContextMenu(null);
+                      setDeleteCategoryModal(c);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-400 rounded-lg hover:bg-red-500/10 hover:text-red-300 transition-colors text-left"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                    <span>Delete Category</span>
+                  </button>
+                );
+              })()}
             </>
           )}
         </div>
@@ -3180,6 +3451,41 @@ export function CockpitTasksSection({
                   <div className="grid grid-cols-7 gap-1 w-full pb-1">
                     {dayOptions.map((opt) => {
                       const isSelected = editTaskInputDueDate === opt.dateKey;
+                      const originalDateKey = editTaskModal.dueDate
+                        ? (typeof editTaskModal.dueDate === "string"
+                            ? editTaskModal.dueDate.slice(0, 10)
+                            : new Date(editTaskModal.dueDate).toISOString().slice(0, 10))
+                        : "";
+                      const isOriginalDate = originalDateKey === opt.dateKey;
+                      const isPastDay = opt.isPast ?? (opt.dateKey < effectiveTodayDate);
+                      const isBlockedPastDay = isPastDay && !isOriginalDate;
+
+                      if (isBlockedPastDay) {
+                        return (
+                          <button
+                            key={opt.dateKey}
+                            type="button"
+                            disabled
+                            title={`${opt.label} (Past Day — Locked)`}
+                            className="py-1.5 px-1 flex flex-col items-center justify-center rounded-xl text-xs font-semibold border border-[#262626] bg-[#141414] text-[#555555] opacity-40 cursor-not-allowed overflow-hidden"
+                          >
+                            <span className="text-[10px] uppercase font-bold tracking-wider leading-none truncate max-w-full">
+                              {opt.isToday
+                                ? "Today"
+                                : opt.shortLabel.startsWith("Day ")
+                                  ? `D${opt.dayNumber}`
+                                  : opt.shortLabel.slice(0, 3)}
+                            </span>
+                            <span className="text-[9px] opacity-60 mt-0.5 leading-none truncate max-w-full">
+                              {formatDayDate(opt.dateKey)}
+                            </span>
+                            <span className="text-[8px] text-[#666] mt-1 flex items-center justify-center">
+                              <Lock className="h-2 w-2" />
+                            </span>
+                          </button>
+                        );
+                      }
+
                       return (
                         <button
                           key={opt.dateKey}

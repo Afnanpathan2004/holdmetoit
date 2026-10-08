@@ -9,6 +9,8 @@ import {
   getCalendarWeekDayOptions,
   validateStudyLogChallengeDay,
   validateAdminOverrideChallengeDay,
+  isChallengeDayInPast,
+  validateAddTaskChallengeDay,
 } from "./challenge-day";
 
 describe("challenge day calculation", () => {
@@ -80,6 +82,7 @@ describe("getChallengeDayOptions", () => {
       isToday: false,
       isYesterday: false,
       isFuture: false,
+      isPast: true,
     });
 
     // Day 2: Yesterday
@@ -89,6 +92,7 @@ describe("getChallengeDayOptions", () => {
       isToday: false,
       isYesterday: true,
       isFuture: false,
+      isPast: true,
     });
 
     // Day 3: Today
@@ -98,13 +102,18 @@ describe("getChallengeDayOptions", () => {
       isToday: true,
       isYesterday: false,
       isFuture: false,
+      isPast: false,
     });
 
     // Day 4..7: Future
     expect(options[3].isFuture).toBe(true);
+    expect(options[3].isPast).toBe(false);
     expect(options[4].isFuture).toBe(true);
+    expect(options[4].isPast).toBe(false);
     expect(options[5].isFuture).toBe(true);
+    expect(options[5].isPast).toBe(false);
     expect(options[6].isFuture).toBe(true);
+    expect(options[6].isPast).toBe(false);
   });
 });
 
@@ -311,7 +320,48 @@ describe("getChallengeDayOptions with UPCOMING challenges", () => {
       expect(opt.isFuture).toBe(true);
       expect(opt.isToday).toBe(false);
       expect(opt.isYesterday).toBe(false);
+      expect(opt.isPast).toBe(false);
     }
+  });
+});
+
+describe("isChallengeDayInPast", () => {
+  const startAt = new Date("2026-10-05T00:00:00.000Z");
+  const nowDay3 = new Date("2026-10-07T12:00:00.000Z"); // Day 3
+
+  it("identifies past challenge days by dayNumber", () => {
+    expect(isChallengeDayInPast(startAt, { dayNumber: 1 }, nowDay3)).toBe(true);
+    expect(isChallengeDayInPast(startAt, { dayNumber: 2 }, nowDay3)).toBe(true);
+    expect(isChallengeDayInPast(startAt, { dayNumber: 3 }, nowDay3)).toBe(false);
+    expect(isChallengeDayInPast(startAt, { dayNumber: 4 }, nowDay3)).toBe(false);
+  });
+
+  it("identifies past challenge days by dateKey", () => {
+    expect(isChallengeDayInPast(startAt, { dateKey: "2026-10-05" }, nowDay3)).toBe(true);
+    expect(isChallengeDayInPast(startAt, { dateKey: "2026-10-06" }, nowDay3)).toBe(true);
+    expect(isChallengeDayInPast(startAt, { dateKey: "2026-10-07" }, nowDay3)).toBe(false);
+    expect(isChallengeDayInPast(startAt, { dateKey: "2026-10-08" }, nowDay3)).toBe(false);
+  });
+
+  it("returns false if challenge has not started yet", () => {
+    const beforeStart = new Date("2026-10-01T00:00:00.000Z");
+    expect(isChallengeDayInPast(startAt, { dayNumber: 1 }, beforeStart)).toBe(false);
+  });
+});
+
+describe("validateAddTaskChallengeDay", () => {
+  it("rejects adding tasks when day is in the past", () => {
+    const result = validateAddTaskChallengeDay(true);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe("PAST_DAY_NOT_ALLOWED");
+      expect(result.message).toContain("past challenge days is locked");
+    }
+  });
+
+  it("allows adding tasks when day is today or future", () => {
+    const result = validateAddTaskChallengeDay(false);
+    expect(result.ok).toBe(true);
   });
 });
 
