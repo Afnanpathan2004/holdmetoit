@@ -1,13 +1,17 @@
 "use client";
 
+import { useState, useEffect, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { LogOut, Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, LogOut, Shield } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { trackLogRocketEvent } from "@/core/observability/logrocket";
 import { loginWithDiscordAction, logoutAction } from "@/features/auth/api/auth.actions";
+import { toggleParticipantPreviewAction } from "@/features/auth/api/preview-mode.actions";
 import { hasAdminPrivileges, isDevRole } from "@/features/auth/domain/auth-roles";
+import { PARTICIPANT_PREVIEW_COOKIE } from "@/features/auth/domain/preview-mode";
 
 export function DiscordIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -93,9 +97,87 @@ export interface UserNavProps {
     role?: string;
   } | null;
   redirectTo?: string;
+  isActualAdmin?: boolean;
+  isPreviewActive?: boolean;
 }
 
-export function UserNav({ user, redirectTo }: UserNavProps) {
+export function ParticipantPreviewButton({
+  isPreviewActive,
+  className = "",
+}: {
+  isPreviewActive: boolean;
+  className?: string;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const handleToggle = () => {
+    startTransition(async () => {
+      const nextState = !isPreviewActive;
+      // Optimistically update document.cookie
+      if (typeof document !== "undefined") {
+        if (nextState) {
+          document.cookie = `${PARTICIPANT_PREVIEW_COOKIE}=true; path=/; max-age=86400; SameSite=Lax`;
+        } else {
+          document.cookie = `${PARTICIPANT_PREVIEW_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+        }
+
+        // Clean up URL query param if present
+        if (window.location.search.includes("as=participant")) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("as");
+          window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+        }
+      }
+
+      await toggleParticipantPreviewAction(nextState);
+      router.refresh();
+    });
+  };
+
+  if (isPreviewActive) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={handleToggle}
+        disabled={isPending}
+        data-testid="exit-preview-button"
+        className={`rounded-full bg-[#e08a32]/15 hover:bg-[#e08a32]/25 text-[#e08a32] hover:text-[#f5a742] border-[#e08a32]/40 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-medium transition-colors shrink-0 gap-1.5 h-auto ${className}`}
+        title="Exit Participant Preview and return to Developer / Moderator view"
+      >
+        <EyeOff className="h-3 w-3 shrink-0" />
+        <span className="sm:hidden">Exit</span>
+        <span className="hidden sm:inline">Exit Preview</span>
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      onClick={handleToggle}
+      disabled={isPending}
+      data-testid="enter-preview-button"
+      className={`rounded-full bg-[#1c1c1c] hover:bg-[#292929] text-[#b3b3b3] hover:text-[#f4f3f6] border-[#333333] px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-medium transition-colors shrink-0 gap-1.5 h-auto ${className}`}
+      title="Preview website globally as a regular participant (hides admin controls)"
+    >
+      <Eye className="h-3 w-3 shrink-0" />
+      <span className="sm:hidden">Preview</span>
+      <span className="hidden sm:inline">Preview as Participant</span>
+    </Button>
+  );
+}
+
+export function UserNav({
+  user,
+  redirectTo,
+  isActualAdmin,
+  isPreviewActive,
+}: UserNavProps) {
   if (!user) {
     return (
       <SignInWithDiscordButton
@@ -106,14 +188,19 @@ export function UserNav({ user, redirectTo }: UserNavProps) {
     );
   }
 
+  const effectiveIsActualAdmin =
+    isActualAdmin !== undefined ? isActualAdmin : hasAdminPrivileges(user.role);
+  const effectiveIsPreviewActive = isPreviewActive ?? false;
+
   const displayName = user.displayName || user.name || user.username || "Companion";
   const initial = displayName.charAt(0).toUpperCase();
-  const isAdmin = hasAdminPrivileges(user.role);
-  const isDev = isDevRole(user.role);
+  const showAdminConsole = effectiveIsActualAdmin && !effectiveIsPreviewActive;
+  const isDev = isDevRole(user.role) && !effectiveIsPreviewActive;
 
   return (
-    <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-      {isAdmin && (
+    <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+      {/* Admin Console Button (hidden while previewing as regular participant) */}
+      {showAdminConsole && (
         <Link
           href="/admin"
           className="inline-flex items-center justify-center rounded-full bg-[#1c1c1c] hover:bg-[#292929] px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-medium text-[#f4f3f6] transition-colors border border-[#333333] shrink-0"
@@ -121,6 +208,11 @@ export function UserNav({ user, redirectTo }: UserNavProps) {
           <span className="sm:hidden">Admin</span>
           <span className="hidden sm:inline">Admin Console</span>
         </Link>
+      )}
+
+      {/* Global Participant Preview Toggle Button for Admins/Devs */}
+      {effectiveIsActualAdmin && (
+        <ParticipantPreviewButton isPreviewActive={effectiveIsPreviewActive} />
       )}
 
       {/* User Capsule */}
@@ -165,10 +257,14 @@ export function AppHeader({
   user,
   redirectTo,
   subtitle,
+  isActualAdmin,
+  isPreviewActive,
 }: {
   user?: UserNavProps["user"];
   redirectTo?: string;
   subtitle?: string;
+  isActualAdmin?: boolean;
+  isPreviewActive?: boolean;
 }) {
   return (
     <header className="sticky top-0 z-40 h-16 border-b border-[#1f1f1f] bg-[#0d0d0d]/95 backdrop-blur-md">
@@ -189,7 +285,12 @@ export function AppHeader({
           )}
         </div>
 
-        <UserNav user={user} redirectTo={redirectTo} />
+        <UserNav
+          user={user}
+          redirectTo={redirectTo}
+          isActualAdmin={isActualAdmin}
+          isPreviewActive={isPreviewActive}
+        />
       </div>
     </header>
   );
