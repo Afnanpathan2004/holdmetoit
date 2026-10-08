@@ -64,11 +64,15 @@ describe("logStudyTimeAction", () => {
       });
 
       expect(result).toEqual({ ok: true });
-      expect(dailyStudyLogRepo.upsertDailyStudyLog).toHaveBeenCalledWith({
-         participantId: "part_1",
-         logDate: "2026-10-05",
-         durationSeconds: 16_200,
-      });
+      expect(dailyStudyLogRepo.upsertDailyStudyLog).toHaveBeenCalledWith(
+         expect.objectContaining({
+            participantId: "part_1",
+            challengeId: "chal_1",
+            logDate: "2026-10-05",
+            durationSeconds: 16_200,
+            actor: expect.objectContaining({ id: "usr_1" }),
+         })
+      );
       expect(revalidatePath).toHaveBeenCalledWith("/");
       expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
       expect(revalidatePath).toHaveBeenCalledWith("/challenge/chal_1");
@@ -102,11 +106,15 @@ describe("logStudyTimeAction", () => {
       });
 
       expect(result).toEqual({ ok: true });
-      expect(dailyStudyLogRepo.upsertDailyStudyLog).toHaveBeenCalledWith({
-         participantId: "part_1",
-         logDate: "2026-10-05",
-         durationSeconds: 86_400,
-      });
+      expect(dailyStudyLogRepo.upsertDailyStudyLog).toHaveBeenCalledWith(
+         expect.objectContaining({
+            participantId: "part_1",
+            challengeId: "chal_1",
+            logDate: "2026-10-05",
+            durationSeconds: 86_400,
+            actor: expect.objectContaining({ id: "usr_1" }),
+         })
+      );
    });
 
    it("rejects durations exceeding 24 hours (e.g. 24:00:01)", async () => {
@@ -275,11 +283,15 @@ describe("logStudyTimeAction", () => {
       });
 
       expect(result).toEqual({ ok: true });
-      expect(dailyStudyLogRepo.upsertDailyStudyLog).toHaveBeenCalledWith({
-         participantId: "part_1",
-         logDate: "2026-10-07",
-         durationSeconds: 11_700,
-      });
+      expect(dailyStudyLogRepo.upsertDailyStudyLog).toHaveBeenCalledWith(
+         expect.objectContaining({
+            participantId: "part_1",
+            challengeId: "chal_1",
+            logDate: "2026-10-07",
+            durationSeconds: 11_700,
+            actor: expect.objectContaining({ id: "usr_1" }),
+         })
+      );
    });
 
    it("rejects logging days before yesterday with ONLY_TODAY_OR_YESTERDAY_ALLOWED", async () => {
