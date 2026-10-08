@@ -116,8 +116,15 @@ export async function logStudyTimeAction(
 
       await upsertDailyStudyLog({
          participantId: participant.id,
+         challengeId: parsed.data.challengeId,
          logDate,
          durationSeconds,
+         actor: {
+            id: user.id,
+            username: user.name || user.displayName || "participant",
+            displayName: user.displayName || user.name || null,
+            image: user.image || null,
+         },
       });
 
       invalidateTags([
