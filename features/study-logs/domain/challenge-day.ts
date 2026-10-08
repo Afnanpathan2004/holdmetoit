@@ -236,6 +236,44 @@ export function validateAddTaskChallengeDay(
   return { ok: true };
 }
 
+export type ValidateMoveTaskDayResult =
+  | { ok: true }
+  | { ok: false; code: "PAST_DAY_MOVE_NOT_ALLOWED" | "TARGET_DAY_IN_PAST"; message: string };
+
+/**
+ * Validates moving a daily todo task between challenge days.
+ * - Tasks on previous (past) days can be moved to another day (today or future).
+ * - Moving tasks from present or future days to a day that has already passed in the challenge is strictly forbidden.
+ */
+export function validateMoveTaskChallengeDay(
+  sourceDateKey: string,
+  targetDateKey: string,
+  todayDateKey: string,
+): ValidateMoveTaskDayResult {
+  const isTargetPast = targetDateKey < todayDateKey;
+  const isSourcePast = sourceDateKey < todayDateKey;
+
+  // Cannot move from present or future to a day that has already passed
+  if (!isSourcePast && isTargetPast) {
+    return {
+      ok: false,
+      code: "PAST_DAY_MOVE_NOT_ALLOWED",
+      message: "Cannot move tasks from present or future days to a day that has already passed.",
+    };
+  }
+
+  // Cannot move into a past day that has already concluded
+  if (isTargetPast && sourceDateKey !== targetDateKey) {
+    return {
+      ok: false,
+      code: "TARGET_DAY_IN_PAST",
+      message: "Cannot move tasks into a past challenge day that has already concluded.",
+    };
+  }
+
+  return { ok: true };
+}
+
 export type ValidateChallengeDayResult =
   | { ok: true; dayNumber: number; dateKey: string }
   | { ok: false; code: string; message: string };

@@ -14,7 +14,7 @@
 | Gate | Result (2026-10-09, branch `krish`) |
 | :--- | :--- |
 | `npm run typecheck` | ✅ 0 errors (`npx tsc --noEmit`) |
-| `npm run test` | ✅ 62 files, 650/650 tests green |
+| `npm run test` | ✅ 62 files, 659/659 tests green |
 | `npm run build` | ✅ 8 routes compiled |
 | Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~80%** — Global participant preview toggle in header, core daily/weekly loop, 2-card participant hours logging, full-week daily todos, mod/dev Event Audit Log & full-week hours override tools complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo |
@@ -209,5 +209,33 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Added unit tests in `cockpit-tasks-section.test.tsx` verifying that a daily task with Day 1 `createdAt` and Day 4 `dueDate` renders under Day 4 in Daily Todos.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+
+### Session 64 — 2026-10-09 (krish)
+- **Agent Role:** Participant UI & Scoring Engine Agent.
+- **Move Daily Todo Tasks Across Challenge Days (with Past Day Guard):**
+  - Implemented the ability to reschedule/move daily todo tasks from previous days to another day (today or future), with strict rejection of moving present or future tasks to past challenge days:
+    - **Domain (`challenge-day.ts`):**
+      - Created `validateMoveTaskChallengeDay(sourceDateKey, targetDateKey, todayDateKey)` pure domain validation function:
+        - Allows moving tasks from previous days to today or future challenge days (`MOVED_FROM_PAST_TO_PRESENT_OR_FUTURE`).
+        - Allows moving tasks between non-past days (`MOVED_FUTURE`, `MOVED_SAME_DAY`).
+        - Strictly rejects moving present/future tasks to past days with `PAST_DAY_MOVE_NOT_ALLOWED`.
+        - Rejects moving past-day tasks to a different past day with `TARGET_DAY_IN_PAST`.
+        - Permitted maintaining tasks on the same day (`SAME_DAY`).
+      - Added 8 unit tests covering all matrix permutations in `challenge-day.test.ts` (38/38 tests green).
+    - **Presentation (`cockpit-tasks-section.tsx`):**
+      - Implemented `moveTaskToDay(taskId, targetDateKey, sourceCatIdx, sourceColumn)`: updates local state, writes to IndexedDB (`putLocalTask`), enqueues sync mutation (`UPDATE`/`MOVE`), and executes server action (`updateTaskAction`).
+      - **7-Day Strip Drag & Drop:**
+        - Updated `handleTaskDragStart` to record `sourceDateKey` on `draggedItem`.
+        - Added `handleDayPillDragOver` and `handleDayPillDrop` on the 7-day pill switcher buttons.
+        - Added reactive drag feedback: green drop highlight ring for eligible days, red ring / cursor-not-allowed / lock icon indicator for disallowed past days.
+      - **3-Dots / Context Menu Quick Actions:**
+        - Added "Move to Day" section for daily tasks with 1-click "Move to Today" (highlighted emerald when task is on a past day) and quick buttons for other eligible future challenge days.
+      - **Edit Task Modal:**
+        - Enabled selecting today or future days when editing a past-day task; past days remain locked for tasks on present or future days.
+        - Validated day changes with `validateMoveTaskChallengeDay` on modal save.
+      - Added tests in `cockpit-tasks-section.test.tsx` verifying day tab attributes and rendering.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 659/659 green) · `npx next build` ✅ (8 routes compiled).
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+
 
 

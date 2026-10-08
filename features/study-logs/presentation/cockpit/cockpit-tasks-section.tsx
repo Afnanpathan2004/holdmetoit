@@ -13,11 +13,13 @@ import {
   RotateCcw,
   Calendar,
   Lock,
+  ArrowRight,
 } from "lucide-react";
 import {
   getChallengeDayOptions,
   getCalendarWeekDayOptions,
   formatDayDate,
+  validateMoveTaskChallengeDay,
   type ChallengeDayOption,
 } from "@/features/study-logs/domain/challenge-day";
 import {
@@ -185,13 +187,15 @@ export function CockpitTasksSection({
     id?: string;
     sourceCatIdx: number;
     sourceColumn: "daily" | "weekly";
+    sourceDateKey?: string;
   } | null>(null);
 
   const [dragOverInfo, setDragOverInfo] = useState<{
-    type: "task" | "category" | "column";
+    type: "task" | "category" | "column" | "day";
     targetId?: string;
     targetCatIdx?: number;
-    targetColumn: "daily" | "weekly";
+    targetColumn?: "daily" | "weekly";
+    targetDateKey?: string;
     position?: "above" | "below";
   } | null>(null);
 
@@ -910,10 +914,16 @@ export function CockpitTasksSection({
         ? (typeof editTaskModal.dueDate === "string"
             ? editTaskModal.dueDate.slice(0, 10)
             : new Date(editTaskModal.dueDate).toISOString().slice(0, 10))
-        : null;
-      const targetOpt = dayOptions.find((d) => d.dateKey === resolvedDueDate);
-      const isTargetPast = targetOpt?.isPast ?? (resolvedDueDate < effectiveTodayDate);
-      if (isTargetPast && resolvedDueDate !== originalDateKey) {
+        : (editTaskModal.createdAt
+            ? new Date(editTaskModal.createdAt).toISOString().slice(0, 10)
+            : effectiveTodayDate);
+
+      const check = validateMoveTaskChallengeDay(
+        originalDateKey,
+        resolvedDueDate,
+        effectiveTodayDate,
+      );
+      if (!check.ok) {
         return;
       }
     }
@@ -1015,6 +1025,218 @@ export function CockpitTasksSection({
       dueDate: resolvedDueDate,
     });
     setEditTaskModal(null);
+  };
+
+  const moveTaskToDay = (
+    taskId: string,
+    targetDateKey: string,
+    sourceCatIdx?: number,
+    sourceColumn: "daily" | "weekly" = "daily",
+  ) => {
+    const targetOpt = dayOptions.find((d) => d.dateKey === targetDateKey);
+    const isTargetPast = targetOpt?.isPast ?? (targetDateKey < effectiveTodayDate);
+
+    // If source is weekly
+    if (sourceColumn === "weekly") {
+      if (isTargetPast) return;
+      const foundWeeklyCatIdx =
+        sourceCatIdx !== undefined
+          ? sourceCatIdx
+          : weeklyCategories.findIndex((c) => c.tasks.some((t) => t.id === taskId));
+      if (foundWeeklyCatIdx === -1) return;
+      const sourceCat = weeklyCategories[foundWeeklyCatIdx];
+      let targetDailyIdx = dailyCategories.findIndex(
+        (c) => (sourceCat.id && c.id === sourceCat.id) || c.name === sourceCat.name,
+      );
+      let currentDailyCats = dailyCategories;
+      if (targetDailyIdx === -1) {
+        const newCatId = crypto.randomUUID();
+        const newDailyCat: CategoryGroup = {
+          id: newCatId,
+          name: sourceCat.name,
+          isCollapsed: false,
+          tasks: [],
+        };
+        currentDailyCats = [...dailyCategories, newDailyCat];
+        targetDailyIdx = currentDailyCats.length - 1;
+        putLocalCategory({
+          id: newCatId,
+          userId: userId ?? null,
+          name: sourceCat.name,
+          taskType: "DAILY",
+          sortOrder: targetDailyIdx,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          syncState: "pending",
+        }).catch(() => {});
+        if (isLoggedIn && userId) {
+          enqueueMutation({
+            id: crypto.randomUUID(),
+            entityType: "CATEGORY",
+            action: "CREATE",
+            payload: {
+              id: newCatId,
+              name: sourceCat.name,
+              taskType: "DAILY",
+              sortOrder: targetDailyIdx,
+            },
+            createdAt: Date.now(),
+            retryCount: 0,
+          }).catch(() => {});
+        }
+      }
+
+      const res = moveTaskBetweenCategories({
+        taskId,
+        sourceCategoryIndex: foundWeeklyCatIdx,
+        sourceColumn: "weekly",
+        targetCategoryIndex: targetDailyIdx,
+        targetColumn: "daily",
+        targetTaskIndex: currentDailyCats[targetDailyIdx].tasks.length,
+        targetDueDate: targetDateKey,
+        dailyCategories: currentDailyCats,
+        weeklyCategories,
+      });
+
+      setDailyCategories(res.dailyCategories);
+      setWeeklyCategories(res.weeklyCategories);
+
+      if (res.movedTask && res.targetCategoryId) {
+        const nowIso = new Date().toISOString();
+        const isMovedComplete = Boolean(res.movedTask.completed ?? res.movedTask.isComplete);
+        const movedStatus = (res.movedTask.status as TaskStatus) || (isMovedComplete ? "COMPLETED" : "TODO");
+        putLocalTask({
+          id: res.movedTask.id,
+          userId: userId ?? null,
+          categoryId: res.targetCategoryId,
+          title: res.movedTask.text ?? res.movedTask.title ?? "",
+          taskType: "DAILY",
+          sortOrder: currentDailyCats[targetDailyIdx].tasks.length,
+          isComplete: isMovedComplete,
+          status: movedStatus,
+          dueDate: targetDateKey,
+          createdAt: res.movedTask.createdAt ? new Date(res.movedTask.createdAt).toISOString() : nowIso,
+          updatedAt: nowIso,
+          completedAt: isMovedComplete ? nowIso : null,
+          syncState: "pending",
+        }).catch(() => {});
+
+        if (isLoggedIn && userId) {
+          enqueueMutation({
+            id: crypto.randomUUID(),
+            entityType: "TASK",
+            action: "MOVE",
+            payload: {
+              taskId: res.movedTask.id,
+              categoryId: res.targetCategoryId,
+              taskType: "DAILY",
+              sortOrder: currentDailyCats[targetDailyIdx].tasks.length,
+              dueDate: targetDateKey,
+            },
+            createdAt: Date.now(),
+            retryCount: 0,
+          })
+            .then(() => scheduleSync(userId))
+            .catch(() => {});
+        }
+      }
+      return;
+    }
+
+    // Source is daily
+    let foundCatIdx = sourceCatIdx;
+    let foundTask: TaskItem | undefined;
+    if (foundCatIdx !== undefined && dailyCategories[foundCatIdx]) {
+      foundTask = dailyCategories[foundCatIdx].tasks.find((t) => t.id === taskId);
+    }
+    if (!foundTask) {
+      for (let ci = 0; ci < dailyCategories.length; ci++) {
+        const t = dailyCategories[ci].tasks.find((item) => item.id === taskId);
+        if (t) {
+          foundCatIdx = ci;
+          foundTask = t;
+          break;
+        }
+      }
+    }
+    if (!foundTask || foundCatIdx === undefined) return;
+
+    const sourceDateKey = getTaskDateKey(foundTask);
+    const validation = validateMoveTaskChallengeDay(
+      sourceDateKey,
+      targetDateKey,
+      effectiveTodayDate,
+    );
+    if (!validation.ok) return;
+
+    const nowIso = new Date().toISOString();
+    const targetCat = dailyCategories[foundCatIdx];
+
+    setDailyCategories((prev) =>
+      prev.map((cat, ci) =>
+        ci === foundCatIdx
+          ? {
+              ...cat,
+              tasks: cat.tasks.map((t) =>
+                t.id === taskId ? { ...t, dueDate: targetDateKey } : t,
+              ),
+            }
+          : cat,
+      ),
+    );
+
+    if (targetCat?.id) {
+      const isComplete = Boolean(foundTask.completed);
+      putLocalTask({
+        id: foundTask.id,
+        userId: userId ?? null,
+        categoryId: targetCat.id,
+        title: foundTask.text,
+        taskType: "DAILY",
+        isComplete,
+        status: getTaskStatus(foundTask),
+        dueDate: targetDateKey,
+        createdAt: foundTask.createdAt ? new Date(foundTask.createdAt).toISOString() : nowIso,
+        updatedAt: nowIso,
+        completedAt: isComplete ? nowIso : null,
+        syncState: "pending",
+      }).catch(() => {});
+    }
+
+    if (isLoggedIn && userId) {
+      enqueueMutation({
+        id: crypto.randomUUID(),
+        entityType: "TASK",
+        action: "UPDATE",
+        payload: {
+          taskId: foundTask.id,
+          dueDate: targetDateKey,
+        },
+        createdAt: Date.now(),
+        retryCount: 0,
+      })
+        .then(() => {
+          scheduleSync(userId);
+        })
+        .catch(() => {});
+
+      startTransition(async () => {
+        try {
+          await updateTaskAction({
+            taskId: foundTask!.id,
+            dueDate: targetDateKey,
+          });
+        } catch (err) {
+          logTaskSync("Failed to update task day on server", err);
+        }
+      });
+    }
+
+    logTaskSync("Task moved to day", {
+      taskId,
+      sourceDateKey,
+      targetDateKey,
+    });
   };
 
   const handleSaveEditCategory = (newName: string) => {
@@ -1376,16 +1598,25 @@ export function CockpitTasksSection({
     column: "daily" | "weekly",
   ) => {
     e.stopPropagation();
+    const pool = column === "daily" ? dailyCategories : weeklyCategories;
+    const sourceTask = pool[catIdx]?.tasks.find((t) => t.id === taskId);
+    const sourceDateKey = sourceTask
+      ? getTaskDateKey(sourceTask)
+      : column === "daily"
+        ? selectedDateKey
+        : undefined;
+
     setDraggedItem({
       type: "task",
       id: taskId,
       sourceCatIdx: catIdx,
       sourceColumn: column,
+      sourceDateKey,
     });
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData(
       "application/json",
-      JSON.stringify({ type: "task", taskId, catIdx, column }),
+      JSON.stringify({ type: "task", taskId, catIdx, column, sourceDateKey }),
     );
 
     const targetEl = e.currentTarget as HTMLElement;
@@ -1493,6 +1724,82 @@ export function CockpitTasksSection({
         targetColumn,
       });
     }
+  };
+
+  const handleDayPillDragOver = (e: React.DragEvent, opt: ChallengeDayOption) => {
+    if (!draggedItem || draggedItem.type !== "task") return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedItem.sourceColumn === "daily") {
+      const sourceDateKey = draggedItem.sourceDateKey || selectedDateKey;
+      const validation = validateMoveTaskChallengeDay(
+        sourceDateKey,
+        opt.dateKey,
+        effectiveTodayDate,
+      );
+      if (!validation.ok) {
+        e.dataTransfer.dropEffect = "none";
+        if (!dragOverInfo || dragOverInfo.targetDateKey !== opt.dateKey) {
+          setDragOverInfo({
+            type: "day",
+            targetDateKey: opt.dateKey,
+          });
+        }
+        return;
+      }
+    } else if (draggedItem.sourceColumn === "weekly") {
+      if (opt.isPast) {
+        e.dataTransfer.dropEffect = "none";
+        if (!dragOverInfo || dragOverInfo.targetDateKey !== opt.dateKey) {
+          setDragOverInfo({
+            type: "day",
+            targetDateKey: opt.dateKey,
+          });
+        }
+        return;
+      }
+    }
+
+    e.dataTransfer.dropEffect = "move";
+    if (!dragOverInfo || dragOverInfo.targetDateKey !== opt.dateKey) {
+      setDragOverInfo({
+        type: "day",
+        targetDateKey: opt.dateKey,
+      });
+    }
+  };
+
+  const handleDayPillDrop = (e: React.DragEvent, opt: ChallengeDayOption) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!draggedItem || draggedItem.type !== "task" || !draggedItem.id) {
+      handleDragEnd();
+      return;
+    }
+
+    if (draggedItem.sourceColumn === "daily") {
+      const sourceDateKey = draggedItem.sourceDateKey || selectedDateKey;
+      const validation = validateMoveTaskChallengeDay(
+        sourceDateKey,
+        opt.dateKey,
+        effectiveTodayDate,
+      );
+      if (!validation.ok) {
+        handleDragEnd();
+        return;
+      }
+      moveTaskToDay(draggedItem.id, opt.dateKey, draggedItem.sourceCatIdx, "daily");
+    } else if (draggedItem.sourceColumn === "weekly") {
+      if (opt.isPast) {
+        handleDragEnd();
+        return;
+      }
+      moveTaskToDay(draggedItem.id, opt.dateKey, draggedItem.sourceCatIdx, "weekly");
+    }
+
+    handleDragEnd();
   };
 
   const handleTaskDrop = (
@@ -2195,6 +2502,23 @@ export function CockpitTasksSection({
                 const isSelected = opt.dateKey === selectedDateKey;
                 const stats = dayTaskCounts.get(opt.dateKey) || { total: 0, completed: 0 };
                 const allDone = stats.total > 0 && stats.completed === stats.total;
+
+                const isDayDropTarget =
+                  dragOverInfo?.type === "day" && dragOverInfo.targetDateKey === opt.dateKey;
+                let isDropAllowedOnOpt = true;
+                if (draggedItem?.type === "task") {
+                  if (draggedItem.sourceColumn === "daily") {
+                    const sourceKey = draggedItem.sourceDateKey || selectedDateKey;
+                    isDropAllowedOnOpt = validateMoveTaskChallengeDay(
+                      sourceKey,
+                      opt.dateKey,
+                      effectiveTodayDate,
+                    ).ok;
+                  } else if (draggedItem.sourceColumn === "weekly") {
+                    isDropAllowedOnOpt = !opt.isPast;
+                  }
+                }
+
                 return (
                   <button
                     key={opt.dateKey}
@@ -2202,17 +2526,38 @@ export function CockpitTasksSection({
                     role="tab"
                     aria-selected={isSelected}
                     onClick={() => handleSelectDay(opt)}
+                    onDragOver={(e) => handleDayPillDragOver(e, opt)}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      if (
+                        dragOverInfo?.type === "day" &&
+                        dragOverInfo.targetDateKey === opt.dateKey
+                      ) {
+                        setDragOverInfo(null);
+                      }
+                    }}
+                    onDrop={(e) => handleDayPillDrop(e, opt)}
                     title={
-                      opt.isToday
-                        ? "Today"
-                        : opt.isYesterday
-                          ? `Yesterday (${opt.label})`
-                          : opt.label
+                      draggedItem?.type === "task"
+                        ? !isDropAllowedOnOpt
+                          ? `${opt.label} (Cannot move to past day)`
+                          : `Move task to ${opt.label}`
+                        : opt.isToday
+                          ? "Today"
+                          : opt.isYesterday
+                            ? `Yesterday (${opt.label})`
+                            : opt.label
                     }
                     className={`w-full min-w-0 py-1.5 px-0.5 sm:px-1 rounded-xl text-center border transition-all flex flex-col items-center justify-between min-h-[54px] sm:min-h-[58px] overflow-hidden ${
-                      isSelected
-                        ? "bg-[#25201b] border-[#e08a32] text-white shadow-sm ring-1 ring-[#e08a32]/60"
-                        : "bg-[#1c1c1c] border-[#2e2e2e] text-[#a0a0a0] hover:bg-[#262626] hover:text-white"
+                      draggedItem?.type === "task" && isDayDropTarget
+                        ? isDropAllowedOnOpt
+                          ? "bg-emerald-950/40 border-emerald-500 text-white shadow-md ring-2 ring-emerald-500 scale-[1.02]"
+                          : "bg-red-950/30 border-red-500/50 text-red-300 ring-2 ring-red-500/60 cursor-not-allowed opacity-60"
+                        : draggedItem?.type === "task" && !isDropAllowedOnOpt
+                          ? "bg-[#141414] border-[#262626] text-[#555555] opacity-40 cursor-not-allowed border-dashed"
+                          : isSelected
+                            ? "bg-[#25201b] border-[#e08a32] text-white shadow-sm ring-1 ring-[#e08a32]/60"
+                            : "bg-[#1c1c1c] border-[#2e2e2e] text-[#a0a0a0] hover:bg-[#262626] hover:text-white"
                     }`}
                   >
                     <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-tight leading-none truncate max-w-full">
@@ -2226,26 +2571,32 @@ export function CockpitTasksSection({
                       {formatDayDate(opt.dateKey)}
                     </span>
                     <div className="mt-1 flex items-center justify-center gap-0.5 sm:gap-1 min-h-[14px] w-full">
-                      {opt.isToday && (
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                            isSelected ? "bg-[#e08a32]" : "bg-emerald-400"
-                          }`}
-                          title="Today"
-                        />
-                      )}
-                      {stats.total > 0 && (
-                        <span
-                          className={`text-[8px] sm:text-[9px] font-semibold px-0.5 sm:px-1 rounded leading-tight truncate ${
-                            allDone
-                              ? "bg-emerald-500/20 text-emerald-400"
-                              : isSelected
-                                ? "bg-[#e08a32]/20 text-[#e08a32]"
-                                : "bg-[#333333] text-[#b0b0b0]"
-                          }`}
-                        >
-                          {stats.completed}/{stats.total}
-                        </span>
+                      {draggedItem?.type === "task" && !isDropAllowedOnOpt ? (
+                        <Lock className="h-2.5 w-2.5 text-red-400/70" />
+                      ) : (
+                        <>
+                          {opt.isToday && (
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                                isSelected ? "bg-[#e08a32]" : "bg-emerald-400"
+                              }`}
+                              title="Today"
+                            />
+                          )}
+                          {stats.total > 0 && (
+                            <span
+                              className={`text-[8px] sm:text-[9px] font-semibold px-0.5 sm:px-1 rounded leading-tight truncate ${
+                                allDone
+                                  ? "bg-emerald-500/20 text-emerald-400"
+                                  : isSelected
+                                    ? "bg-[#e08a32]/20 text-[#e08a32]"
+                                    : "bg-[#333333] text-[#b0b0b0]"
+                              }`}
+                            >
+                              {stats.completed}/{stats.total}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </button>
@@ -3276,6 +3627,81 @@ export function CockpitTasksSection({
               )}
 
               <div className="my-1 border-t border-[#333333]" />
+
+              {contextMenu.task.taskType === "daily" && (() => {
+                const taskDateKey = contextMenu.task.dueDate
+                  ? (typeof contextMenu.task.dueDate === "string"
+                      ? contextMenu.task.dueDate.slice(0, 10)
+                      : new Date(contextMenu.task.dueDate).toISOString().slice(0, 10))
+                  : (contextMenu.task.createdAt
+                      ? new Date(contextMenu.task.createdAt).toISOString().slice(0, 10)
+                      : effectiveTodayDate);
+
+                const sourceOpt = dayOptions.find((d) => d.dateKey === taskDateKey);
+                const isSourcePast = sourceOpt?.isPast ?? (taskDateKey < effectiveTodayDate);
+
+                const eligibleDays = dayOptions.filter((opt) => {
+                  if (opt.dateKey === taskDateKey) return false;
+                  const validation = validateMoveTaskChallengeDay(
+                    taskDateKey,
+                    opt.dateKey,
+                    effectiveTodayDate,
+                  );
+                  return validation.ok;
+                });
+
+                if (eligibleDays.length === 0) return null;
+
+                const todayOpt = eligibleDays.find((d) => d.dateKey === effectiveTodayDate);
+                const otherEligible = eligibleDays.filter(
+                  (d) => d.dateKey !== effectiveTodayDate,
+                );
+
+                return (
+                  <div className="py-0.5">
+                    <div className="px-3 py-1 text-[10px] font-semibold tracking-wider uppercase text-[#777777] flex items-center justify-between">
+                      <span>Move to Day</span>
+                      {isSourcePast && (
+                        <span className="text-[9px] text-amber-400 font-medium normal-case">
+                          From past day
+                        </span>
+                      )}
+                    </div>
+                    {todayOpt && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const t = contextMenu.task!;
+                          setContextMenu(null);
+                          moveTaskToDay(t.id, effectiveTodayDate, t.catIdx, "daily");
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors text-left"
+                      >
+                        <Calendar className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>Move to Today</span>
+                      </button>
+                    )}
+                    {otherEligible.map((opt) => (
+                      <button
+                        key={opt.dateKey}
+                        type="button"
+                        onClick={() => {
+                          const t = contextMenu.task!;
+                          setContextMenu(null);
+                          moveTaskToDay(t.id, opt.dateKey, t.catIdx, "daily");
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-medium text-[#c0c0c0] hover:bg-[#2e2e2e] hover:text-white rounded-lg transition-colors text-left"
+                      >
+                        <ArrowRight className="h-3 w-3 text-[#777777]" />
+                        <span>
+                          Move to {opt.shortLabel} ({formatDayDate(opt.dateKey)})
+                        </span>
+                      </button>
+                    ))}
+                    <div className="my-1 border-t border-[#333333]" />
+                  </div>
+                );
+              })()}
 
               <button
                 type="button"

@@ -11,6 +11,7 @@ import {
   validateAdminOverrideChallengeDay,
   isChallengeDayInPast,
   validateAddTaskChallengeDay,
+  validateMoveTaskChallengeDay,
 } from "./challenge-day";
 
 describe("challenge day calculation", () => {
@@ -364,4 +365,64 @@ describe("validateAddTaskChallengeDay", () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe("validateMoveTaskChallengeDay", () => {
+  const todayKey = "2026-10-08"; // Today (Day 4)
+  const pastDay1Key = "2026-10-05"; // Day 1 (past)
+  const pastDay2Key = "2026-10-06"; // Day 2 (past)
+  const futureDay5Key = "2026-10-09"; // Day 5 (future)
+
+  it("allows moving tasks from a previous day to today", () => {
+    const res = validateMoveTaskChallengeDay(pastDay1Key, todayKey, todayKey);
+    expect(res.ok).toBe(true);
+  });
+
+  it("allows moving tasks from a previous day to a future day", () => {
+    const res = validateMoveTaskChallengeDay(pastDay1Key, futureDay5Key, todayKey);
+    expect(res.ok).toBe(true);
+  });
+
+  it("allows moving tasks from today to a future day", () => {
+    const res = validateMoveTaskChallengeDay(todayKey, futureDay5Key, todayKey);
+    expect(res.ok).toBe(true);
+  });
+
+  it("allows moving tasks from a future day to today", () => {
+    const res = validateMoveTaskChallengeDay(futureDay5Key, todayKey, todayKey);
+    expect(res.ok).toBe(true);
+  });
+
+  it("strictly rejects moving tasks from present (today) to a past day", () => {
+    const res = validateMoveTaskChallengeDay(todayKey, pastDay1Key, todayKey);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe("PAST_DAY_MOVE_NOT_ALLOWED");
+      expect(res.message).toContain("Cannot move tasks from present or future days to a day that has already passed");
+    }
+  });
+
+  it("strictly rejects moving tasks from a future day to a past day", () => {
+    const res = validateMoveTaskChallengeDay(futureDay5Key, pastDay1Key, todayKey);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe("PAST_DAY_MOVE_NOT_ALLOWED");
+      expect(res.message).toContain("Cannot move tasks from present or future days to a day that has already passed");
+    }
+  });
+
+  it("rejects moving tasks between different past days", () => {
+    const res = validateMoveTaskChallengeDay(pastDay1Key, pastDay2Key, todayKey);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe("TARGET_DAY_IN_PAST");
+      expect(res.message).toContain("Cannot move tasks into a past challenge day that has already concluded");
+    }
+  });
+
+  it("allows maintaining task on the same past day (e.g. text/status edit)", () => {
+    const res = validateMoveTaskChallengeDay(pastDay1Key, pastDay1Key, todayKey);
+    expect(res.ok).toBe(true);
+  });
+});
+
 

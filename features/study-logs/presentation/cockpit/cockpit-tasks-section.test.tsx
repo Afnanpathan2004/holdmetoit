@@ -636,6 +636,24 @@ describe("CockpitTasksSection", () => {
     expect(dailySection).toContain("Weekly Task Assigned To Day 4");
     expect(dailySection).toContain("Moved From Weekly");
   });
+
+  it("renders 7-day pill switcher with tablist and day tabs for challenge days", () => {
+    const html = renderToStaticMarkup(
+      createElement(CockpitTasksSection, {
+        isLoggedIn: true,
+        userTasks: mockTasks,
+        challengeStartDate: "2026-10-01T00:00:00Z",
+        todayDate: "2026-10-04",
+        todayDayNumber: 4,
+        totalChallengeDays: 7,
+      }),
+    );
+
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('aria-label="Challenge Day Tabs"');
+    expect(html).toContain("Today");
+    expect(html).toContain('role="tab"');
+  });
 });
 
 
