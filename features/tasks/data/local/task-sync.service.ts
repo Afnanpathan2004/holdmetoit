@@ -66,6 +66,7 @@ export async function syncNow(userId: string | null): Promise<BatchSyncResponse 
           userId,
           name: c.name,
           taskType: c.taskType,
+          sortOrder: c.sortOrder ?? 0,
           createdAt: new Date(c.createdAt).toISOString(),
           updatedAt: new Date(c.updatedAt).toISOString(),
           syncState: "synced" as const,
@@ -77,7 +78,14 @@ export async function syncNow(userId: string | null): Promise<BatchSyncResponse 
           categoryId: t.categoryId,
           title: t.title,
           taskType: t.taskType,
+          sortOrder: t.sortOrder ?? 0,
           isComplete: t.isComplete,
+          status: t.status || (t.isComplete ? "COMPLETED" : "TODO"),
+          dueDate: t.dueDate
+            ? typeof t.dueDate === "string"
+              ? t.dueDate.slice(0, 10)
+              : new Date(t.dueDate).toISOString().slice(0, 10)
+            : null,
           createdAt: new Date(t.createdAt).toISOString(),
           updatedAt: new Date(t.updatedAt).toISOString(),
           completedAt: t.completedAt ? new Date(t.completedAt).toISOString() : null,

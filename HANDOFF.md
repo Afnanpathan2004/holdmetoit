@@ -14,7 +14,7 @@
 | Gate | Result (2026-10-08, branch `krish`) |
 | :--- | :--- |
 | `npm run typecheck` | ✅ 0 errors (`npx tsc --noEmit`) |
-| `npm run test` | ✅ 62 files, 623/623 tests green |
+| `npm run test` | ✅ 62 files, 625/625 tests green |
 | `npm run build` | ✅ 8 routes compiled |
 | Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~78%** — Core daily/weekly loop, 2-card participant hours logging, full-week daily todos, mod/dev Event Audit Log & full-week hours override tools complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo |
@@ -181,3 +181,23 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
   - Resolved conflicts in `prisma/schema.prisma` and `challenge-manage-tab.tsx`.
   - Maintained the restored full-week Daily Todos access and clean 2-card (`Yesterday` & `Today`) study hours logging UX.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 623/623 green).
+
+### Session 58 — 2026-10-08 (krish)
+- **Agent Role:** Participant UI & Scoring / Engine Agent.
+- **Fixed Daily Todo Shift-to-Today Bug on Page Refresh:**
+  - **Root Cause Identified:**
+    1. In [`task-sync.service.ts`](features/tasks/data/local/task-sync.service.ts), background sync reconciliation (`syncNow`) was stripping `dueDate`, `status`, and `sortOrder` when writing `serverChanges` into local IndexedDB (`putLocalTasks`).
+    2. Drag-and-drop local updates ([`cockpit-tasks-section.tsx`](features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx)) and guest migration ([`task-idb.ts`](features/tasks/data/local/task-idb.ts)) were dropping `dueDate` and `status` in local writes.
+    3. On subsequent page refresh, `hydrateFromIndexedDB()` reloaded tasks where `dueDate` had been stripped to `undefined`.
+    4. [`getTaskDateKey`](features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx) fell back to `task.createdAt` (the date created, i.e. today), causing tasks scheduled for other days of the challenge week to jump to the current day.
+  - **Fixes Applied:**
+    - [`task-sync.service.ts`](features/tasks/data/local/task-sync.service.ts): Preserved `dueDate`, `status`, and `sortOrder` when reconciling server changes into IndexedDB.
+    - [`task-idb.ts`](features/tasks/data/local/task-idb.ts): Preserved `dueDate`, `status`, and `sortOrder` in `migrateGuestDataToUser`.
+    - [`cockpit-tasks-section.tsx`](features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx):
+      - Normalized `getTaskDateKey` to slice ISO date strings safely.
+      - Added self-healing in `hydrateFromIndexedDB`: if local IndexedDB records are missing `dueDate` from a prior sync, it reconciles from server `userTasks` and updates IndexedDB.
+      - Preserved `dueDate`, `status`, and `createdAt` across all drag-and-drop and edit task handlers.
+    - [`task.repository.ts`](features/tasks/data/task.repository.ts): Hardened `formatUtcDateKey` to accept `Date | string`.
+  - **Testing:** Added regression tests in [`cockpit-tasks-section.test.tsx`](features/study-logs/presentation/cockpit/cockpit-tasks-section.test.tsx) and [`task-sync.test.ts`](features/tasks/domain/task-sync.test.ts).
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 625/625 green).
+- **NEXT STEP:** Verify end-to-end task assignment and day switcher transitions in live browser on `http://localhost:3000`.

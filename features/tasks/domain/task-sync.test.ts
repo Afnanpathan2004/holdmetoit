@@ -126,4 +126,26 @@ describe("task-sync pure domain logic", () => {
     expect(compacted).toHaveLength(1);
     expect(compacted[0].id).toBe(otherTask.id);
   });
+
+  it("validates queued mutation with dueDate for scheduled daily tasks", () => {
+    const scheduledTaskMutation = {
+      id: "55555555-5555-4555-8555-555555555555",
+      entityType: "TASK",
+      action: "CREATE",
+      payload: {
+        id: "task-scheduled-future",
+        title: "Future Day Homework",
+        taskType: "DAILY",
+        dueDate: "2026-10-10",
+        status: "TODO",
+        isComplete: false,
+      },
+      createdAt: 1728189600000,
+      retryCount: 0,
+    };
+
+    const parsed = queuedMutationSchema.safeParse(scheduledTaskMutation);
+    expect(parsed.success).toBe(true);
+    expect((parsed.data?.payload as { dueDate?: string })?.dueDate).toBe("2026-10-10");
+  });
 });
