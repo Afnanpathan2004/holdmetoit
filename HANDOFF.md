@@ -14,9 +14,9 @@
 | Gate | Result (2026-10-08, branch `krish`) |
 | :--- | :--- |
 | `npm run typecheck` | ✅ 0 errors (`npx tsc --noEmit`) |
-| `npm run test` | ✅ 62 files, 625/625 tests green |
+| `npm run test` | ✅ 62 files, 626/626 tests green |
 | `npm run build` | ✅ 8 routes compiled |
-| Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~78%** — Core daily/weekly loop, 2-card participant hours logging, full-week daily todos, mod/dev Event Audit Log & full-week hours override tools complete |
+| Phase 0 feature parity (vs `FEATURES.md`) | ⚠️ **~80%** — Global participant preview toggle in header, core daily/weekly loop, 2-card participant hours logging, full-week daily todos, mod/dev Event Audit Log & full-week hours override tools complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo |
 | Phase 1 (P1) | ⏸️ Not started |
 
@@ -37,6 +37,7 @@
 - `DEV` → Discord snowflake listed in `DEV_DISCORD_IDS` (JSON array; legacy alias `DISCORD_DEV_IDS` still read).
 - `ADMIN` → user holds a role in `DISCORD_ADMIN_ROLE_IDS` within `DISCORD_GUILD_ID` (looked up with `DISCORD_BOT_TOKEN`; OAuth scope stays `identify`).
 - `PARTICIPANT` → everyone else. The `DISCORD_ADMIN_IDS` whitelist has been removed.
+- **Global Participant Preview:** Admins and devs can toggle a global cookie (`holdmetoit_preview_as_participant`) from the header next to "Admin Console". When active, all pages (`/`, `/challenge/[id]`, etc.) render exactly as regular participants see them (hiding Manage tab, Event Audit tab, host override controls, and DEV badge).
 
 ---
 
@@ -52,7 +53,7 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 | `FEAT-CHAL-02` | Host manual kickoff | ✅ | Manage tab → `kickoffChallengeAction` (sets `startAt = now`; status is derived from timestamps) |
 | `FEAT-CHAL-05` | Lock final results | ⚠️ | Manage tab → `lockChallengeResultsAction`. **Bug:** once `endAt` passes on its own, status becomes `COMPLETED` and `assertCanLockChallenge` throws, so punishments are **never evaluated** unless the host locks *before* the end time |
 | `FEAT-CHAL-06` | Duo partner self-naming | ❌ | No participant-side duo naming code exists. Only hosts can rename teams (Manage tab → Team Identities) |
-| `FEAT-AUDIT-01` | Append-only audit trail | ⚠️ | `features/audit/data/audit-log.repository.ts` stores events **in a module-level in-memory array**. They're lost on every serverless cold start. There's no `AuditLog` Prisma model and no Audit Trail UI |
+| `FEAT-AUDIT-01` | Append-only audit trail | ⚠️ | `features/audit/data/audit-log.repository.ts` stores events in PostgreSQL (`audit_logs`) and in-memory fallback. Event Audit tab UI live in `/challenge/[id]`. |
 | `FEAT-DECL-01` | Declared target hours (`HH:MM:SS`) | ✅ | Entered in the enrollment modal (1–105h). Note: `leaveDays` is accepted by the action but **silently discarded** (no column) |
 | `FEAT-DECL-02` | Mandatory weekly goals checklist | ⚠️ | `WeeklyGoal` was dropped (migration `20261004030000`). It was replaced by **user-scoped** Daily/Weekly categorized tasks (`features/tasks/`) that are **not linked to any challenge** |
 | `FEAT-DECL-03` | Declaration lock on `ACTIVE` | ✅ | Targets can't be edited after enrollment at all. Late enrollment is still allowed while `ACTIVE` (only `COMPLETED` blocks it) |
@@ -73,6 +74,7 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 | Capability | Location | Notes |
 | :--- | :--- | :--- |
 | Categorized Daily/Weekly to-do board with drag & drop | `features/tasks/`, `cockpit-tasks-section.tsx` | Offline-first IndexedDB (`holdmetoit_db`), debounced background sync, guest→user migration on login |
+| Global Participant Preview Mode | `features/auth/presentation/auth-nav.tsx`, `preview-mode.ts` | 1-click header toggle for mods/devs to view all pages as regular participants globally |
 | Feedback & bug reporting | `features/feedback/`, `app/api/feedback/route.ts` | Floating trigger button, `FB-XX` codes, Discord bot embeds, LogRocket session link |
 | LogRocket observability | `core/observability/` | Session replay, `error.tsx` / `global-error.tsx` boundaries |
 | Manual weekly slot leaderboard | `features/leaderboard/*manual*`, `/challenge/[id]/manual` | ⚠️ Stores `sessionHours` as `Decimal(6,2)`, which violates **Law L8** (integer seconds) |
@@ -86,7 +88,7 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 | # | Severity | Issue | Suggested Fix |
 | :---: | :---: | :--- | :--- |
 | D1 | 🔴 High | Lock Results fails after natural expiry, so punishments are never evaluated (`assertCanLockChallenge` rejects `COMPLETED`) | Allow lock/evaluate when status is `COMPLETED` and the challenge hasn't been finalized yet. That needs a persisted `finalizedAt` (or `resultsLockedAt`) column to stay idempotent |
-| D2 | 🔴 High | Audit trail is in-memory only, which breaks `FEAT-AUDIT-01` and Law L5's audit guarantee | Add an `AuditLog` Prisma model plus a migration; make the repository insert-only |
+| D2 | 🔴 High | Audit trail in-memory fallback needs full persistence validation | Add migration check and verify Prisma `audit_logs` model insertion across all environments |
 | D3 | 🔴 High | Five P0 features have backend code but no UI: override grid, pardon, Discord summary copy, Punishment Wall, PFP download | Rebuild them in Obsidian styling inside the Manage tab (admin) and the Overview tab (public wall + download) |
 | D4 | 🟠 Med | Law L6 runs on hours only: goals aren't challenge-scoped any more | **Product decision needed** (see §4) |
 | D5 | 🟠 Med | Schema drift: the `feedbacks` table and the `sort_order` columns on `categories`/`tasks` were applied with `db push` and have **no migration files**. `prisma migrate deploy` on a fresh DB would produce an incomplete schema | Generate catch-up migrations (`prisma migrate diff`) and `migrate resolve` them on existing DBs |
@@ -138,39 +140,9 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ## 7. Session Changelog (Last 3–5 Sessions)
 
-### Earlier Sessions (Summarized)
-- **Sessions 1–51 (2026-09-05 – 10-06):** Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), task multi-state overhaul (`TODO`, `IN_PROGRESS`, `COMPLETED`, `CROSSED_OUT`).
+### Sessions 1–55 (Summarized)
+- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, and admin 7-day hours overrides.
 
-### Session 52 — 2026-10-06 (krish)
-- **Agent Role:** Participant UI & Data Agent.
-- **Week-Wide Daily Todos & Interactive Day Switcher:**
-  - Added `dueDate` column and mapped `AuditLog` model in `schema.prisma`.
-  - Added 7-day pill switcher bar in `cockpit-tasks-section.tsx` with completion tallies (`completed/total`) and non-scrolling grid layout.
-  - Allowed assigning/scheduling tasks across the 7-day challenge week while defaulting initial view to current day's todos.
-
-### Session 53 — 2026-10-07 (krish)
-- **Agent Role:** Participant UI & Admin Operations Agent.
-- **Participant Today/Yesterday Restriction & Mod/Dev Full-Week Override UI (FEAT-LOG-04 / Law L5):**
-  - **Domain Layer (`challenge-day.ts`):** Restricted participant study hours self-logging to today or yesterday (`ONLY_TODAY_OR_YESTERDAY_ALLOWED`).
-  - **Participant UI (`daily-hours-modal.tsx`):** Locked past days D1..D7 beyond today/yesterday; date picker clamped between `min={yesterdayDate}` and `max={todayDate}`.
-  - **Admin Override UI (`admin-hours-override-modal.tsx`):** Built dedicated modal for moderators (`ADMIN`) and developers (`DEV`) allowing full 7-day week (D1..D7) hours adjustments for any participant with mandatory audit note.
-  - **Manage & Leaderboard Integration:** Added initial override triggers in Manage tab and Leaderboard tab.
-
-### Session 56 — 2026-10-07 (krish)
-- **Agent Role:** Participant UI & Data Identity Agent.
-- **Discord OAuth RFC 9207 Issuer Validation Fix:**
-  - **Issue:** Discord enabled RFC 9207 (`iss=https://discord.com`) on authorization callbacks; Auth.js v5 without explicit `issuer` defaulted to `https://authjs.dev/`, throwing `CallbackRouteError: unexpected "iss" (issuer) response parameter value` and redirecting to `/api/auth/error?error=Configuration` (HTTP 500).
-  - **Fix (`core/auth/index.ts`):** Explicitly configured `issuer: "https://discord.com"` on the Discord provider.
-- **Participant Preview Mode (`app/page.tsx`):**
-  - Added moderator/developer preview toggle via `/?as=participant` (or `?preview=participant`) enabling admins and devs to test the dashboard cockpit exactly as regular participants see it.
-  - Added sticky preview alert banner with 1-click "Exit Preview" link, and a Dev mode toggle in the header.
-- **2-Card Daily Hours Selector UX (`daily-hours-modal.tsx`):**
-  - Replaced the compressed strip with an intuitive 2-column card selector ("Today" / "Yesterday") for regular participants with formatted date stamps (`Oct 7`), logged badges, and D-day indicators, while retaining the 7-day grid for admins.
-  - Added [`formatDayDate`](features/study-logs/domain/challenge-day.ts) pure domain date formatter.
-- **Cockpit Tasks 7-Day Switcher Polish (`cockpit-tasks-section.tsx`):**
-  - Cleaned up day pill labels with text truncation and tooltip titles to eliminate text overlap across mobile and desktop.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (58 files, 610/610 green) · `npx next build` ✅ (8 routes compiled).
- 
 ### Session 57 — 2026-10-08 (krish)
 - **Agent Role:** Admin Operations & Broadcaster Agent.
 - **Event Audit Log (Mod Log) Integration & Main Branch Sync:**
@@ -178,26 +150,26 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
     - `EventAuditTab` UI ([`event-audit-tab.tsx`](features/audit/presentation/event-audit-tab.tsx)) added to `/challenge/[id]` alongside the "Manage" tab for admins/mods/devs.
     - Full action filtering, moderator search, field-level before/after JSON visual diffs, and 1-click JSON log export.
     - Zero-drift UTC timetable serialization (`challenge-date-time.ts`) and database audit trail (`audit_logs` table via Prisma).
-  - Resolved conflicts in `prisma/schema.prisma` and `challenge-manage-tab.tsx`.
   - Maintained the restored full-week Daily Todos access and clean 2-card (`Yesterday` & `Today`) study hours logging UX.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 623/623 green).
 
 ### Session 58 — 2026-10-08 (krish)
 - **Agent Role:** Participant UI & Scoring / Engine Agent.
 - **Fixed Daily Todo Shift-to-Today Bug on Page Refresh:**
-  - **Root Cause Identified:**
-    1. In [`task-sync.service.ts`](features/tasks/data/local/task-sync.service.ts), background sync reconciliation (`syncNow`) was stripping `dueDate`, `status`, and `sortOrder` when writing `serverChanges` into local IndexedDB (`putLocalTasks`).
-    2. Drag-and-drop local updates ([`cockpit-tasks-section.tsx`](features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx)) and guest migration ([`task-idb.ts`](features/tasks/data/local/task-idb.ts)) were dropping `dueDate` and `status` in local writes.
-    3. On subsequent page refresh, `hydrateFromIndexedDB()` reloaded tasks where `dueDate` had been stripped to `undefined`.
-    4. [`getTaskDateKey`](features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx) fell back to `task.createdAt` (the date created, i.e. today), causing tasks scheduled for other days of the challenge week to jump to the current day.
-  - **Fixes Applied:**
-    - [`task-sync.service.ts`](features/tasks/data/local/task-sync.service.ts): Preserved `dueDate`, `status`, and `sortOrder` when reconciling server changes into IndexedDB.
-    - [`task-idb.ts`](features/tasks/data/local/task-idb.ts): Preserved `dueDate`, `status`, and `sortOrder` in `migrateGuestDataToUser`.
-    - [`cockpit-tasks-section.tsx`](features/study-logs/presentation/cockpit/cockpit-tasks-section.tsx):
-      - Normalized `getTaskDateKey` to slice ISO date strings safely.
-      - Added self-healing in `hydrateFromIndexedDB`: if local IndexedDB records are missing `dueDate` from a prior sync, it reconciles from server `userTasks` and updates IndexedDB.
-      - Preserved `dueDate`, `status`, and `createdAt` across all drag-and-drop and edit task handlers.
-    - [`task.repository.ts`](features/tasks/data/task.repository.ts): Hardened `formatUtcDateKey` to accept `Date | string`.
-  - **Testing:** Added regression tests in [`cockpit-tasks-section.test.tsx`](features/study-logs/presentation/cockpit/cockpit-tasks-section.test.tsx) and [`task-sync.test.ts`](features/tasks/domain/task-sync.test.ts).
+  - Preserved `dueDate`, `status`, and `sortOrder` across background sync reconciliation (`task-sync.service.ts`), guest migration (`task-idb.ts`), and local hydration (`cockpit-tasks-section.tsx`).
+  - Added self-healing in `hydrateFromIndexedDB` to restore `dueDate` from server tasks on refresh.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 625/625 green).
-- **NEXT STEP:** Verify end-to-end task assignment and day switcher transitions in live browser on `http://localhost:3000`.
+
+### Session 59 — 2026-10-08 (krish)
+- **Agent Role:** Participant UI & Admin Operations Agent.
+- **Global Participant Preview Toggle in Header (Replacing Disruptive Body Banner):**
+  - **Removed Body Banners:** Removed the full-width dark `Developer / Moderator Mode Active` banner and orange preview alert banner from `app/page.tsx` that pushed down the cockpit content.
+  - **Global Header Button:** Added `ParticipantPreviewButton` to the global `AppHeader` / `UserNav` ([`auth-nav.tsx`](features/auth/presentation/auth-nav.tsx)) directly next to the "Admin Console" link.
+  - **Persistent State:** Uses `PARTICIPANT_PREVIEW_COOKIE` (`holdmetoit_preview_as_participant`) + server action (`toggleParticipantPreviewAction`) so preview mode applies globally across `/`, `/challenge/[id]`, etc.
+  - **Dynamic State Representation:**
+    - In normal dev/admin mode: displays "Admin Console" link + "Preview as Participant" pill button.
+    - When preview mode is active: hides "Admin Console" and `DEV` badge, displays an amber "Exit Preview" pill button with `EyeOff` icon allowing instant 1-click return to admin mode.
+    - Across `/challenge/[id]`, preview mode hides admin-only tabs ("Manage", "Event Audit") and host hours override controls.
+  - **Testing:** Added unit test coverage for `ParticipantPreviewButton` in [`auth-nav.test.tsx`](features/auth/presentation/auth-nav.test.tsx).
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 626/626 green).
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
