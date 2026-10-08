@@ -1,711 +1,739 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/core/db";
 import {
-  createCategory,
-  createTask,
-  deleteCategory,
-  deleteTask,
-  getUserCategorizedTasks,
-  toggleTask,
-  updateCategory,
-  updateTask,
+   createCategory,
+   createTask,
+   deleteCategory,
+   deleteTask,
+   getUserCategorizedTasks,
+   toggleTask,
+   updateCategory,
+   updateTask,
 } from "./task.repository";
 
+vi.mock("next/cache", () => ({
+   unstable_cache: (read: (...args: never[]) => unknown) => read,
+}));
+
 vi.mock("@/core/db", () => {
-  const mockPrisma = {
-    category: {
-      findMany: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-    task: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-  };
-  return { prisma: mockPrisma };
+   const mockPrisma = {
+      category: {
+         findMany: vi.fn(),
+         findFirst: vi.fn(),
+         create: vi.fn(),
+         update: vi.fn(),
+         delete: vi.fn(),
+      },
+      task: {
+         create: vi.fn(),
+         findFirst: vi.fn(),
+         update: vi.fn(),
+         delete: vi.fn(),
+      },
+   };
+   return { prisma: mockPrisma };
 });
 
 describe("task.repository", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+   beforeEach(() => {
+      vi.clearAllMocks();
+   });
 
-  describe("getUserCategorizedTasks", () => {
-    it("returns strictly segregated daily and weekly categories", async () => {
-      const mockCategories = [
-        {
-          id: "cat_1",
-          userId: "user_1",
-          name: "Daily Academics",
-          taskType: "DAILY",
-          createdAt: new Date("2026-10-01"),
-          updatedAt: new Date("2026-10-01"),
-          tasks: [
+   describe("getUserCategorizedTasks", () => {
+      it("returns strictly segregated daily and weekly categories", async () => {
+         const mockCategories = [
             {
-              id: "t_1",
-              userId: "user_1",
-              categoryId: "cat_1",
-              title: "Daily math review",
-              taskType: "DAILY",
-              isComplete: true,
-              createdAt: new Date("2026-10-01"),
-              updatedAt: new Date("2026-10-01"),
-              completedAt: new Date("2026-10-01"),
-            },
-          ],
-        },
-        {
-          id: "cat_2",
-          userId: "user_1",
-          name: "Weekly Milestones",
-          taskType: "WEEKLY",
-          createdAt: new Date("2026-10-02"),
-          updatedAt: new Date("2026-10-02"),
-          tasks: [
-            {
-              id: "t_2",
-              userId: "user_1",
-              categoryId: "cat_2",
-              title: "Weekly physics problem set",
-              taskType: "WEEKLY",
-              isComplete: false,
-              createdAt: new Date("2026-10-02"),
-              updatedAt: new Date("2026-10-02"),
-              completedAt: null,
-            },
-          ],
-        },
-      ];
-
-      vi.mocked(prisma.category.findMany).mockResolvedValue(mockCategories as never);
-
-      const result = await getUserCategorizedTasks("user_1");
-
-      expect(result.categories).toHaveLength(2);
-
-      // Verify DAILY categories contain only DAILY category and tasks
-      expect(result.dailyCategories).toHaveLength(1);
-      expect(result.dailyCategories[0].name).toBe("Daily Academics");
-      expect(result.dailyCategories[0].tasks).toHaveLength(1);
-      expect(result.dailyCategories[0].tasks[0].title).toBe("Daily math review");
-
-      // Verify WEEKLY categories contain only WEEKLY category and tasks
-      expect(result.weeklyCategories).toHaveLength(1);
-      expect(result.weeklyCategories[0].name).toBe("Weekly Milestones");
-      expect(result.weeklyCategories[0].tasks).toHaveLength(1);
-      expect(result.weeklyCategories[0].tasks[0].title).toBe("Weekly physics problem set");
-
-      expect(result.totalDailyTasks).toBe(1);
-      expect(result.completedDailyTasks).toBe(1);
-      expect(result.totalWeeklyTasks).toBe(1);
-      expect(result.completedWeeklyTasks).toBe(0);
-    });
-
-    it("includes weekly parent categories in dailyCategories when they contain daily tasks", async () => {
-      const mockCategories = [
-        {
-          id: "cat_weekly_parent",
-          userId: "user_1",
-          name: "Algorithms & DS",
-          taskType: "WEEKLY",
-          createdAt: new Date("2026-10-01"),
-          updatedAt: new Date("2026-10-01"),
-          tasks: [
-            {
-              id: "t_w",
-              userId: "user_1",
-              categoryId: "cat_weekly_parent",
-              title: "Solve 15 dynamic programming problems",
-              taskType: "WEEKLY",
-              isComplete: false,
-              createdAt: new Date("2026-10-01"),
-              updatedAt: new Date("2026-10-01"),
-              completedAt: null,
+               id: "cat_1",
+               userId: "user_1",
+               name: "Daily Academics",
+               taskType: "DAILY",
+               createdAt: new Date("2026-10-01"),
+               updatedAt: new Date("2026-10-01"),
+               tasks: [
+                  {
+                     id: "t_1",
+                     userId: "user_1",
+                     categoryId: "cat_1",
+                     title: "Daily math review",
+                     taskType: "DAILY",
+                     isComplete: true,
+                     createdAt: new Date("2026-10-01"),
+                     updatedAt: new Date("2026-10-01"),
+                     completedAt: new Date("2026-10-01"),
+                  },
+               ],
             },
             {
-              id: "t_d",
-              userId: "user_1",
-              categoryId: "cat_weekly_parent",
-              title: "Solve 2 DP problems today",
-              taskType: "DAILY",
-              isComplete: true,
-              createdAt: new Date("2026-10-01"),
-              updatedAt: new Date("2026-10-01"),
-              completedAt: new Date("2026-10-01"),
+               id: "cat_2",
+               userId: "user_1",
+               name: "Weekly Milestones",
+               taskType: "WEEKLY",
+               createdAt: new Date("2026-10-02"),
+               updatedAt: new Date("2026-10-02"),
+               tasks: [
+                  {
+                     id: "t_2",
+                     userId: "user_1",
+                     categoryId: "cat_2",
+                     title: "Weekly physics problem set",
+                     taskType: "WEEKLY",
+                     isComplete: false,
+                     createdAt: new Date("2026-10-02"),
+                     updatedAt: new Date("2026-10-02"),
+                     completedAt: null,
+                  },
+               ],
             },
-          ],
-        },
-      ];
+         ];
 
-      vi.mocked(prisma.category.findMany).mockResolvedValue(mockCategories as never);
+         vi.mocked(prisma.category.findMany).mockResolvedValue(
+            mockCategories as never
+         );
 
-      const result = await getUserCategorizedTasks("user_1");
+         const result = await getUserCategorizedTasks("user_1");
 
-      expect(result.dailyCategories).toHaveLength(1);
-      expect(result.dailyCategories[0].name).toBe("Algorithms & DS");
-      expect(result.dailyCategories[0].tasks).toHaveLength(1);
-      expect(result.dailyCategories[0].tasks[0].title).toBe("Solve 2 DP problems today");
+         expect(result.categories).toHaveLength(2);
 
-      expect(result.weeklyCategories).toHaveLength(1);
-      expect(result.weeklyCategories[0].name).toBe("Algorithms & DS");
-      expect(result.weeklyCategories[0].tasks).toHaveLength(1);
-      expect(result.weeklyCategories[0].tasks[0].title).toBe("Solve 15 dynamic programming problems");
-    });
+         // Verify DAILY categories contain only DAILY category and tasks
+         expect(result.dailyCategories).toHaveLength(1);
+         expect(result.dailyCategories[0].name).toBe("Daily Academics");
+         expect(result.dailyCategories[0].tasks).toHaveLength(1);
+         expect(result.dailyCategories[0].tasks[0].title).toBe(
+            "Daily math review"
+         );
 
-    it("returns empty arrays without seeding default categories if user has no categories", async () => {
-      vi.mocked(prisma.category.findMany).mockResolvedValue([] as never);
+         // Verify WEEKLY categories contain only WEEKLY category and tasks
+         expect(result.weeklyCategories).toHaveLength(1);
+         expect(result.weeklyCategories[0].name).toBe("Weekly Milestones");
+         expect(result.weeklyCategories[0].tasks).toHaveLength(1);
+         expect(result.weeklyCategories[0].tasks[0].title).toBe(
+            "Weekly physics problem set"
+         );
 
-      const result = await getUserCategorizedTasks("user_new");
-
-      expect(prisma.category.create).not.toHaveBeenCalled();
-      expect(result.categories).toHaveLength(0);
-      expect(result.dailyCategories).toHaveLength(0);
-      expect(result.weeklyCategories).toHaveLength(0);
-      expect(result.totalDailyTasks).toBe(0);
-      expect(result.totalWeeklyTasks).toBe(0);
-    });
-  });
-
-  describe("createTask", () => {
-    it("creates a task in existing category", async () => {
-      const mockCreated = {
-        id: "task_new",
-        userId: "user_1",
-        categoryId: "cat_1",
-        title: "Read Chapter 5",
-        taskType: "DAILY",
-        isComplete: false,
-      };
-
-      vi.mocked(prisma.task.create).mockResolvedValue(mockCreated as never);
-
-      const result = await createTask({
-        userId: "user_1",
-        title: "Read Chapter 5",
-        taskType: "DAILY",
-        categoryId: "cat_1",
+         expect(result.totalDailyTasks).toBe(1);
+         expect(result.completedDailyTasks).toBe(1);
+         expect(result.totalWeeklyTasks).toBe(1);
+         expect(result.completedWeeklyTasks).toBe(0);
       });
 
-      expect(result).toEqual(mockCreated);
-      expect(prisma.task.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
+      it("includes weekly parent categories in dailyCategories when they contain daily tasks", async () => {
+         const mockCategories = [
+            {
+               id: "cat_weekly_parent",
+               userId: "user_1",
+               name: "Algorithms & DS",
+               taskType: "WEEKLY",
+               createdAt: new Date("2026-10-01"),
+               updatedAt: new Date("2026-10-01"),
+               tasks: [
+                  {
+                     id: "t_w",
+                     userId: "user_1",
+                     categoryId: "cat_weekly_parent",
+                     title: "Solve 15 dynamic programming problems",
+                     taskType: "WEEKLY",
+                     isComplete: false,
+                     createdAt: new Date("2026-10-01"),
+                     updatedAt: new Date("2026-10-01"),
+                     completedAt: null,
+                  },
+                  {
+                     id: "t_d",
+                     userId: "user_1",
+                     categoryId: "cat_weekly_parent",
+                     title: "Solve 2 DP problems today",
+                     taskType: "DAILY",
+                     isComplete: true,
+                     createdAt: new Date("2026-10-01"),
+                     updatedAt: new Date("2026-10-01"),
+                     completedAt: new Date("2026-10-01"),
+                  },
+               ],
+            },
+         ];
+
+         vi.mocked(prisma.category.findMany).mockResolvedValue(
+            mockCategories as never
+         );
+
+         const result = await getUserCategorizedTasks("user_1");
+
+         expect(result.dailyCategories).toHaveLength(1);
+         expect(result.dailyCategories[0].name).toBe("Algorithms & DS");
+         expect(result.dailyCategories[0].tasks).toHaveLength(1);
+         expect(result.dailyCategories[0].tasks[0].title).toBe(
+            "Solve 2 DP problems today"
+         );
+
+         expect(result.weeklyCategories).toHaveLength(1);
+         expect(result.weeklyCategories[0].name).toBe("Algorithms & DS");
+         expect(result.weeklyCategories[0].tasks).toHaveLength(1);
+         expect(result.weeklyCategories[0].tasks[0].title).toBe(
+            "Solve 15 dynamic programming problems"
+         );
+      });
+
+      it("returns empty arrays without seeding default categories if user has no categories", async () => {
+         vi.mocked(prisma.category.findMany).mockResolvedValue([] as never);
+
+         const result = await getUserCategorizedTasks("user_new");
+
+         expect(prisma.category.create).not.toHaveBeenCalled();
+         expect(result.categories).toHaveLength(0);
+         expect(result.dailyCategories).toHaveLength(0);
+         expect(result.weeklyCategories).toHaveLength(0);
+         expect(result.totalDailyTasks).toBe(0);
+         expect(result.totalWeeklyTasks).toBe(0);
+      });
+   });
+
+   describe("createTask", () => {
+      it("creates a task in existing category", async () => {
+         const mockCreated = {
+            id: "task_new",
+            userId: "user_1",
+            categoryId: "cat_1",
+            title: "Read Chapter 5",
+            taskType: "DAILY",
+            isComplete: false,
+         };
+
+         vi.mocked(prisma.task.create).mockResolvedValue(mockCreated as never);
+
+         const result = await createTask({
+            userId: "user_1",
             title: "Read Chapter 5",
             taskType: "DAILY",
             categoryId: "cat_1",
-          }),
-        }),
-      );
-    });
+         });
 
-    it("creates task with explicit dueDate", async () => {
-      const mockCreated = {
-        id: "task_due",
-        title: "Read Chapter 6",
-        taskType: "DAILY",
-        isComplete: false,
-        dueDate: new Date("2026-10-06"),
-      };
-
-      vi.mocked(prisma.task.create).mockResolvedValue(mockCreated as never);
-
-      await createTask({
-        userId: "user_1",
-        title: "Read Chapter 6",
-        taskType: "DAILY",
-        categoryId: "cat_1",
-        dueDate: "2026-10-06",
+         expect(result).toEqual(mockCreated);
+         expect(prisma.task.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+               data: expect.objectContaining({
+                  title: "Read Chapter 5",
+                  taskType: "DAILY",
+                  categoryId: "cat_1",
+               }),
+            })
+         );
       });
 
-      expect(prisma.task.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
+      it("creates task with explicit dueDate", async () => {
+         const mockCreated = {
+            id: "task_due",
             title: "Read Chapter 6",
-            dueDate: expect.any(Date),
-          }),
-        }),
-      );
-    });
-
-    it("creates new category if newCategoryName is specified", async () => {
-      vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
-      vi.mocked(prisma.category.create).mockResolvedValue({
-        id: "cat_biology",
-        userId: "user_1",
-        name: "Biology",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as never);
-      vi.mocked(prisma.task.create).mockResolvedValue({
-        id: "task_bio",
-        userId: "user_1",
-        categoryId: "cat_biology",
-        title: "Lab Report",
-        taskType: "WEEKLY",
-      } as never);
-
-      await createTask({
-        userId: "user_1",
-        title: "Lab Report",
-        taskType: "WEEKLY",
-        newCategoryName: "Biology",
-      });
-
-      expect(prisma.category.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: { userId: "user_1", name: "Biology", taskType: "WEEKLY" },
-        }),
-      );
-      expect(prisma.task.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            categoryId: "cat_biology",
-          }),
-        }),
-      );
-    });
-
-    it("inherits parent weekly category when creating a daily task with matching category name", async () => {
-      vi.mocked(prisma.category.findFirst)
-        .mockResolvedValueOnce(null) // no DAILY category with this name
-        .mockResolvedValueOnce({
-          id: "cat_weekly_math",
-          userId: "user_1",
-          name: "Mathematics",
-          taskType: "WEEKLY",
-        } as never); // found parent WEEKLY category
-
-      vi.mocked(prisma.task.create).mockResolvedValue({
-        id: "task_math_daily",
-        userId: "user_1",
-        categoryId: "cat_weekly_math",
-        title: "Calculus Homework",
-        taskType: "DAILY",
-      } as never);
-
-      await createTask({
-        userId: "user_1",
-        title: "Calculus Homework",
-        taskType: "DAILY",
-        newCategoryName: "Mathematics",
-      });
-
-      expect(prisma.category.create).not.toHaveBeenCalled();
-      expect(prisma.task.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            categoryId: "cat_weekly_math",
             taskType: "DAILY",
-          }),
-        }),
-      );
-    });
-  });
+            isComplete: false,
+            dueDate: new Date("2026-10-06"),
+         };
 
-  describe("toggleTask", () => {
-    it("updates task completion and sets completedAt", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue({
-        id: "task_1",
-        userId: "user_1",
-        isComplete: false,
-      } as never);
+         vi.mocked(prisma.task.create).mockResolvedValue(mockCreated as never);
 
-      vi.mocked(prisma.task.update).mockResolvedValue({
-        id: "task_1",
-        isComplete: true,
-        completedAt: new Date(),
-      } as never);
+         await createTask({
+            userId: "user_1",
+            title: "Read Chapter 6",
+            taskType: "DAILY",
+            categoryId: "cat_1",
+            dueDate: "2026-10-06",
+         });
 
-      const result = await toggleTask({
-        taskId: "task_1",
-        userId: "user_1",
-        isComplete: true,
+         expect(prisma.task.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+               data: expect.objectContaining({
+                  title: "Read Chapter 6",
+                  dueDate: expect.any(Date),
+               }),
+            })
+         );
       });
 
-      expect(result).toBeDefined();
-      expect(prisma.task.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: "task_1" },
-          data: expect.objectContaining({
+      it("creates new category if newCategoryName is specified", async () => {
+         vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+         vi.mocked(prisma.category.create).mockResolvedValue({
+            id: "cat_biology",
+            userId: "user_1",
+            name: "Biology",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+         } as never);
+         vi.mocked(prisma.task.create).mockResolvedValue({
+            id: "task_bio",
+            userId: "user_1",
+            categoryId: "cat_biology",
+            title: "Lab Report",
+            taskType: "WEEKLY",
+         } as never);
+
+         await createTask({
+            userId: "user_1",
+            title: "Lab Report",
+            taskType: "WEEKLY",
+            newCategoryName: "Biology",
+         });
+
+         expect(prisma.category.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+               data: { userId: "user_1", name: "Biology", taskType: "WEEKLY" },
+            })
+         );
+         expect(prisma.task.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+               data: expect.objectContaining({
+                  categoryId: "cat_biology",
+               }),
+            })
+         );
+      });
+
+      it("inherits parent weekly category when creating a daily task with matching category name", async () => {
+         vi.mocked(prisma.category.findFirst)
+            .mockResolvedValueOnce(null) // no DAILY category with this name
+            .mockResolvedValueOnce({
+               id: "cat_weekly_math",
+               userId: "user_1",
+               name: "Mathematics",
+               taskType: "WEEKLY",
+            } as never); // found parent WEEKLY category
+
+         vi.mocked(prisma.task.create).mockResolvedValue({
+            id: "task_math_daily",
+            userId: "user_1",
+            categoryId: "cat_weekly_math",
+            title: "Calculus Homework",
+            taskType: "DAILY",
+         } as never);
+
+         await createTask({
+            userId: "user_1",
+            title: "Calculus Homework",
+            taskType: "DAILY",
+            newCategoryName: "Mathematics",
+         });
+
+         expect(prisma.category.create).not.toHaveBeenCalled();
+         expect(prisma.task.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+               data: expect.objectContaining({
+                  categoryId: "cat_weekly_math",
+                  taskType: "DAILY",
+               }),
+            })
+         );
+      });
+   });
+
+   describe("toggleTask", () => {
+      it("updates task completion and sets completedAt", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue({
+            id: "task_1",
+            userId: "user_1",
+            isComplete: false,
+         } as never);
+
+         vi.mocked(prisma.task.update).mockResolvedValue({
+            id: "task_1",
             isComplete: true,
-            completedAt: expect.any(Date),
-          }),
-        }),
-      );
-    });
+            completedAt: new Date(),
+         } as never);
 
-    it("returns null if task not found for user", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue(null);
+         const result = await toggleTask({
+            taskId: "task_1",
+            userId: "user_1",
+            isComplete: true,
+         });
 
-      const result = await toggleTask({
-        taskId: "task_other",
-        userId: "user_1",
-        isComplete: true,
+         expect(result).toBeDefined();
+         expect(prisma.task.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+               where: { id: "task_1" },
+               data: expect.objectContaining({
+                  isComplete: true,
+                  completedAt: expect.any(Date),
+               }),
+            })
+         );
       });
 
-      expect(result).toBeNull();
-      expect(prisma.task.update).not.toHaveBeenCalled();
-    });
-  });
+      it("returns null if task not found for user", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue(null);
 
-  describe("deleteTask", () => {
-    it("deletes task when owned by user", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue({
-        id: "task_del",
-        userId: "user_1",
-      } as never);
-      vi.mocked(prisma.task.delete).mockResolvedValue({ id: "task_del" } as never);
+         const result = await toggleTask({
+            taskId: "task_other",
+            userId: "user_1",
+            isComplete: true,
+         });
 
-      const result = await deleteTask({
-        taskId: "task_del",
-        userId: "user_1",
+         expect(result).toBeNull();
+         expect(prisma.task.update).not.toHaveBeenCalled();
+      });
+   });
+
+   describe("deleteTask", () => {
+      it("deletes task when owned by user", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue({
+            id: "task_del",
+            userId: "user_1",
+         } as never);
+         vi.mocked(prisma.task.delete).mockResolvedValue({
+            id: "task_del",
+         } as never);
+
+         const result = await deleteTask({
+            taskId: "task_del",
+            userId: "user_1",
+         });
+
+         expect(result).toEqual({ id: "task_del" });
+         expect(prisma.task.delete).toHaveBeenCalledWith({
+            where: { id: "task_del" },
+         });
+      });
+   });
+
+   describe("createCategory", () => {
+      it("returns existing category if already present with same taskType", async () => {
+         const existing = {
+            id: "cat_exist",
+            name: "Chemistry",
+            taskType: "DAILY",
+         };
+         vi.mocked(prisma.category.findFirst).mockResolvedValue(
+            existing as never
+         );
+
+         const result = await createCategory({
+            userId: "user_1",
+            name: "Chemistry",
+            taskType: "DAILY",
+         });
+
+         expect(result).toEqual(existing);
+         expect(prisma.category.create).not.toHaveBeenCalled();
       });
 
-      expect(result).toEqual({ id: "task_del" });
-      expect(prisma.task.delete).toHaveBeenCalledWith({
-        where: { id: "task_del" },
+      it("creates a new category with given taskType if not existing", async () => {
+         vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+         const created = {
+            id: "cat_created",
+            name: "Physics",
+            taskType: "WEEKLY",
+         };
+         vi.mocked(prisma.category.create).mockResolvedValue(created as never);
+
+         const result = await createCategory({
+            userId: "user_1",
+            name: "Physics",
+            taskType: "WEEKLY",
+         });
+
+         expect(result).toEqual(created);
+         expect(prisma.category.create).toHaveBeenCalledWith({
+            data: {
+               userId: "user_1",
+               name: "Physics",
+               taskType: "WEEKLY",
+            },
+         });
       });
-    });
-  });
+   });
 
-  describe("createCategory", () => {
-    it("returns existing category if already present with same taskType", async () => {
-      const existing = { id: "cat_exist", name: "Chemistry", taskType: "DAILY" };
-      vi.mocked(prisma.category.findFirst).mockResolvedValue(existing as never);
+   describe("updateTask", () => {
+      it("updates task title when owned by user", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue({
+            id: "task_1",
+            userId: "user_1",
+            title: "Old title",
+         } as never);
+         vi.mocked(prisma.task.update).mockResolvedValue({
+            id: "task_1",
+            title: "New title",
+         } as never);
 
-      const result = await createCategory({
-        userId: "user_1",
-        name: "Chemistry",
-        taskType: "DAILY",
-      });
+         const result = await updateTask({
+            taskId: "task_1",
+            userId: "user_1",
+            title: "  New title  ",
+         });
 
-      expect(result).toEqual(existing);
-      expect(prisma.category.create).not.toHaveBeenCalled();
-    });
-
-    it("creates a new category with given taskType if not existing", async () => {
-      vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
-      const created = { id: "cat_created", name: "Physics", taskType: "WEEKLY" };
-      vi.mocked(prisma.category.create).mockResolvedValue(created as never);
-
-      const result = await createCategory({
-        userId: "user_1",
-        name: "Physics",
-        taskType: "WEEKLY",
-      });
-
-      expect(result).toEqual(created);
-      expect(prisma.category.create).toHaveBeenCalledWith({
-        data: {
-          userId: "user_1",
-          name: "Physics",
-          taskType: "WEEKLY",
-        },
-      });
-    });
-  });
-
-  describe("updateTask", () => {
-    it("updates task title when owned by user", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue({
-        id: "task_1",
-        userId: "user_1",
-        title: "Old title",
-      } as never);
-      vi.mocked(prisma.task.update).mockResolvedValue({
-        id: "task_1",
-        title: "New title",
-      } as never);
-
-      const result = await updateTask({
-        taskId: "task_1",
-        userId: "user_1",
-        title: "  New title  ",
+         expect(result).toEqual({ id: "task_1", title: "New title" });
+         expect(prisma.task.update).toHaveBeenCalledWith({
+            where: { id: "task_1" },
+            data: { title: "New title" },
+            include: { category: true },
+         });
       });
 
-      expect(result).toEqual({ id: "task_1", title: "New title" });
-      expect(prisma.task.update).toHaveBeenCalledWith({
-        where: { id: "task_1" },
-        data: { title: "New title" },
-        include: { category: true },
-      });
-    });
+      it("updates task dueDate", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue({
+            id: "task_1",
+            userId: "user_1",
+            title: "Current title",
+         } as never);
+         vi.mocked(prisma.task.update).mockResolvedValue({
+            id: "task_1",
+            title: "Current title",
+            dueDate: new Date("2026-10-08"),
+         } as never);
 
-    it("updates task dueDate", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue({
-        id: "task_1",
-        userId: "user_1",
-        title: "Current title",
-      } as never);
-      vi.mocked(prisma.task.update).mockResolvedValue({
-        id: "task_1",
-        title: "Current title",
-        dueDate: new Date("2026-10-08"),
-      } as never);
+         const result = await updateTask({
+            taskId: "task_1",
+            userId: "user_1",
+            dueDate: "2026-10-08",
+         });
 
-      const result = await updateTask({
-        taskId: "task_1",
-        userId: "user_1",
-        dueDate: "2026-10-08",
-      });
-
-      expect(result).toBeDefined();
-      expect(prisma.task.update).toHaveBeenCalledWith({
-        where: { id: "task_1" },
-        data: { dueDate: expect.any(Date) },
-        include: { category: true },
-      });
-    });
-
-    it("updates task completion and sets completedAt timestamp", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue({
-        id: "task_1",
-        userId: "user_1",
-        title: "Current title",
-        isComplete: false,
-      } as never);
-      vi.mocked(prisma.task.update).mockResolvedValue({
-        id: "task_1",
-        title: "Current title",
-        isComplete: true,
-        completedAt: new Date(),
-      } as never);
-
-      const result = await updateTask({
-        taskId: "task_1",
-        userId: "user_1",
-        isComplete: true,
+         expect(result).toBeDefined();
+         expect(prisma.task.update).toHaveBeenCalledWith({
+            where: { id: "task_1" },
+            data: { dueDate: expect.any(Date) },
+            include: { category: true },
+         });
       });
 
-      expect(result).toBeDefined();
-      expect(prisma.task.update).toHaveBeenCalledWith({
-        where: { id: "task_1" },
-        data: {
-          isComplete: true,
-          status: "COMPLETED",
-          completedAt: expect.any(Date),
-        },
-        include: { category: true },
-      });
-    });
+      it("updates task completion and sets completedAt timestamp", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue({
+            id: "task_1",
+            userId: "user_1",
+            title: "Current title",
+            isComplete: false,
+         } as never);
+         vi.mocked(prisma.task.update).mockResolvedValue({
+            id: "task_1",
+            title: "Current title",
+            isComplete: true,
+            completedAt: new Date(),
+         } as never);
 
-    it("updates task to incomplete and resets completedAt to null", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue({
-        id: "task_1",
-        userId: "user_1",
-        title: "Current title",
-        isComplete: true,
-      } as never);
-      vi.mocked(prisma.task.update).mockResolvedValue({
-        id: "task_1",
-        title: "Current title",
-        isComplete: false,
-        status: "TODO",
-        completedAt: null,
-      } as never);
+         const result = await updateTask({
+            taskId: "task_1",
+            userId: "user_1",
+            isComplete: true,
+         });
 
-      const result = await updateTask({
-        taskId: "task_1",
-        userId: "user_1",
-        isComplete: false,
-      });
-
-      expect(result).toBeDefined();
-      expect(prisma.task.update).toHaveBeenCalledWith({
-        where: { id: "task_1" },
-        data: {
-          isComplete: false,
-          status: "TODO",
-          completedAt: null,
-        },
-        include: { category: true },
-      });
-    });
-
-    it("updates task with IN_PROGRESS status", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue({
-        id: "task_1",
-        userId: "user_1",
-        title: "Current title",
-        isComplete: false,
-        status: "TODO",
-      } as never);
-      vi.mocked(prisma.task.update).mockResolvedValue({
-        id: "task_1",
-        title: "Current title",
-        isComplete: false,
-        status: "IN_PROGRESS",
-        completedAt: null,
-      } as never);
-
-      const result = await updateTask({
-        taskId: "task_1",
-        userId: "user_1",
-        status: "IN_PROGRESS",
+         expect(result).toBeDefined();
+         expect(prisma.task.update).toHaveBeenCalledWith({
+            where: { id: "task_1" },
+            data: {
+               isComplete: true,
+               status: "COMPLETED",
+               completedAt: expect.any(Date),
+            },
+            include: { category: true },
+         });
       });
 
-      expect(result).toBeDefined();
-      expect(prisma.task.update).toHaveBeenCalledWith({
-        where: { id: "task_1" },
-        data: {
-          isComplete: false,
-          status: "IN_PROGRESS",
-          completedAt: null,
-        },
-        include: { category: true },
-      });
-    });
+      it("updates task to incomplete and resets completedAt to null", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue({
+            id: "task_1",
+            userId: "user_1",
+            title: "Current title",
+            isComplete: true,
+         } as never);
+         vi.mocked(prisma.task.update).mockResolvedValue({
+            id: "task_1",
+            title: "Current title",
+            isComplete: false,
+            status: "TODO",
+            completedAt: null,
+         } as never);
 
-    it("updates task with CROSSED_OUT status", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue({
-        id: "task_1",
-        userId: "user_1",
-        title: "Current title",
-        isComplete: false,
-        status: "TODO",
-      } as never);
-      vi.mocked(prisma.task.update).mockResolvedValue({
-        id: "task_1",
-        title: "Current title",
-        isComplete: false,
-        status: "CROSSED_OUT",
-        completedAt: null,
-      } as never);
+         const result = await updateTask({
+            taskId: "task_1",
+            userId: "user_1",
+            isComplete: false,
+         });
 
-      const result = await updateTask({
-        taskId: "task_1",
-        userId: "user_1",
-        status: "CROSSED_OUT",
-      });
-
-      expect(result).toBeDefined();
-      expect(prisma.task.update).toHaveBeenCalledWith({
-        where: { id: "task_1" },
-        data: {
-          isComplete: false,
-          status: "CROSSED_OUT",
-          completedAt: null,
-        },
-        include: { category: true },
-      });
-    });
-
-    it("returns null if task does not exist or not owned by user", async () => {
-      vi.mocked(prisma.task.findFirst).mockResolvedValue(null);
-
-      const result = await updateTask({
-        taskId: "task_99",
-        userId: "user_1",
-        title: "New title",
+         expect(result).toBeDefined();
+         expect(prisma.task.update).toHaveBeenCalledWith({
+            where: { id: "task_1" },
+            data: {
+               isComplete: false,
+               status: "TODO",
+               completedAt: null,
+            },
+            include: { category: true },
+         });
       });
 
-      expect(result).toBeNull();
-      expect(prisma.task.update).not.toHaveBeenCalled();
-    });
-  });
+      it("updates task with IN_PROGRESS status", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue({
+            id: "task_1",
+            userId: "user_1",
+            title: "Current title",
+            isComplete: false,
+            status: "TODO",
+         } as never);
+         vi.mocked(prisma.task.update).mockResolvedValue({
+            id: "task_1",
+            title: "Current title",
+            isComplete: false,
+            status: "IN_PROGRESS",
+            completedAt: null,
+         } as never);
 
-  describe("updateCategory", () => {
-    it("updates category name when owned by user and not colliding", async () => {
-      vi.mocked(prisma.category.findFirst)
-        .mockResolvedValueOnce({
-          id: "cat_1",
-          userId: "user_1",
-          name: "Old Name",
-          taskType: "DAILY",
-        } as never)
-        .mockResolvedValueOnce(null); // No collision
+         const result = await updateTask({
+            taskId: "task_1",
+            userId: "user_1",
+            status: "IN_PROGRESS",
+         });
 
-      vi.mocked(prisma.category.update).mockResolvedValue({
-        id: "cat_1",
-        name: "New Name",
-      } as never);
-
-      const result = await updateCategory({
-        categoryId: "cat_1",
-        userId: "user_1",
-        name: "New Name",
+         expect(result).toBeDefined();
+         expect(prisma.task.update).toHaveBeenCalledWith({
+            where: { id: "task_1" },
+            data: {
+               isComplete: false,
+               status: "IN_PROGRESS",
+               completedAt: null,
+            },
+            include: { category: true },
+         });
       });
 
-      expect(result).toEqual({ id: "cat_1", name: "New Name" });
-      expect(prisma.category.update).toHaveBeenCalledWith({
-        where: { id: "cat_1" },
-        data: { name: "New Name" },
-      });
-    });
+      it("updates task with CROSSED_OUT status", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue({
+            id: "task_1",
+            userId: "user_1",
+            title: "Current title",
+            isComplete: false,
+            status: "TODO",
+         } as never);
+         vi.mocked(prisma.task.update).mockResolvedValue({
+            id: "task_1",
+            title: "Current title",
+            isComplete: false,
+            status: "CROSSED_OUT",
+            completedAt: null,
+         } as never);
 
-    it("returns null if category not found", async () => {
-      vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+         const result = await updateTask({
+            taskId: "task_1",
+            userId: "user_1",
+            status: "CROSSED_OUT",
+         });
 
-      const result = await updateCategory({
-        categoryId: "cat_99",
-        userId: "user_1",
-        name: "New Name",
-      });
-
-      expect(result).toBeNull();
-    });
-
-    it("throws error if new category name already exists for user in same taskType", async () => {
-      vi.mocked(prisma.category.findFirst)
-        .mockResolvedValueOnce({
-          id: "cat_1",
-          userId: "user_1",
-          name: "Category 1",
-          taskType: "DAILY",
-        } as never)
-        .mockResolvedValueOnce({
-          id: "cat_2",
-          userId: "user_1",
-          name: "Category 2",
-          taskType: "DAILY",
-        } as never); // Collision!
-
-      await expect(
-        updateCategory({
-          categoryId: "cat_1",
-          userId: "user_1",
-          name: "Category 2",
-        }),
-      ).rejects.toThrow('Category "Category 2" already exists.');
-    });
-  });
-
-  describe("deleteCategory", () => {
-    it("deletes category when owned by user", async () => {
-      vi.mocked(prisma.category.findFirst).mockResolvedValue({
-        id: "cat_del",
-        userId: "user_1",
-      } as never);
-      vi.mocked(prisma.category.delete).mockResolvedValue({
-        id: "cat_del",
-      } as never);
-
-      const result = await deleteCategory({
-        categoryId: "cat_del",
-        userId: "user_1",
+         expect(result).toBeDefined();
+         expect(prisma.task.update).toHaveBeenCalledWith({
+            where: { id: "task_1" },
+            data: {
+               isComplete: false,
+               status: "CROSSED_OUT",
+               completedAt: null,
+            },
+            include: { category: true },
+         });
       });
 
-      expect(result).toEqual({ id: "cat_del" });
-      expect(prisma.category.delete).toHaveBeenCalledWith({
-        where: { id: "cat_del" },
+      it("returns null if task does not exist or not owned by user", async () => {
+         vi.mocked(prisma.task.findFirst).mockResolvedValue(null);
+
+         const result = await updateTask({
+            taskId: "task_99",
+            userId: "user_1",
+            title: "New title",
+         });
+
+         expect(result).toBeNull();
+         expect(prisma.task.update).not.toHaveBeenCalled();
       });
-    });
+   });
 
-    it("returns null if category not found", async () => {
-      vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+   describe("updateCategory", () => {
+      it("updates category name when owned by user and not colliding", async () => {
+         vi.mocked(prisma.category.findFirst)
+            .mockResolvedValueOnce({
+               id: "cat_1",
+               userId: "user_1",
+               name: "Old Name",
+               taskType: "DAILY",
+            } as never)
+            .mockResolvedValueOnce(null); // No collision
 
-      const result = await deleteCategory({
-        categoryId: "cat_missing",
-        userId: "user_1",
+         vi.mocked(prisma.category.update).mockResolvedValue({
+            id: "cat_1",
+            name: "New Name",
+         } as never);
+
+         const result = await updateCategory({
+            categoryId: "cat_1",
+            userId: "user_1",
+            name: "New Name",
+         });
+
+         expect(result).toEqual({ id: "cat_1", name: "New Name" });
+         expect(prisma.category.update).toHaveBeenCalledWith({
+            where: { id: "cat_1" },
+            data: { name: "New Name" },
+         });
       });
 
-      expect(result).toBeNull();
-      expect(prisma.category.delete).not.toHaveBeenCalled();
-    });
-  });
+      it("returns null if category not found", async () => {
+         vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+
+         const result = await updateCategory({
+            categoryId: "cat_99",
+            userId: "user_1",
+            name: "New Name",
+         });
+
+         expect(result).toBeNull();
+      });
+
+      it("throws error if new category name already exists for user in same taskType", async () => {
+         vi.mocked(prisma.category.findFirst)
+            .mockResolvedValueOnce({
+               id: "cat_1",
+               userId: "user_1",
+               name: "Category 1",
+               taskType: "DAILY",
+            } as never)
+            .mockResolvedValueOnce({
+               id: "cat_2",
+               userId: "user_1",
+               name: "Category 2",
+               taskType: "DAILY",
+            } as never); // Collision!
+
+         await expect(
+            updateCategory({
+               categoryId: "cat_1",
+               userId: "user_1",
+               name: "Category 2",
+            })
+         ).rejects.toThrow('Category "Category 2" already exists.');
+      });
+   });
+
+   describe("deleteCategory", () => {
+      it("deletes category when owned by user", async () => {
+         vi.mocked(prisma.category.findFirst).mockResolvedValue({
+            id: "cat_del",
+            userId: "user_1",
+         } as never);
+         vi.mocked(prisma.category.delete).mockResolvedValue({
+            id: "cat_del",
+         } as never);
+
+         const result = await deleteCategory({
+            categoryId: "cat_del",
+            userId: "user_1",
+         });
+
+         expect(result).toEqual({ id: "cat_del" });
+         expect(prisma.category.delete).toHaveBeenCalledWith({
+            where: { id: "cat_del" },
+         });
+      });
+
+      it("returns null if category not found", async () => {
+         vi.mocked(prisma.category.findFirst).mockResolvedValue(null);
+
+         const result = await deleteCategory({
+            categoryId: "cat_missing",
+            userId: "user_1",
+         });
+
+         expect(result).toBeNull();
+         expect(prisma.category.delete).not.toHaveBeenCalled();
+      });
+   });
 });
