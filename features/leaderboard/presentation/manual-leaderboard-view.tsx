@@ -252,7 +252,7 @@ export function ManualLeaderboardView({
         </h2>
 
         {standings.length === 0 ? (
-          /* Law L9: Empty state */
+          /* Empty state */
           <div className="rounded-2xl border border-dashed border-[#292929] bg-[#141414] p-8 text-center text-[#868686]">
             <p className="text-sm">No study hours logged yet for this challenge.</p>
             <p className="mt-1 text-xs">

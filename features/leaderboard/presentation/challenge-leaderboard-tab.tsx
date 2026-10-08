@@ -500,7 +500,7 @@ export function ChallengeLeaderboardTab({
         )}
       </div>
 
-      {/* Admin Hours Override Modal (Law L5 / FEAT-LOG-04) */}
+      {/* Admin Hours Override Modal (FEAT-LOG-04) */}
       {isAdmin && (
         <AdminHoursOverrideModal
           isOpen={isOverrideModalOpen}

@@ -307,13 +307,6 @@ export function CockpitTasksSection({
     setAddModalType("daily");
   };
 
-  const dailyCategoryOptions = Array.from(
-    new Set([
-      ...(userTasks?.categories?.filter((c) => c.taskType === "DAILY").map((c) => c.name) ?? []),
-      ...dailyCategories.map((c) => c.name),
-    ]),
-  );
-
   const weeklyCategoryOptions = Array.from(
     new Set([
       ...(userTasks?.categories?.filter((c) => c.taskType === "WEEKLY").map((c) => c.name) ?? []),
@@ -321,13 +314,33 @@ export function CockpitTasksSection({
     ]),
   );
 
-  const dailyCategoryNameToId = new Map(
-    userTasks?.categories?.filter((c) => c.taskType === "DAILY").map((c) => [c.name, c.id]) ?? [],
+  // Independent categories created specifically for daily tasks (unplanned/independent)
+  const independentDailyCategoryOptions = Array.from(
+    new Set([
+      ...(userTasks?.categories?.filter((c) => c.taskType === "DAILY").map((c) => c.name) ?? []),
+      ...dailyCategories
+        .map((c) => c.name)
+        .filter((name) => !weeklyCategoryOptions.includes(name)),
+    ]),
+  ).filter((name) => !weeklyCategoryOptions.includes(name));
+
+  // Daily inherits all weekly categories (parent categories) + independent daily categories
+  const dailyCategoryOptions = Array.from(
+    new Set([
+      ...weeklyCategoryOptions,
+      ...independentDailyCategoryOptions,
+    ]),
   );
 
   const weeklyCategoryNameToId = new Map(
     userTasks?.categories?.filter((c) => c.taskType === "WEEKLY").map((c) => [c.name, c.id]) ?? [],
   );
+
+  const dailyCategoryNameToId = new Map([
+    ...(userTasks?.categories?.map((c) => [c.name, c.id] as [string, string]) ?? []),
+    ...weeklyCategories.filter((c) => Boolean(c.id)).map((c) => [c.name, c.id!] as [string, string]),
+    ...dailyCategories.filter((c) => Boolean(c.id)).map((c) => [c.name, c.id!] as [string, string]),
+  ]);
 
   useEffect(() => {
     const cleanup = initTaskSync(userId);
@@ -379,13 +392,17 @@ export function CockpitTasksSection({
           const tasksToHeal: LocalTaskRecord[] = [];
 
           const dailyCats = sortedCats
-            .filter((c) => c.taskType === "DAILY")
+            .filter(
+              (c) =>
+                c.taskType === "DAILY" ||
+                sortedTasks.some((t) => t.categoryId === c.id && t.taskType === "DAILY"),
+            )
             .map((c) => ({
               id: c.id,
               name: c.name,
               isCollapsed: false,
               tasks: sortedTasks
-                .filter((t) => t.categoryId === c.id)
+                .filter((t) => t.categoryId === c.id && t.taskType === "DAILY")
                 .map((t) => {
                   const serverInfo = serverTaskMap.get(t.id);
                   const effectiveDueDate =
@@ -427,7 +444,7 @@ export function CockpitTasksSection({
               name: c.name,
               isCollapsed: false,
               tasks: sortedTasks
-                .filter((t) => t.categoryId === c.id)
+                .filter((t) => t.categoryId === c.id && t.taskType === "WEEKLY")
                 .map((t) => {
                   const serverInfo = serverTaskMap.get(t.id);
                   const effectiveDueDate =
@@ -983,19 +1000,16 @@ export function CockpitTasksSection({
       return;
     }
 
-    if (catType === "daily") {
-      setDailyCategories((prev) =>
-        prev.map((cat) =>
-          cat.name === oldName ? { ...cat, name: trimmed } : cat,
-        ),
-      );
-    } else {
-      setWeeklyCategories((prev) =>
-        prev.map((cat) =>
-          cat.name === oldName ? { ...cat, name: trimmed } : cat,
-        ),
-      );
-    }
+    setDailyCategories((prev) =>
+      prev.map((cat) =>
+        (catId && cat.id === catId) || cat.name === oldName ? { ...cat, name: trimmed } : cat,
+      ),
+    );
+    setWeeklyCategories((prev) =>
+      prev.map((cat) =>
+        (catId && cat.id === catId) || cat.name === oldName ? { ...cat, name: trimmed } : cat,
+      ),
+    );
 
     if (catId) {
       putLocalCategory({
@@ -1034,17 +1048,21 @@ export function CockpitTasksSection({
     const catType = deleteCategoryModal.taskType;
     const catId =
       deleteCategoryModal.id ||
-      (catType === "daily"
-        ? dailyCategoryNameToId.get(targetName) || dailyCategories.find((c) => c.name === targetName)?.id
-        : weeklyCategoryNameToId.get(targetName) || weeklyCategories.find((c) => c.name === targetName)?.id);
+      dailyCategoryNameToId.get(targetName) ||
+      weeklyCategoryNameToId.get(targetName) ||
+      dailyCategories.find((c) => c.name === targetName)?.id ||
+      weeklyCategories.find((c) => c.name === targetName)?.id;
 
-    if (catType === "daily") {
+    if (catType === "weekly") {
+      setWeeklyCategories((prev) =>
+        prev.filter((cat) => (catId ? cat.id !== catId : cat.name !== targetName)),
+      );
       setDailyCategories((prev) =>
-        prev.filter((cat) => cat.name !== targetName),
+        prev.filter((cat) => (catId ? cat.id !== catId : cat.name !== targetName)),
       );
     } else {
-      setWeeklyCategories((prev) =>
-        prev.filter((cat) => cat.name !== targetName),
+      setDailyCategories((prev) =>
+        prev.filter((cat) => (catId ? cat.id !== catId : cat.name !== targetName)),
       );
     }
 
@@ -1124,9 +1142,20 @@ export function CockpitTasksSection({
     e.preventDefault();
     if (!newTodoText.trim()) return;
 
-    const isNew = isCreatingCategory && customCategory.trim();
+    const trimmedCustom = customCategory.trim();
+    // If user typed a custom name that matches an existing weekly category, link to that parent category
+    const matchingWeekly = trimmedCustom
+      ? weeklyCategories.find((c) => c.name.toLowerCase() === trimmedCustom.toLowerCase()) ||
+        userTasks?.categories?.find(
+          (c) => c.taskType === "WEEKLY" && c.name.toLowerCase() === trimmedCustom.toLowerCase(),
+        )
+      : undefined;
+
+    const isNew = Boolean(isCreatingCategory && trimmedCustom && !matchingWeekly);
     const targetCategoryName =
-      (isNew ? customCategory.trim() : selectedCategory) || "General";
+      (isCreatingCategory && trimmedCustom
+        ? matchingWeekly?.name || trimmedCustom
+        : selectedCategory) || "General";
     const taskType = addModalType === "daily" ? "DAILY" : "WEEKLY";
     const resolvedDueDate =
       addModalType === "daily" ? (addTodoDateKey || selectedDateKey) : null;
@@ -1144,8 +1173,19 @@ export function CockpitTasksSection({
     let targetCatId: string | undefined = undefined;
 
     if (addModalType === "daily") {
-      const existing = dailyCategories.find((c) => c.name === targetCategoryName);
-      targetCatId = existing?.id || (isNew ? crypto.randomUUID() : dailyCategoryNameToId.get(targetCategoryName) || crypto.randomUUID());
+      const existingInDaily = dailyCategories.find((c) => c.name === targetCategoryName);
+      const existingInWeekly = weeklyCategories.find((c) => c.name === targetCategoryName);
+      const existingInServer = userTasks?.categories?.find((c) => c.name === targetCategoryName);
+
+      targetCatId =
+        existingInDaily?.id ||
+        existingInWeekly?.id ||
+        existingInServer?.id ||
+        (isNew
+          ? crypto.randomUUID()
+          : dailyCategoryNameToId.get(targetCategoryName) ||
+            weeklyCategoryNameToId.get(targetCategoryName) ||
+            crypto.randomUUID());
 
       setDailyCategories((prev) => {
         const existingIndex = prev.findIndex((c) => c.name === targetCategoryName);
@@ -1163,8 +1203,13 @@ export function CockpitTasksSection({
         }
       });
     } else {
-      const existing = weeklyCategories.find((c) => c.name === targetCategoryName);
-      targetCatId = existing?.id || (isNew ? crypto.randomUUID() : weeklyCategoryNameToId.get(targetCategoryName) || crypto.randomUUID());
+      const existingInWeekly = weeklyCategories.find((c) => c.name === targetCategoryName);
+      const existingInServer = userTasks?.categories?.find((c) => c.name === targetCategoryName);
+
+      targetCatId =
+        existingInWeekly?.id ||
+        existingInServer?.id ||
+        (isNew ? crypto.randomUUID() : weeklyCategoryNameToId.get(targetCategoryName) || crypto.randomUUID());
 
       setWeeklyCategories((prev) => {
         const existingIndex = prev.findIndex((c) => c.name === targetCategoryName);
@@ -1190,7 +1235,7 @@ export function CockpitTasksSection({
         id: targetCatId,
         userId: userId ?? null,
         name: targetCategoryName,
-        taskType,
+        taskType: addModalType === "daily" ? "DAILY" : "WEEKLY",
         createdAt: nowIso,
         updatedAt: nowIso,
         syncState: "pending",
@@ -1223,7 +1268,7 @@ export function CockpitTasksSection({
           payload: {
             id: targetCatId,
             name: targetCategoryName,
-            taskType,
+            taskType: addModalType === "daily" ? "DAILY" : "WEEKLY",
           },
           createdAt: Date.now(),
           retryCount: 0,
@@ -1808,8 +1853,81 @@ export function CockpitTasksSection({
         }
       }
     } else if (draggedItem.type === "task" && draggedItem.id) {
-      // Drop task into the last category of the target column
-      if (targetCategories.length > 0) {
+      if (targetColumn === "daily" && draggedItem.sourceColumn === "weekly") {
+        const sourceCat = weeklyCategories[draggedItem.sourceCatIdx];
+        if (sourceCat) {
+          let targetDailyIdx = dailyCategories.findIndex(
+            (c) => (sourceCat.id && c.id === sourceCat.id) || c.name === sourceCat.name,
+          );
+          let currentDailyCats = dailyCategories;
+          if (targetDailyIdx === -1) {
+            const newDailyCat: CategoryGroup = {
+              id: sourceCat.id,
+              name: sourceCat.name,
+              isCollapsed: false,
+              tasks: [],
+            };
+            currentDailyCats = [...dailyCategories, newDailyCat];
+            targetDailyIdx = currentDailyCats.length - 1;
+          }
+
+          const res = moveTaskBetweenCategories({
+            taskId: draggedItem.id,
+            sourceCategoryIndex: draggedItem.sourceCatIdx,
+            sourceColumn: "weekly",
+            targetCategoryIndex: targetDailyIdx,
+            targetColumn: "daily",
+            targetTaskIndex: currentDailyCats[targetDailyIdx].tasks.length,
+            dailyCategories: currentDailyCats,
+            weeklyCategories,
+          });
+
+          setDailyCategories(res.dailyCategories);
+          setWeeklyCategories(res.weeklyCategories);
+
+          if (res.movedTask && res.targetCategoryId) {
+            const nowIso = new Date().toISOString();
+            const isMovedComplete = Boolean(res.movedTask.completed ?? res.movedTask.isComplete);
+            const movedStatus = (res.movedTask.status as TaskStatus) || (isMovedComplete ? "COMPLETED" : "TODO");
+            putLocalTask({
+              id: res.movedTask.id,
+              userId: userId ?? null,
+              categoryId: res.targetCategoryId,
+              title: res.movedTask.text ?? res.movedTask.title ?? "",
+              taskType: res.targetTaskType,
+              sortOrder: currentDailyCats[targetDailyIdx].tasks.length,
+              isComplete: isMovedComplete,
+              status: movedStatus,
+              dueDate: res.movedTask.dueDate ?? selectedDateKey,
+              createdAt: res.movedTask.createdAt ? new Date(res.movedTask.createdAt).toISOString() : nowIso,
+              updatedAt: nowIso,
+              completedAt: isMovedComplete ? nowIso : null,
+              syncState: "pending",
+            }).catch(() => {});
+
+            if (isLoggedIn && userId) {
+              enqueueMutation({
+                id: crypto.randomUUID(),
+                entityType: "TASK",
+                action: "MOVE",
+                payload: {
+                  taskId: res.movedTask.id,
+                  categoryId: res.targetCategoryId,
+                  taskType: res.targetTaskType,
+                  sortOrder: currentDailyCats[targetDailyIdx].tasks.length,
+                  dueDate: selectedDateKey,
+                },
+                createdAt: Date.now(),
+                retryCount: 0,
+              })
+                .then(() => {
+                  scheduleSync(userId);
+                })
+                .catch(() => {});
+            }
+          }
+        }
+      } else if (targetCategories.length > 0) {
         const lastCatIdx = targetCategories.length - 1;
         const res = moveTaskBetweenCategories({
           taskId: draggedItem.id,
@@ -2602,14 +2720,42 @@ export function CockpitTasksSection({
                       }}
                       className="w-full h-11 bg-[#545454] border border-[#484848] text-[#f4f3f6] rounded-xl px-3 text-sm focus:outline-none focus:ring-1 focus:ring-white"
                     >
-                      {(addModalType === "daily" ? dailyCategoryOptions : weeklyCategoryOptions).map((catName) => (
-                        <option key={catName} value={catName} className="bg-[#292929] text-white">
-                          {catName}
-                        </option>
-                      ))}
-                      <option value="__NEW__" className="bg-[#292929] text-white">
-                        + Create New Category...
-                      </option>
+                      {addModalType === "daily" ? (
+                        <>
+                          {weeklyCategoryOptions.length > 0 && (
+                            <optgroup label="Weekly Categories (Inherited)">
+                              {weeklyCategoryOptions.map((catName) => (
+                                <option key={catName} value={catName} className="bg-[#292929] text-white">
+                                  {catName}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          {independentDailyCategoryOptions.length > 0 && (
+                            <optgroup label="Independent Daily Categories">
+                              {independentDailyCategoryOptions.map((catName) => (
+                                <option key={catName} value={catName} className="bg-[#292929] text-white">
+                                  {catName}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          <option value="__NEW__" className="bg-[#292929] text-white font-medium">
+                            + Create Independent Category...
+                          </option>
+                        </>
+                      ) : (
+                        <>
+                          {weeklyCategoryOptions.map((catName) => (
+                            <option key={catName} value={catName} className="bg-[#292929] text-white">
+                              {catName}
+                            </option>
+                          ))}
+                          <option value="__NEW__" className="bg-[#292929] text-white font-medium">
+                            + Create New Category...
+                          </option>
+                        </>
+                      )}
                     </select>
                   </div>
                 ) : (
@@ -2617,7 +2763,11 @@ export function CockpitTasksSection({
                     <Input
                       ref={categoryInputRef}
                       type="text"
-                      placeholder="Category name"
+                      placeholder={
+                        addModalType === "daily"
+                          ? "Independent category name (e.g. Unplanned, Urgent)"
+                          : "Category name"
+                      }
                       value={customCategory}
                       onChange={(e) => setCustomCategory(e.target.value)}
                       autoFocus

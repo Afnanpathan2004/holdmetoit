@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Clock, X, AlertTriangle, Check, Loader2, ShieldAlert, User as UserIcon } from "lucide-react";
+import { Clock, X, AlertTriangle, Check, Loader2, ShieldAlert, User as UserIcon, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -169,10 +169,10 @@ export function AdminHoursOverrideModal({
     setFeedback(null);
   };
 
-  const handleApplyPreset = (h: number, m: number, s: number) => {
-    setHours(String(h));
-    setMinutes(String(m));
-    setSeconds(String(s));
+  const handleClearTime = () => {
+    setHours("0");
+    setMinutes("0");
+    setSeconds("0");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -274,7 +274,6 @@ export function AdminHoursOverrideModal({
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#3b82f6]/20 text-[#60a5fa] border border-[#3b82f6]/30">
                 Host / Mod Override
               </span>
-              <span className="text-[11px] text-[#868686]">Law L5 Audit</span>
             </div>
             <h3 className="text-lg sm:text-xl font-bold text-white">
               Edit Participant Study Hours
@@ -432,36 +431,15 @@ export function AdminHoursOverrideModal({
               </div>
             </div>
 
-            {/* Quick Presets */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              <span className="text-[11px] text-[#868686] mr-1">Presets:</span>
+            {/* Quick Clear Action */}
+            <div className="flex items-center pt-1">
               <button
                 type="button"
-                onClick={() => handleApplyPreset(0, 0, 0)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-[#ef4444] border border-[#383838] transition-colors"
+                onClick={handleClearTime}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-[#ef4444] hover:text-[#f87171] border border-[#383838] transition-colors"
               >
-                0h (Clear)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(1, 0, 0)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-white border border-[#383838] transition-colors"
-              >
-                1h
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(2, 0, 0)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-white border border-[#383838] transition-colors"
-              >
-                2h
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(4, 0, 0)}
-                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-white border border-[#383838] transition-colors"
-              >
-                4h
+                <RotateCcw className="h-3 w-3" />
+                Clear Time
               </button>
             </div>
           </div>
