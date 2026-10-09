@@ -12,6 +12,7 @@ import { logManualSessionHoursAction } from "@/features/leaderboard/api/manual-l
 import type { ManualLeaderboardViewModel } from "@/features/leaderboard/data/manual-leaderboard.repository";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DataPagination } from "@/components/ui/data-pagination";
 
 interface ManualLeaderboardViewProps {
   data: ManualLeaderboardViewModel;
@@ -27,6 +28,16 @@ export function ManualLeaderboardView({
 
   const { challenge, summary } = data;
   const { teams, standings, matchBanner, slotDates, totalHoursLogged } = summary;
+
+  // Pagination for individual standings
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.ceil(standings.length / pageSize);
+  const safePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+  const paginatedStandings = standings.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
 
   // Form state for logging manual session
   const [selectedDate, setSelectedDate] = useState(
@@ -260,7 +271,8 @@ export function ManualLeaderboardView({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-[#262626] bg-[#141414] shadow-sm">
+          <>
+            <div className="overflow-x-auto rounded-2xl border border-[#262626] bg-[#141414] shadow-sm">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-[#292929] bg-[#1c1c1c] text-xs uppercase text-[#868686] font-medium">
                 <tr>
@@ -276,7 +288,7 @@ export function ManualLeaderboardView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#262626] text-[#d1d1d1]">
-                {standings.map((p) => (
+                {paginatedStandings.map((p) => (
                   <tr
                     key={p.userId}
                     className={`transition-colors hover:bg-[#1c1c1c]/50 ${
@@ -342,7 +354,17 @@ export function ManualLeaderboardView({
               </tbody>
             </table>
           </div>
-        )}
+
+          <DataPagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            totalItems={standings.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            itemLabel="scholars"
+          />
+        </>
+      )}
       </div>
 
       {/* 4. Manual Entry Modal */}
