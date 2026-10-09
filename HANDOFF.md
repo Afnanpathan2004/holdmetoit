@@ -14,8 +14,8 @@
 | Gate                                         | Result (2026-10-09, branch `afnan-jr`)                                                                                                                                                                                                            |
 | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                  |
-| `npm run test`                               | ✅ 71 files green (730/730 tests passing)                                                                                                                                                                                                         |
-| `npm run build`                              | ✅ 10 routes compiled                                                                                                                                                                                                                             |
+| `npm run test`                               | ✅ 74 files green (758/758 tests passing)                                                                                                                                                                                                         |
+| `npm run build`                              | ✅ 9 routes compiled                                                                                                                                                                                                                              |
 | Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~86%** — Dedicated public /challenges catalog, challenge-specific participant statistics cockpit (/challenge/[id]/participant/[participantId]), multi-view pagination guards, 2-card hours logging, mod audit log & hours overrides complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                        |
 | Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                    |
@@ -269,4 +269,25 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Added `invalidateTags([cacheTags.challengeScoreboard(challengeId), cacheTags.challengeMetadata(challengeId)])` and `clearTeamColorCache()` to `updateChallengeAction`, `reassignParticipantTeamAction`, `adminEnrollParticipantAction`, `kickoffChallengeAction`, `lockChallengeResultsAction`, and `deleteChallengeAction`, ensuring admin changes flush instantly while preserving 5-minute cached TTL for public and participant read traffic.
    - **Unit Tests:** Added 6 new unit tests in `team-colors.test.ts` (20/20 green) and updated mocks in `challenge-admin.actions.test.ts` (71/71 green).
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 730/730 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 72 — 2026-10-09 (afnan-jr)
+
+- **Agent Role:** Participant UI Agent & Scoring / Engine Agent.
+- **Bug Fix — Challenge View Tab Reload Reset & URL Sync (`BUG-CHAL-01`):**
+   - **Problem:** Reloading `/challenge/[id]` always reset the view back to the initial entry tab (e.g. `?tab=leaderboard` from cockpit banner card) because tab switches in `<ChallengeView>` only modified internal React state without synchronizing with browser address bar.
+   - **Pure Domain Tab Layer (`features/challenges/domain/challenge-tabs.ts`):**
+      - Created pure TypeScript module isolated from UI/Next.js/ORM per **Law L7**.
+      - Exported `CHALLENGE_TABS = ["overview", "leaderboard", "about", "manage", "audit"]`, `PUBLIC_CHALLENGE_TABS`, `ADMIN_CHALLENGE_TABS`, `DEFAULT_CHALLENGE_TAB = "overview"`.
+      - Exported pure validation helpers `isChallengeTab` and `resolveAllowedChallengeTab(requestedTab, isAdmin)` which strictly clamps unauthorized admin tabs (`manage`, `audit`) to `"overview"` for non-admins.
+      - 9 unit tests in `challenge-tabs.test.ts` (100% green).
+   - **Server-Side Page Sanitization (`app/challenge/[id]/page.tsx`):**
+      - Sanitized `searchParams?.tab` using `resolveAllowedChallengeTab(searchParams?.tab, isAdmin)` prior to rendering `<ChallengeView>`.
+      - 7 unit tests in `app/challenge/[id]/page.test.tsx` (100% green).
+   - **Client Presentation Layer (`features/challenges/presentation/challenge-view.tsx`):**
+      - **Ratified History Strategy (Option A):** Uses `window.history.replaceState` on tab click; tabs represent views of the same page entity without polluting browser back-button stack.
+      - **Query Parameter Preservation:** Preserves all existing query parameters (e.g. `?as=participant`, filters) using `URLSearchParams`.
+      - **Canonical Default Cleanup:** Automatically deletes `?tab=overview` to keep canonical URLs clean.
+      - Synchronized `activeTab` on `initialTab`/`isAdmin` prop changes using `useEffect`.
+      - 12 unit tests in `challenge-view.test.tsx` (100% green).
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (74 files, 758/758 green) · `npm run build` ✅ (9 routes compiled successfully).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
