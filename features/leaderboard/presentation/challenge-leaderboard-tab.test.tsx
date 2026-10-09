@@ -235,4 +235,26 @@ describe("ChallengeLeaderboardTab", () => {
     expect(html).toContain("scholars");
     expect(html).toContain("Next");
   });
+
+  it("renders search input, team filter dropdown, and View by Team mode toggle", () => {
+    const html = renderToStaticMarkup(
+      createElement(ChallengeLeaderboardTab, {
+        challenge: mockChallenge,
+      }),
+    );
+
+    // Search input
+    expect(html).toContain("Search scholar by name, @handle...");
+    // View mode toggle buttons
+    expect(html).toContain("Overall Rank");
+    expect(html).toContain("View by Team");
+    // Team filter dropdown
+    expect(html).toContain("All Teams");
+    expect(html).toContain("Serpents");
+    expect(html).toContain("Raven");
+    // Pace filter dropdown
+    expect(html).toContain("All Pace Statuses");
+    expect(html).toContain("On Track / Ahead");
+    expect(html).toContain("Catch-Up / Behind");
+  });
 });
