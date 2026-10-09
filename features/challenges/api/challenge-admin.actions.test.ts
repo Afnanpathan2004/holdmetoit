@@ -46,6 +46,7 @@ vi.mock("@/features/challenges/data/punishment-pfp.repository", () => ({
 
 vi.mock("next/cache", () => ({
    revalidatePath: vi.fn(),
+   revalidateTag: vi.fn(),
 }));
 
 vi.mock("@/features/auth/api/require-admin", () => ({

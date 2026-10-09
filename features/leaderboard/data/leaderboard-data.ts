@@ -640,7 +640,7 @@ async function getCachedChallengeScoreboardPayload(challengeId: string) {
          }),
       ["challenge-scoreboard-payload", challengeId],
       {
-         revalidate: CACHE_REVALIDATE_SECONDS.standard,
+         revalidate: CACHE_REVALIDATE_SECONDS.stable,
          tags: [cacheTags.challengeScoreboard(challengeId)],
       }
    );

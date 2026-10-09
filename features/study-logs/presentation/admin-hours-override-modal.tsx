@@ -27,6 +27,7 @@ import {
    getChallengeDayOptions,
    type ChallengeDayOption,
 } from "@/features/study-logs/domain/challenge-day";
+import { getTeamBadgeStyle } from "@/features/challenges/domain/team-colors";
 
 export interface AdminHoursOverrideParticipant {
    participantId: string;
@@ -217,7 +218,6 @@ export function AdminHoursOverrideModal({
       }
       return 0;
    }, [participant?.totalLoggedSeconds, participant?.dailyLogs]);
-
    if (!isOpen || !participant) return null;
 
    const currentDayExistingSeconds = getExistingSecondsForDate(
@@ -463,12 +463,8 @@ export function AdminHoursOverrideModal({
                </div>
                {participant.teamName && (
                   <span
-                     className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border shrink-0 bg-[#292929] border-[#434343] text-white"
-                     style={{
-                        borderColor: participant.teamColor
-                           ? `${participant.teamColor}55`
-                           : undefined,
-                     }}
+                     className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border shrink-0"
+                     style={getTeamBadgeStyle(participant.teamColor)}
                   >
                      {participant.teamName}
                   </span>

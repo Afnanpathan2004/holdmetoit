@@ -26,6 +26,7 @@ import type {
    ChallengeScoreboardViewModel,
    ScoreboardStandingEntry,
 } from "@/features/leaderboard/data/leaderboard-data";
+import { getTeamColorPalette } from "@/features/challenges/domain/team-colors";
 
 interface ChallengeOverviewTabProps {
    challenge: ChallengeScoreboardViewModel;
@@ -296,7 +297,7 @@ export function ChallengeOverviewTab({
                ) : (
                   <div className="space-y-2.5">
                      {displayedParticipants.map((p) => {
-                        const isTeamA = teamA && p.teamName === teamA.name;
+                        const pPalette = getTeamColorPalette(p.teamColor);
                         return (
                            <div
                               key={p.participantId}
@@ -305,7 +306,10 @@ export function ChallengeOverviewTab({
                               <div className="flex items-center gap-3 min-w-0">
                                  <Link
                                     href={`/challenge/${challenge.id}/participant/${p.participantId}`}
-                                    className="h-8 w-8 rounded-full bg-[#292929] border border-[#434343] overflow-hidden flex items-center justify-center text-xs font-bold text-white shrink-0 hover:border-[#22c55e] transition-colors"
+                                    className="h-8 w-8 rounded-full bg-[#292929] border overflow-hidden flex items-center justify-center text-xs font-bold text-white shrink-0 transition-colors"
+                                    style={{
+                                       borderColor: pPalette.borderMuted,
+                                    }}
                                  >
                                     {p.image ? (
                                        <Image
@@ -326,13 +330,21 @@ export function ChallengeOverviewTab({
                                  <div className="min-w-0">
                                     <Link
                                        href={`/challenge/${challenge.id}/participant/${p.participantId}`}
-                                       className="text-sm font-semibold text-[#ffffff] hover:text-[#22c55e] hover:underline truncate block"
+                                       className="text-sm font-semibold text-[#ffffff] hover:underline truncate block"
                                     >
                                        {p.displayName}
                                     </Link>
-                                    <p className="text-[10px] text-[#868686] truncate">
-                                       {p.teamName}
-                                    </p>
+                                    <span
+                                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 mt-0.5"
+                                       style={{
+                                          backgroundColor: pPalette.badgeBg,
+                                          borderColor: pPalette.badgeBorder,
+                                          color: pPalette.text,
+                                       }}
+                                    >
+                                       {p.teamIcon && <span>{p.teamIcon}</span>}
+                                       <span>{p.teamName}</span>
+                                    </span>
                                  </div>
                               </div>
 

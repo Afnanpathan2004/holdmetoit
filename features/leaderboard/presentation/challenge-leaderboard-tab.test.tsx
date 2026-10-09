@@ -173,9 +173,9 @@ describe("ChallengeLeaderboardTab", () => {
       );
 
       // Team Serpents card has 20% completion (7h/35h), NOT 100% (match share)
-      expect(html).toContain('style="width:20%"');
+      expect(html).toContain("width:20%");
       // Team Raven card has 0% completion, NOT 50%
-      expect(html).toContain('style="width:0%"');
+      expect(html).toContain("width:0%");
    });
 
    it("renders mobile-first card layout and desktop table with today's hours", () => {
@@ -300,5 +300,56 @@ describe("ChallengeLeaderboardTab", () => {
       // Should NOT have lg:grid-cols-2 when there is only 1 team
       expect(html).not.toContain("lg:grid-cols-2");
       expect(html).toContain("Serpents");
+   });
+
+   it("renders dynamic team colors for head-to-head cards and pill badges", () => {
+      const customChallenge: ChallengeScoreboardViewModel = {
+         ...mockChallenge,
+         teams: [
+            {
+               ...mockChallenge.teams[0]!,
+               name: "Honey Bees",
+               color: "#d9822b",
+               iconEmoji: "🐝",
+            },
+            {
+               ...mockChallenge.teams[1]!,
+               name: "Lavender Butterflies",
+               color: "#9986b8",
+               iconEmoji: "🦋",
+            },
+         ],
+         matchHeader: {
+            ...mockChallenge.matchHeader,
+            teamA: {
+               ...mockChallenge.matchHeader.teamA!,
+               name: "Honey Bees",
+               color: "#d9822b",
+               iconEmoji: "🐝",
+            },
+            teamB: {
+               ...mockChallenge.matchHeader.teamB!,
+               name: "Lavender Butterflies",
+               color: "#9986b8",
+               iconEmoji: "🦋",
+            },
+         },
+      };
+
+      const html = renderToStaticMarkup(
+         createElement(ChallengeLeaderboardTab, {
+            challenge: customChallenge,
+         })
+      );
+
+      // Honey Bees color (rgb 217, 130, 43)
+      expect(html).toContain("rgba(217, 130, 43, 0.14)");
+      expect(html).toContain("rgba(217, 130, 43, 0.45)");
+      expect(html).toContain("background-color:#d9822b");
+
+      // Lavender Butterflies color (rgb 153, 134, 184)
+      expect(html).toContain("rgba(153, 134, 184, 0.14)");
+      expect(html).toContain("rgba(153, 134, 184, 0.45)");
+      expect(html).toContain("background-color:#9986b8");
    });
 });
