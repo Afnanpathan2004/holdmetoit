@@ -11,27 +11,28 @@
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-09, branch `krish`)                                                                                                                                                                          |
-| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                              |
-| `npm run test`                               | ✅ 65 files green                                                                                                                                                                                             |
-| `npm run build`                              | ✅ 9 routes compiled                                                                                                                                                                                          |
-| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~82%** — Dedicated public /challenges catalog with role-gated admin controls, global participant preview toggle, multi-view pagination guards, core daily/weekly loop, 2-card hours logging, mod audit log & hours overrides complete |
-| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                   |
-| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                               |
+| Gate                                         | Result (2026-10-09, branch `afnan`)                                                                                                                                                                                                               |
+| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                  |
+| `npm run test`                               | ✅ 70 files green (709/709 tests passing)                                                                                                                                                                                                         |
+| `npm run build`                              | ✅ 10 routes compiled                                                                                                                                                                                                                             |
+| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~86%** — Dedicated public /challenges catalog, challenge-specific participant statistics cockpit (/challenge/[id]/participant/[participantId]), multi-view pagination guards, 2-card hours logging, mod audit log & hours overrides complete |
+| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                        |
+| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                    |
 
 ### 1.1 Live Routes
 
-| Route                    | Purpose                                                                                        | Access                                 |
-| :----------------------- | :--------------------------------------------------------------------------------------------- | :------------------------------------- |
-| `/`                      | Home cockpit: banner variants, progress/deficit card, Log Hours modal, Daily/Weekly task board | Guest (local tasks only) / Participant |
-| `/challenges`            | Dedicated public challenges directory (Events card grid, role-gated Create Challenge button)   | Public spectator / Participant / Admin |
-| `/challenge/[id]`        | Tabs: Overview · Leaderboard · About · Manage (admin only)                                     | Public spectator                       |
-| `/challenge/[id]/manual` | Manual weekly slot-hours leaderboard (host-entered)                                            | Public view, admin entry               |
-| `/admin`                 | Server redirect to `/challenges`                                                               | `ADMIN` / `DEV`                        |
-| `/admin/challenges/new`  | Challenge creator wizard (2 required image uploads)                                            | `ADMIN` / `DEV`                        |
-| `POST /api/feedback`     | Bug/suggestion intake → DB + Discord embed                                                     | Anyone                                 |
-| `POST /api/tasks/sync`   | Offline task queue batch sync                                                                  | Authenticated                          |
+| Route                                         | Purpose                                                                                        | Access                                 |
+| :-------------------------------------------- | :--------------------------------------------------------------------------------------------- | :------------------------------------- |
+| `/`                                           | Home cockpit: banner variants, progress/deficit card, Log Hours modal, Daily/Weekly task board | Guest (local tasks only) / Participant |
+| `/challenges`                                 | Dedicated public challenges directory (Events card grid, role-gated Create Challenge button)   | Public spectator / Participant / Admin |
+| `/challenge/[id]`                             | Tabs: Overview · Leaderboard · About · Manage (admin only)                                     | Public spectator                       |
+| `/challenge/[id]/participant/[participantId]` | Challenge-specific participant statistics, targets, daily history & read-only profile          | Public spectator / Participant / Admin |
+| `/challenge/[id]/manual`                      | Manual weekly slot-hours leaderboard (host-entered)                                            | Public view, admin entry               |
+| `/admin`                                      | Server redirect to `/challenges`                                                               | `ADMIN` / `DEV`                        |
+| `/admin/challenges/new`                       | Challenge creator wizard (2 required image uploads)                                            | `ADMIN` / `DEV`                        |
+| `POST /api/feedback`                          | Bug/suggestion intake → DB + Discord embed                                                     | Anyone                                 |
+| `POST /api/tasks/sync`                        | Offline task queue batch sync                                                                  | Authenticated                          |
 
 > **Removed routes:** `/dashboard` (replaced by `/`) and `/admin/challenges/[id]/roster` (replaced by the Manage tab). Several `revalidatePath("/dashboard")` calls remain and do nothing; they're harmless but should be cleaned up.
 
@@ -205,7 +206,6 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
 
-
 ### Session 63 — 2026-10-09 (krish)
 
 - **Agent Role:** Participant UI & Scoring Engine Agent.
@@ -307,4 +307,36 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Paginated participant standings to `10` scholars per page.
    - Reconciled and merged PR #45 (`dev` branch) into `krish`.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (all tests green) · `npx next build` ✅.
+
+### Session 68 — 2026-10-09 (afnan)
+
+- **Agent Role:** Participant UI & Scoring / Engine Agent.
+- **Challenge-Specific Participant Statistics & Read-Only Profiles (`FEAT-LEAD-06`):**
+   - **Dedicated Route (`/challenge/[id]/participant/[participantId]`):**
+      - Created dynamic server-rendered page (`app/challenge/[id]/participant/[participantId]/page.tsx`) and skeleton loader (`loading.tsx`).
+      - Generated dynamic page metadata with participant display name and challenge title.
+      - Enforced strict server-side cross-challenge isolation: checks `participant.challengeId === challengeId`, returning an empty state if mismatched or missing.
+   - **Pure Domain Calculations (`features/participant-stats/domain/`):**
+      - `calculateParticipantDailyTimeline`: Computes full chronological timeline (Day 1..Day N), preserving zero-study rest days (`00:00:00`), second-level duration precision, cumulative durations, and override flags.
+      - `calculateParticipantSummaryStats`: Safe division handling for goal completion %, total logged clock, today's logged clock, rank, remaining duration, and target completion excess.
+      - `calculateParticipantTeamStats`: House contribution percentage and house cumulative hours for team-based challenges.
+      - `calculateParticipantAccountability`: Deficit, dynamic daily required pace, and pardon/forfeit statuses.
+      - 11 unit tests in `participant-stats.test.ts` (100% green).
+   - **Repository Layer (`features/participant-stats/data/`):**
+      - `getChallengeParticipantStats`: Scoped data retrieval joining user profile, team identity, daily study logs, and authoritative scoreboard standing to ensure rank consistency.
+      - 5 integration tests in `participant-stats.repository.test.ts` (100% green).
+   - **Presentation Layer (`features/participant-stats/presentation/`):**
+      - `ParticipantProfileHeader`: Avatar with initials fallback, display name, `@username`, house badge, challenge rank pill, pace status, and breadcrumbs (`Challenges / [Challenge] / Leaderboard / [Participant]`).
+      - `ParticipantSummaryCards`: 6 responsive metric cards matching Obsidian Dark palette.
+      - `ParticipantProgressChart`: Lightweight, responsive SVG/HTML bar chart of daily study duration with hover tooltips and accessible screen-reader table.
+      - `ParticipantDailyHistory`: Full chronological table (desktop) and card list (mobile) with override indicators.
+      - `ParticipantTeamStats`: Team standing, team total, and member contribution meter (omitted for `SOLOS`).
+      - `ParticipantAccountability`: Target deficit, required catch-up pace per day, and pardon/forfeit badges.
+      - 7 component tests in `participant-stats-view.test.tsx` (100% green).
+   - **Interactive Navigation Entry Points:**
+      - Made participant names and avatars clickable across `challenge-leaderboard-tab.tsx` (top 3 podium cards, mobile cards, desktop table rows), `challenge-overview-tab.tsx` (participant list), and `challenge-manage-tab.tsx` (admin roster).
+   - **Read-Only Security Guarantee:**
+      - Ordinary viewers and spectators have strictly read-only views with zero form inputs or mutation buttons.
+      - Admins have an intentional "Admin Controls" link to the challenge manage tab.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green) · `npm run build` ✅ (10 routes compiled successfully).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).

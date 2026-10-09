@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
    AlertTriangle,
@@ -733,7 +734,10 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                  {/* User info */}
                                  <div className="flex items-center gap-3 min-w-0">
-                                    <div className="h-10 w-10 rounded-full bg-[#292929] border border-[#383838] overflow-hidden shrink-0 flex items-center justify-center">
+                                    <Link
+                                       href={`/challenge/${challenge.id}/participant/${participant.participantId}`}
+                                       className="h-10 w-10 rounded-full bg-[#292929] border border-[#383838] overflow-hidden shrink-0 flex items-center justify-center hover:border-[#22c55e] transition-colors"
+                                    >
                                        {participant.image ? (
                                           <Image
                                              src={participant.image}
@@ -746,11 +750,14 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                        ) : (
                                           <UserIcon className="h-5 w-5 text-[#868686]" />
                                        )}
-                                    </div>
+                                    </Link>
                                     <div className="min-w-0">
-                                       <p className="text-xs font-bold text-[#ffffff] truncate">
+                                       <Link
+                                          href={`/challenge/${challenge.id}/participant/${participant.participantId}`}
+                                          className="text-xs font-bold text-[#ffffff] hover:text-[#22c55e] hover:underline truncate block"
+                                       >
                                           {participant.displayName}
-                                       </p>
+                                       </Link>
                                        <p className="text-[11px] text-[#868686] truncate">
                                           @{participant.username || "scholar"} •{" "}
                                           <span className="text-[#d1d1d1] font-mono">
