@@ -90,6 +90,7 @@ describe("getChallengeParticipantStats repository", () => {
             displayName: "Alice",
             username: "alice",
             image: "https://example.com/alice.png",
+            teamId: "team_1",
             totalLoggedSeconds: 32400, // 9h
             todayLoggedSeconds: 18000,
             paceStatus: "catch-up",
@@ -142,6 +143,8 @@ describe("getChallengeParticipantStats repository", () => {
       expect(result?.summary.completionPercentage).toBe(45);
       expect(result?.summary.remainingSeconds).toBe(39600);
       expect(result?.teamStats?.teamName).toBe("Honey Bees");
+      expect(result?.teamStats?.teamRank).toBe(1);
+      expect(result?.teamStats?.participantTeamRank).toBe(1);
       expect(result?.teamStats?.participantContributionPercentage).toBe(100);
       expect(result?.accountability.deficitSeconds).toBe(39600);
       expect(result?.viewer.isOwner).toBe(true);

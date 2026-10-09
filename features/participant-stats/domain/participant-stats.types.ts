@@ -69,6 +69,7 @@ export interface ParticipantTeamStats {
    teamColor: string | null;
    teamIcon: string | null;
    teamRank: number;
+   participantTeamRank: number;
    teamTotalLoggedSeconds: number;
    teamTotalLoggedClock: string;
    participantContributionPercentage: number;

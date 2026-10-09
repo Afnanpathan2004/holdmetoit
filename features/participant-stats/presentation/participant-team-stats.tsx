@@ -32,6 +32,9 @@ export function ParticipantTeamStats({ teamStats }: ParticipantTeamStatsProps) {
             >
                <span>{teamStats.teamIcon || "🛡️"}</span>
                <span>{teamStats.teamName}</span>
+               <span className="text-[11px] opacity-75 font-normal">
+                  (House #{teamStats.teamRank})
+               </span>
             </span>
          </div>
 
@@ -43,10 +46,11 @@ export function ParticipantTeamStats({ teamStats }: ParticipantTeamStatsProps) {
                   House Standing
                </span>
                <p className="text-xl font-extrabold text-[#f4f3f6]">
-                  Rank #{teamStats.teamRank}
+                  Rank #{teamStats.participantTeamRank}
                </p>
                <p className="text-[11px] text-[#868686]">
-                  {teamStats.companionCount} house members
+                  of {teamStats.companionCount} house{" "}
+                  {teamStats.companionCount === 1 ? "member" : "members"}
                </p>
             </div>
 

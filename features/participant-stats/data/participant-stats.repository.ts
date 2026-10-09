@@ -123,15 +123,30 @@ export async function getChallengeParticipantStats(
          (t) => t.id === participant.teamId
       );
 
+      // Rank of this participant among their team/house members
+      const teamStandings = scoreboard.standings.filter(
+         (s) => s.teamId === participant.teamId
+      );
+      const participantTeamRankIndex = teamStandings.findIndex(
+         (s) => s.participantId === participant.id
+      );
+      const participantTeamRank =
+         participantTeamRankIndex >= 0 ? participantTeamRankIndex + 1 : 1;
+      const actualCompanionCount =
+         teamStandings.length > 0
+            ? teamStandings.length
+            : (scoreboardTeam?.companionCount ?? 1);
+
       teamStats = calculateParticipantTeamStats({
          teamId: participant.team.id,
          teamName: participant.team.name,
          teamColor: participant.team.color,
          teamIcon: participant.team.iconEmoji,
          teamRank: teamRankIndex >= 0 ? teamRankIndex + 1 : 1,
+         participantTeamRank,
          teamTotalLoggedSeconds: scoreboardTeam?.totalLoggedSeconds ?? 0,
          participantTotalLoggedSeconds: totalLoggedSeconds,
-         companionCount: scoreboardTeam?.companionCount ?? 1,
+         companionCount: actualCompanionCount,
       });
    }
 
