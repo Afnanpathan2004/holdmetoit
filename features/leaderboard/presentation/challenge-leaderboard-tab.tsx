@@ -25,6 +25,10 @@ import {
    type AdminHoursOverrideParticipant,
 } from "@/features/study-logs/presentation/admin-hours-override-modal";
 import { DataPagination } from "@/components/ui/data-pagination";
+import {
+   getTeamColorPalette,
+   getTeamBadgeStyle,
+} from "@/features/challenges/domain/team-colors";
 
 interface ChallengeLeaderboardTabProps {
    challenge: ChallengeScoreboardViewModel;
@@ -69,6 +73,9 @@ export function ChallengeLeaderboardTab({
 
    const teamA = matchHeader.teamA ?? teams[0];
    const teamB = matchHeader.teamB ?? teams[1];
+
+   const paletteA = getTeamColorPalette(teamA?.color, 0);
+   const paletteB = getTeamColorPalette(teamB?.color, 1);
 
    const filteredStandings = standings.filter((entry) => {
       // 1. Search Query
@@ -148,6 +155,7 @@ export function ChallengeLeaderboardTab({
    const top1 = standings[0];
    const top2 = standings[1];
    const top3 = standings[2];
+   const top1Palette = getTeamColorPalette(top1?.teamColor, 0);
 
    return (
       <div className="space-y-8">
@@ -155,8 +163,14 @@ export function ChallengeLeaderboardTab({
          {teamA && teamB ? (
             <div className="rounded-3xl border border-[#262626] bg-[#141414] p-5 sm:p-7 shadow-lg space-y-6">
                <div className="grid grid-cols-1 md:grid-cols-11 gap-4 items-center">
-                  {/* Team A / Serpents Card */}
-                  <div className="md:col-span-5 rounded-2xl border border-[#22c55e]/50 bg-[#144520]/20 p-4 sm:p-5 space-y-3">
+                  {/* Team A Card */}
+                  <div
+                     className="md:col-span-5 rounded-2xl border p-4 sm:p-5 space-y-3 transition-colors"
+                     style={{
+                        backgroundColor: paletteA.surface,
+                        borderColor: paletteA.border,
+                     }}
+                  >
                      <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                            <h3 className="text-lg sm:text-xl font-bold text-[#ffffff] flex items-center gap-2 truncate">
@@ -193,8 +207,11 @@ export function ChallengeLeaderboardTab({
                      {/* Progress bar */}
                      <div className="h-2 w-full overflow-hidden rounded-full bg-[#1c1c1c]">
                         <div
-                           className="h-full rounded-full bg-[#22c55e] transition-all duration-500"
-                           style={{ width: `${teamA.completionPercentage}%` }}
+                           className="h-full rounded-full transition-all duration-500"
+                           style={{
+                              width: `${teamA.completionPercentage}%`,
+                              backgroundColor: paletteA.solid,
+                           }}
                         />
                      </div>
                   </div>
@@ -206,8 +223,14 @@ export function ChallengeLeaderboardTab({
                      </div>
                   </div>
 
-                  {/* Team B / Raven Card */}
-                  <div className="md:col-span-5 rounded-2xl border border-[#3b82f6]/50 bg-[#102d40]/20 p-4 sm:p-5 space-y-3">
+                  {/* Team B Card */}
+                  <div
+                     className="md:col-span-5 rounded-2xl border p-4 sm:p-5 space-y-3 transition-colors"
+                     style={{
+                        backgroundColor: paletteB.surface,
+                        borderColor: paletteB.border,
+                     }}
+                  >
                      <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                            <h3 className="text-lg sm:text-xl font-bold text-[#ffffff] flex items-center gap-2 truncate">
@@ -244,8 +267,11 @@ export function ChallengeLeaderboardTab({
                      {/* Progress bar */}
                      <div className="h-2 w-full overflow-hidden rounded-full bg-[#1c1c1c]">
                         <div
-                           className="h-full rounded-full bg-[#3b82f6] transition-all duration-500"
-                           style={{ width: `${teamB.completionPercentage}%` }}
+                           className="h-full rounded-full transition-all duration-500"
+                           style={{
+                              width: `${teamB.completionPercentage}%`,
+                              backgroundColor: paletteB.solid,
+                           }}
                         />
                      </div>
                   </div>
@@ -254,7 +280,10 @@ export function ChallengeLeaderboardTab({
                {/* Tug-of-War Split Share Bar */}
                <div className="pt-2 space-y-2 border-t border-[#262626]">
                   <div className="flex items-center justify-between text-[11px] sm:text-xs font-semibold text-[#ffffff] gap-1">
-                     <span className="text-[#22c55e] whitespace-nowrap shrink-0">
+                     <span
+                        className="whitespace-nowrap shrink-0"
+                        style={{ color: paletteA.text }}
+                     >
                         Share: {ratioA}%
                      </span>
                      <span className="text-[11px] sm:text-xs text-[#d1d1d1] font-normal text-center whitespace-nowrap px-1">
@@ -265,19 +294,28 @@ export function ChallengeLeaderboardTab({
                            Total Challenge Log: {totalHoursCombined} hours
                         </span>
                      </span>
-                     <span className="text-[#3b82f6] whitespace-nowrap shrink-0">
+                     <span
+                        className="whitespace-nowrap shrink-0"
+                        style={{ color: paletteB.text }}
+                     >
                         Share: {ratioB}%
                      </span>
                   </div>
 
                   <div className="h-3 w-full overflow-hidden rounded-full bg-[#1c1c1c] flex">
                      <div
-                        className="h-full bg-[#22c55e] transition-all duration-500"
-                        style={{ width: `${ratioA}%` }}
+                        className="h-full transition-all duration-500"
+                        style={{
+                           width: `${ratioA}%`,
+                           backgroundColor: paletteA.solid,
+                        }}
                      />
                      <div
-                        className="h-full bg-[#3b82f6] transition-all duration-500"
-                        style={{ width: `${ratioB}%` }}
+                        className="h-full transition-all duration-500"
+                        style={{
+                           width: `${ratioB}%`,
+                           backgroundColor: paletteB.solid,
+                        }}
                      />
                   </div>
                </div>
@@ -296,7 +334,7 @@ export function ChallengeLeaderboardTab({
                   {top2 ? (
                      <Link
                         href={`/challenge/${challenge.id}/participant/${top2.participantId}`}
-                        className="text-sm font-bold text-[#ffffff] hover:text-[#22c55e] hover:underline truncate block"
+                        className="text-sm font-bold text-[#ffffff] hover:underline truncate block"
                      >
                         {top2.displayName}
                      </Link>
@@ -312,18 +350,34 @@ export function ChallengeLeaderboardTab({
             </div>
 
             {/* Rank 1 (MVP) */}
-            <div className="rounded-2xl border border-[#22c55e]/50 bg-[#144520]/25 p-4 flex items-center gap-3.5 shadow-md">
-               <div className="h-10 w-10 rounded-xl bg-[#22c55e] text-[#0d0d0d] flex items-center justify-center font-bold text-sm">
+            <div
+               className="rounded-2xl border p-4 flex items-center gap-3.5 shadow-md"
+               style={{
+                  backgroundColor: top1
+                     ? top1Palette.surface
+                     : "rgba(255, 255, 255, 0.05)",
+                  borderColor: top1 ? top1Palette.border : "#383838",
+               }}
+            >
+               <div
+                  className="h-10 w-10 rounded-xl flex items-center justify-center font-bold text-sm text-[#0d0d0d]"
+                  style={{
+                     backgroundColor: top1 ? top1Palette.solid : "#f4f3f6",
+                  }}
+               >
                   <Crown className="h-5 w-5 fill-current" />
                </div>
                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-[#85ff93] font-semibold flex items-center gap-1">
+                  <p
+                     className="text-xs font-semibold flex items-center gap-1"
+                     style={{ color: top1 ? top1Palette.text : "#d1d1d1" }}
+                  >
                      Top Contributor · Rank 1
                   </p>
                   {top1 ? (
                      <Link
                         href={`/challenge/${challenge.id}/participant/${top1.participantId}`}
-                        className="text-sm font-bold text-[#ffffff] hover:text-[#22c55e] hover:underline truncate block"
+                        className="text-sm font-bold text-[#ffffff] hover:underline truncate block"
                      >
                         {top1.displayName}
                      </Link>
@@ -332,7 +386,10 @@ export function ChallengeLeaderboardTab({
                         Awaiting...
                      </p>
                   )}
-                  <p className="text-xs font-sans font-sans-tabular text-[#85ff93] mt-0.5">
+                  <p
+                     className="text-xs font-sans font-sans-tabular mt-0.5"
+                     style={{ color: top1 ? top1Palette.text : "#d1d1d1" }}
+                  >
                      {top1 ? top1.totalLoggedClock : "00:00:00"}
                   </p>
                </div>
@@ -778,8 +835,10 @@ export function ChallengeLeaderboardTab({
                      {/* Participant Cards */}
                      <div className="space-y-2.5">
                         {paginatedStandings.map((entry) => {
-                           const isTeamA =
-                              teamA && entry.teamName === teamA.name;
+                           const entryPalette = getTeamColorPalette(
+                              entry.teamColor,
+                              entry.rank
+                           );
                            return (
                               <div
                                  key={entry.participantId}
@@ -825,13 +884,19 @@ export function ChallengeLeaderboardTab({
                                           {entry.displayName}
                                        </Link>
                                        <span
-                                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${
-                                             isTeamA
-                                                ? "bg-[#144520] border-[#22c55e]/40 text-[#85ff93]"
-                                                : "bg-[#102d40] border-[#3b82f6]/40 text-[#85d6ff]"
-                                          }`}
+                                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0"
+                                          style={{
+                                             backgroundColor:
+                                                entryPalette.badgeBg,
+                                             borderColor:
+                                                entryPalette.badgeBorder,
+                                             color: entryPalette.text,
+                                          }}
                                        >
-                                          {entry.teamName}
+                                          {entry.teamIcon && (
+                                             <span>{entry.teamIcon}</span>
+                                          )}
+                                          <span>{entry.teamName}</span>
                                        </span>
                                     </div>
                                     <p className="text-[11px] text-[#868686] truncate">
@@ -890,16 +955,18 @@ export function ChallengeLeaderboardTab({
                         </thead>
                         <tbody className="divide-y divide-[#222222]">
                            {paginatedStandings.map((entry) => {
-                              const isTeamA =
-                                 teamA && entry.teamName === teamA.name;
-                              const rowTintClass = isTeamA
-                                 ? "bg-[#144520]/15 hover:bg-[#144520]/25"
-                                 : "bg-[#102d40]/15 hover:bg-[#102d40]/25";
+                              const entryPalette = getTeamColorPalette(
+                                 entry.teamColor,
+                                 entry.rank
+                              );
 
                               return (
                                  <tr
                                     key={entry.participantId}
-                                    className={`transition-colors group ${rowTintClass}`}
+                                    className="transition-colors group hover:bg-white/[0.04]"
+                                    style={{
+                                       backgroundColor: entryPalette.rowTint,
+                                    }}
                                  >
                                     {/* Rank */}
                                     <td className="px-3 py-3 text-center">
@@ -951,13 +1018,19 @@ export function ChallengeLeaderboardTab({
                                     {/* Team */}
                                     <td className="px-4 py-3">
                                        <span
-                                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium border ${
-                                             isTeamA
-                                                ? "bg-[#144520] border-[#22c55e]/40 text-[#85ff93]"
-                                                : "bg-[#102d40] border-[#3b82f6]/40 text-[#85d6ff]"
-                                          }`}
+                                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium border"
+                                          style={{
+                                             backgroundColor:
+                                                entryPalette.badgeBg,
+                                             borderColor:
+                                                entryPalette.badgeBorder,
+                                             color: entryPalette.text,
+                                          }}
                                        >
-                                          {entry.teamName}
+                                          {entry.teamIcon && (
+                                             <span>{entry.teamIcon}</span>
+                                          )}
+                                          <span>{entry.teamName}</span>
                                        </span>
                                     </td>
 

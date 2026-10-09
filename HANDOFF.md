@@ -4,19 +4,19 @@
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-09 (Session 71 — View by Team side-by-side layout)  
+> **Last Updated:** 2026-10-09 (Session 73 — merge afnan-jr into dev: tab URL sync, team colors & side-by-side layout)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-09, branch `krish`)                                                                                                                                                                                                                                   |
+| Gate                                         | Result (2026-10-09, branch `dev`)                                                                                                                                                                                                                                     |
 | :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                                      |
-| `npm run test`                               | ✅ 71 files green (715/715 tests passing)                                                                                                                                                                                                                             |
-| `npm run build`                              | ✅ 10 routes compiled                                                                                                                                                                                                                                                 |
-| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~88%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
+| `npm run test`                               | ✅ 74 files green (758/758 tests passing)                                                                                                                                                                                                                             |
+| `npm run build`                              | ✅ 10 routes compiled (9 app routes + `_not-found`)                                                                                                                                                                                                                   |
+| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~89%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                                            |
 | Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                                        |
 
@@ -148,7 +148,7 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ### Sessions 1–66 (Summarized)
 
-- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours block, past-day todo protection, drag-and-drop due date fixes, cross-day task rescheduling, study log audit integration, public challenges catalog (`/challenges`), and role-gated admin controls.
+- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours prevention, past challenge day task-adding guards, cross-day task moving/rescheduling with validation, participant study log audit trail integration (`STUDY_LOG_ADDED`), and dedicated public challenges catalog (`/challenges`) with role-gated admin controls.
 
 ### Session 67 — 2026-10-09 (krish)
 
@@ -183,7 +183,6 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 - **Agent Role:** Participant UI & Scoring / Engine Agent.
 - **Multi-View Search, Filtering & "View by Team" Mode Across Data Lists:**
-   - **Upstream Sync:** Fast-forward merged latest `dev`/`main` (`1ced769`) into local `krish` branch.
    - **Leaderboard Tab (`challenge-leaderboard-tab.tsx`):**
       - Instant text search across display name, `@username`, and team/house name with live match counts.
       - House/Team filter dropdown (`All Teams`, individual teams with icons, name, and member counts).
@@ -206,7 +205,24 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Added unit and interaction tests across `challenge-leaderboard-tab.test.tsx`, `challenge-overview-tab.test.tsx`, `challenges-list-view.test.tsx`, and created `manual-leaderboard-view.test.tsx`.
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 713/713 green) · `npm run build` ✅ (10 routes compiled successfully).
 
-### Session 71 — 2026-10-09 (krish)
+### Session 71 — 2026-10-09 (afnan-jr)
+
+- **Agent Role:** Scoring & Engine Agent & Data / Identity Agent.
+- **Dynamic Single-Hex Team Colors, Hardening & Dual-Layer 5-Minute Caching Engine:**
+   - **Pure Domain Color Engine (`features/challenges/domain/team-colors.ts`):**
+      - Pure TypeScript functional engine adhering to **Law L7** (zero React/Next.js/ORM dependencies).
+      - Converts hex into RGB and HSL space; `getReadableTextColor(hex)` locks Hue and Saturation and lifts Lightness ($L \ge 76\%$) for WCAG AA contrast ($>6.5:1$) on Obsidian dark surfaces (`#0d0d0d` / `#141414`).
+      - Generates complete 10-token dark palette (`palette.solid`, `subtleBg`, `cardBg`, `border`, `subtleBorder`, `text`, `glow`, `hoverBorder`, `headerBg`, `avatarBg`).
+      - Pitch-black `#000000` luminance guard and CSS 4-character `#rgba` shorthand support.
+      - In-memory 5-minute TTL palette cache (`clearTeamColorCache()`).
+   - **ViewModel & Presentation Layer Migration:**
+      - Team A & Team B cards, Tug-of-War Split Share Bar, Rank 1 podium card, mobile cards, desktop table rows, and overview roster dynamically adopt admin-configured team hex values.
+   - **Server-Side 5-Minute Data Caching (`leaderboard-data.ts`) & Admin Instant Invalidation:**
+      - Cached scoreboard uses `revalidate: 300` (5 minutes) with instant admin tag invalidation (`invalidateTags`).
+   - **Unit Tests:** 20 unit tests in `team-colors.test.ts` (100% green).
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 730/730 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 72 — 2026-10-09 (krish)
 
 - **Agent Role:** Participant UI & Scoring / Engine Agent.
 - **Side-by-Side "View by Team" Responsive Grid Layout:**
@@ -216,10 +232,30 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Preserved full responsiveness: mobile viewports (< 1024px, 360px+) gracefully render in a single column without horizontal overflow or clipped text.
       - Applied `items-start` so competing houses with different roster sizes keep their natural card height without empty stretched bottom areas.
       - Added dynamic column adjustment: when filtered to a single house via dropdown, the card cleanly takes full width (`grid-cols-1`).
-      - Fine-tuned intra-card scholar rows and summary headers: flex-wrap badges, compact progress bars (`w-20 sm:w-28`), and responsive width caps to prevent overflow even with long scholar names and pace badges.
-      - Added `initialViewMode` prop support (`"individual"` | `"team"`) to facilitate deep linking and robust SSR unit testing.
+      - Fine-tuned intra-card scholar rows and summary headers: flex-wrap badges, compact progress bars (`w-20 sm:w-28`), and responsive width caps.
+      - Added `initialViewMode` prop support (`"individual"` | `"team"`) for deep linking and robust SSR unit testing.
    - **Test Suite Updates (`challenge-leaderboard-tab.test.tsx`):**
-      - Added unit tests verifying side-by-side grid rendering (`lg:grid-cols-2`) when multiple teams exist in team view mode.
-      - Added unit test verifying single column fallback when only one team exists.
+      - Added unit tests verifying side-by-side grid rendering (`lg:grid-cols-2`) when multiple teams exist in team view mode, and single column fallback when only one team exists.
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 715/715 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 73 — 2026-10-09 (afnan-jr)
+
+- **Agent Role:** Participant UI Agent & Scoring / Engine Agent.
+- **Bug Fix — Challenge View Tab Reload Reset & URL Sync (`BUG-CHAL-01`):**
+   - **Problem:** Reloading `/challenge/[id]` always reset the view back to the initial entry tab (e.g. `?tab=leaderboard` from cockpit banner card) because tab switches in `<ChallengeView>` only modified internal React state without synchronizing with browser address bar.
+   - **Pure Domain Tab Layer (`features/challenges/domain/challenge-tabs.ts`):**
+      - Pure TypeScript module isolated from UI/Next.js/ORM per **Law L7**.
+      - Exported `CHALLENGE_TABS = ["overview", "leaderboard", "about", "manage", "audit"]`, `PUBLIC_CHALLENGE_TABS`, `ADMIN_CHALLENGE_TABS`, `DEFAULT_CHALLENGE_TAB = "overview"`.
+      - Exported pure validation helpers `isChallengeTab` and `resolveAllowedChallengeTab(requestedTab, isAdmin)` which strictly clamps unauthorized admin tabs (`manage`, `audit`) to `"overview"` for non-admins.
+      - 9 unit tests in `challenge-tabs.test.ts` (100% green).
+   - **Server-Side Page Sanitization (`app/challenge/[id]/page.tsx`):**
+      - Sanitized `searchParams?.tab` using `resolveAllowedChallengeTab(searchParams?.tab, isAdmin)` prior to rendering `<ChallengeView>`.
+      - 7 unit tests in `app/challenge/[id]/page.test.tsx` (100% green).
+   - **Client Presentation Layer (`features/challenges/presentation/challenge-view.tsx`):**
+      - **Ratified History Strategy (Option A):** Uses `window.history.replaceState` on tab click; tabs represent views of the same page entity without polluting browser back-button stack.
+      - **Query Parameter Preservation:** Preserves all existing query parameters (e.g. `?as=participant`, filters) using `URLSearchParams`.
+      - **Canonical Default Cleanup:** Automatically deletes `?tab=overview` to keep canonical URLs clean.
+      - Synchronized `activeTab` on `initialTab`/`isAdmin` prop changes using `useEffect`.
+      - 12 unit tests in `challenge-view.test.tsx` (100% green).
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (74 files, 758/758 green) · `npm run build` ✅ (10 routes compiled successfully).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).

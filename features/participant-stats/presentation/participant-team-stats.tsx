@@ -1,34 +1,28 @@
 import { Users, Shield, Award } from "lucide-react";
 import type { ParticipantTeamStats as TeamStatsType } from "../domain/participant-stats.types";
+import {
+   getTeamColorPalette,
+   getTeamBadgeStyle,
+} from "@/features/challenges/domain/team-colors";
 
 interface ParticipantTeamStatsProps {
    teamStats: TeamStatsType;
 }
 
 export function ParticipantTeamStats({ teamStats }: ParticipantTeamStatsProps) {
+   const palette = getTeamColorPalette(teamStats.teamColor);
    return (
       <div className="rounded-3xl border border-[#262626] bg-[#141414] p-5 sm:p-7 shadow-xl space-y-4">
          <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
             <div className="flex items-center gap-2">
-               <Shield
-                  className="h-5 w-5"
-                  style={{ color: teamStats.teamColor || "#3b82f6" }}
-               />
+               <Shield className="h-5 w-5" style={{ color: palette.solid }} />
                <h2 className="text-base sm:text-lg font-bold text-[#f4f3f6]">
                   Team Standing & Contribution
                </h2>
             </div>
             <span
                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border"
-               style={{
-                  borderColor: teamStats.teamColor
-                     ? `${teamStats.teamColor}50`
-                     : "#383838",
-                  backgroundColor: teamStats.teamColor
-                     ? `${teamStats.teamColor}15`
-                     : "#1c1c1c",
-                  color: teamStats.teamColor || "#f4f3f6",
-               }}
+               style={getTeamBadgeStyle(teamStats.teamColor)}
             >
                <span>{teamStats.teamIcon || "🛡️"}</span>
                <span>{teamStats.teamName}</span>
@@ -70,16 +64,17 @@ export function ParticipantTeamStats({ teamStats }: ParticipantTeamStatsProps) {
             <div className="rounded-2xl border border-[#262626] bg-[#1a1a1a] p-4 space-y-2">
                <div className="flex items-center justify-between text-xs">
                   <span className="text-[#868686]">Member Contribution</span>
-                  <span className="font-bold text-[#22c55e]">
+                  <span className="font-bold" style={{ color: palette.text }}>
                      {teamStats.participantContributionPercentage}%
                   </span>
                </div>
 
                <div className="h-2 w-full overflow-hidden rounded-full bg-[#262626]">
                   <div
-                     className="h-full rounded-full bg-[#22c55e] transition-all duration-500"
+                     className="h-full rounded-full transition-all duration-500"
                      style={{
                         width: `${teamStats.participantContributionPercentage}%`,
+                        backgroundColor: palette.solid,
                      }}
                   />
                </div>
