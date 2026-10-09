@@ -204,4 +204,25 @@ describe("ChallengesListView", () => {
       expect(html).toContain("challenges");
       expect(html).toContain("Next");
    });
+
+   it("renders search input, status tabs, and format filter dropdown", () => {
+      const html = renderToStaticMarkup(
+         <ChallengesListView
+            challenges={mockChallenges}
+            canManageChallenges={false}
+         />
+      );
+
+      // Search input
+      expect(html).toContain("Search challenges by title, format, host, team...");
+      // Status tabs
+      expect(html).toContain("All (2)");
+      expect(html).toContain("Active (1)");
+      expect(html).toContain("Upcoming (1)");
+      expect(html).toContain("Completed (0)");
+      // Format dropdown
+      expect(html).toContain("All Formats");
+      expect(html).toContain("Team vs Team");
+      expect(html).toContain("Solo Battles");
+   });
 });

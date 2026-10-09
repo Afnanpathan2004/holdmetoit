@@ -4,21 +4,21 @@
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-09 (Session 66 — multi-view pagination & overflow guard overhaul)  
+> **Last Updated:** 2026-10-09 (Session 71 — View by Team side-by-side layout)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-09, branch `afnan`)                                                                                                                                                                                                               |
-| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                  |
-| `npm run test`                               | ✅ 70 files green (709/709 tests passing)                                                                                                                                                                                                         |
-| `npm run build`                              | ✅ 10 routes compiled                                                                                                                                                                                                                             |
-| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~86%** — Dedicated public /challenges catalog, challenge-specific participant statistics cockpit (/challenge/[id]/participant/[participantId]), multi-view pagination guards, 2-card hours logging, mod audit log & hours overrides complete |
-| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                        |
-| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                    |
+| Gate                                         | Result (2026-10-09, branch `krish`)                                                                                                                                                                                                                                   |
+| :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                                      |
+| `npm run test`                               | ✅ 71 files green (715/715 tests passing)                                                                                                                                                                                                                             |
+| `npm run build`                              | ✅ 10 routes compiled                                                                                                                                                                                                                                                 |
+| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~88%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
+| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                                            |
+| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                                        |
 
 ### 1.1 Live Routes
 
@@ -146,138 +146,9 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ## 7. Session Changelog (Last 3–5 Sessions)
 
-### Sessions 1–60 (Summarized)
+### Sessions 1–66 (Summarized)
 
-- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, and law labels UI cleanup.
-
-### Session 61 — 2026-10-08 (krish)
-
-- **Agent Role:** Admin Operations & Scoring Engine Agent.
-- **Moderator Future Hours Prevention:**
-   - Implemented strict guards across domain, API, and UI layers so even moderators/admins cannot add or edit future hours for participants:
-      - **Domain (`challenge-day.ts`):** `getChallengeDayOptions` correctly flags future days as `isFuture: true` even if a challenge is upcoming. Added `validateAdminOverrideChallengeDay` which allows earlier past days (unlike participants who are locked to today/yesterday) while strictly rejecting future challenge days or future dates with `FUTURE_DATE_NOT_ALLOWED`.
-      - **Server Action (`admin-override.actions.ts`):** Added a future date check on `parsed.data.logDate > todayDateKey` returning `{ ok: false, code: "FUTURE_DATE_NOT_ALLOWED", message: "Cannot log or edit study time for future dates." }`.
-      - **Repository (`admin-override.repository.ts`):** Added safety invariant throwing an error if attempting to execute an override on a future date.
-      - **Admin Override Modal (`admin-hours-override-modal.tsx`):** Clamped initial day selection, disabled future day buttons, and guarded submit.
-      - **Challenge Manage Tab (`challenge-manage-tab.tsx`):** Disabled future day buttons in 7-day breakdown strip.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 639/639 green) · `npm run build` ✅.
-
-### Session 62 — 2026-10-08 (krish)
-
-- **Agent Role:** Participant UI & Scoring Engine Agent.
-- **Block Adding Todo Tasks to Past Challenge Days:**
-   - Implemented comprehensive guards across domain and presentation layers to block adding new todo tasks to past days of the challenge while preserving status changes and edits for existing tasks:
-      - **Domain (`challenge-day.ts`):**
-         - Added `isPast: boolean` property to `ChallengeDayOption`.
-         - Computed `isPast` across both `getChallengeDayOptions` (`rawCurrentDayNumber > 0 && d < rawCurrentDayNumber`) and `getCalendarWeekDayOptions` (`dayUtc < todayUtc`).
-         - Added `isChallengeDayInPast` and `validateAddTaskChallengeDay` domain validation helpers with unit tests in `challenge-day.test.ts`.
-      - **Presentation (`cockpit-tasks-section.tsx`):**
-         - Added `isActiveDayPast` state detection based on `activeDayOption.isPast` and `selectedDateKey < effectiveTodayDate`.
-         - **Daily Todos Header:** Displays a `Locked` badge alongside the day badge when viewing a past day.
-         - **Empty State:** When viewing a past day with no tasks, displays a locked past-day notice ("This challenge day has passed. New tasks cannot be added to past days.") and hides the "+ Add todo" button.
-         - **Bottom Action Button:** Replaced "+ Add more todos" with a disabled, styled locked button ("Past day locked (new tasks blocked)").
-         - **Add Todo Modal:**
-            - Clamped `openAddDailyModal` so opening the modal while viewing a past day defaults to today or the earliest available non-past day.
-            - In the 7-day selector grid, disabled past days with `disabled={true}`, opacity-40, `cursor-not-allowed`, and a lock icon.
-            - Guarded `handleAddTodoSubmit` against submitting tasks for past challenge days.
-         - **Drag & Drop:** Blocked dropping tasks or categories from weekly into daily when viewing a past day.
-         - **Existing Tasks on Past Days:**
-            - Checkbox toggles and status badges ("Completed", "In Progress", "Crossed Out") remain fully functional.
-            - Edit Task Modal keeps the task's original past day selected while locking all other past days from being selected, and `handleSaveEditTask` prevents moving tasks into different past days.
-            - Deleting tasks or categories containing tasks on past days is strictly blocked with disabled buttons and locked tooltips.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 647/647 green) · `npx next build` ✅ (8 routes compiled).
-- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
-
-### Session 63 — 2026-10-09 (krish)
-
-- **Agent Role:** Participant UI & Scoring Engine Agent.
-- **Fix Weekly-to-Daily Drag-and-Drop Due Date Bug:**
-   - Resolved bug where dragging a task from Weekly Todos to Daily Todos assigned it to Day 1 of the challenge (due to fallback to `task.createdAt`) instead of the active/selected challenge day:
-      - **Domain (`task-reorder.ts`):**
-         - Added optional `targetDueDate?: string | null` to `MoveTaskParams` and `MoveCategoryParams`.
-         - In `moveTaskBetweenCategories`, resolved `dueDate`: if `targetDueDate` is provided, assign `targetDueDate`; if moving to `"weekly"`, reset `dueDate: null`; otherwise preserve existing `dueDate`.
-         - In `moveCategoryBetweenColumns`, cascaded `targetDueDate` to member tasks when moving cross-column.
-         - Added unit tests in `task-reorder.test.ts` verifying `targetDueDate` assignment when moving tasks or categories.
-      - **Presentation (`cockpit-tasks-section.tsx`):**
-         - In `handleTaskDrop`, `handleCategoryDrop`, and `handleColumnDrop`: passed `targetDueDate: selectedDateKey` when moving from Weekly to Daily (`isMovingWeeklyToDaily`), and `targetDueDate: null` when moving from Daily to Weekly.
-         - Updated local IndexedDB persistence (`putLocalTasks` / `putLocalTask`) to store the resolved `dueDate`.
-         - Included `dueDate: res.movedTask.dueDate ?? null` in `enqueueMutation` payload for `action: "MOVE"` to synchronize the assigned day with the server.
-         - Added unit tests in `cockpit-tasks-section.test.tsx` verifying that a daily task with Day 1 `createdAt` and Day 4 `dueDate` renders under Day 4 in Daily Todos.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
-- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
-
-### Session 63 — 2026-10-09 (krish)
-
-- **Agent Role:** Participant UI & Scoring Engine Agent.
-- **Fix Weekly-to-Daily Drag-and-Drop Due Date Bug:**
-   - Resolved bug where dragging a task from Weekly Todos to Daily Todos assigned it to Day 1 of the challenge (due to fallback to `task.createdAt`) instead of the active/selected challenge day:
-      - **Domain (`task-reorder.ts`):**
-         - Added optional `targetDueDate?: string | null` to `MoveTaskParams` and `MoveCategoryParams`.
-         - In `moveTaskBetweenCategories`, resolved `dueDate`: if `targetDueDate` is provided, assign `targetDueDate`; if moving to `"weekly"`, reset `dueDate: null`; otherwise preserve existing `dueDate`.
-         - In `moveCategoryBetweenColumns`, cascaded `targetDueDate` to member tasks when moving cross-column.
-         - Added unit tests in `task-reorder.test.ts` verifying `targetDueDate` assignment when moving tasks or categories.
-      - **Presentation (`cockpit-tasks-section.tsx`):**
-         - In `handleTaskDrop`, `handleCategoryDrop`, and `handleColumnDrop`: passed `targetDueDate: selectedDateKey` when moving from Weekly to Daily (`isMovingWeeklyToDaily`), and `targetDueDate: null` when moving from Daily to Weekly.
-         - Updated local IndexedDB persistence (`putLocalTasks` / `putLocalTask`) to store the resolved `dueDate`.
-         - Included `dueDate: res.movedTask.dueDate ?? null` in `enqueueMutation` payload for `action: "MOVE"` to synchronize the assigned day with the server.
-         - Added unit tests in `cockpit-tasks-section.test.tsx` verifying that a daily task with Day 1 `createdAt` and Day 4 `dueDate` renders under Day 4 in Daily Todos.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
-- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
-
-### Session 64 — 2026-10-09 (krish)
-
-- **Agent Role:** Participant UI & Scoring Engine Agent.
-- **Move Daily Todo Tasks Across Challenge Days (with Past Day Guard):**
-   - Implemented the ability to reschedule/move daily todo tasks from previous days to another day (today or future), with strict rejection of moving present or future tasks to past challenge days:
-      - **Domain (`challenge-day.ts`):**
-         - Created `validateMoveTaskChallengeDay(sourceDateKey, targetDateKey, todayDateKey)` pure domain validation function:
-            - Allows moving tasks from previous days to today or future challenge days (`MOVED_FROM_PAST_TO_PRESENT_OR_FUTURE`).
-            - Allows moving tasks between non-past days (`MOVED_FUTURE`, `MOVED_SAME_DAY`).
-            - Strictly rejects moving present/future tasks to past days with `PAST_DAY_MOVE_NOT_ALLOWED`.
-            - Rejects moving past-day tasks to a different past day with `TARGET_DAY_IN_PAST`.
-            - Permitted maintaining tasks on the same day (`SAME_DAY`).
-         - Added 8 unit tests covering all matrix permutations in `challenge-day.test.ts` (38/38 tests green).
-      - **Presentation (`cockpit-tasks-section.tsx`):**
-         - Implemented `moveTaskToDay(taskId, targetDateKey, sourceCatIdx, sourceColumn)`: updates local state, writes to IndexedDB (`putLocalTask`), enqueues sync mutation (`UPDATE`/`MOVE`), and executes server action (`updateTaskAction`).
-         - **7-Day Strip Drag & Drop:**
-            - Updated `handleTaskDragStart` to record `sourceDateKey` on `draggedItem`.
-            - Added `handleDayPillDragOver` and `handleDayPillDrop` on the 7-day pill switcher buttons.
-            - Added reactive drag feedback: green drop highlight ring for eligible days, red ring / cursor-not-allowed / lock icon indicator for disallowed past days.
-         - **3-Dots / Context Menu Quick Actions:**
-            - Added "Move to Day" section for daily tasks with 1-click "Move to Today" (highlighted emerald when task is on a past day) and quick buttons for other eligible future challenge days.
-         - **Edit Task Modal:**
-            - Enabled selecting today or future days when editing a past-day task; past days remain locked for tasks on present or future days.
-            - Validated day changes with `validateMoveTaskChallengeDay` on modal save.
-         - Added tests in `cockpit-tasks-section.test.tsx` verifying day tab attributes and rendering.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 659/659 green) · `npx next build` ✅ (8 routes compiled).
-
-### Session 65 — 2026-10-09 (afnan-jr)
-
-- **Agent Role:** Participant UI & Data / Identity Agent.
-- **Participant Study Log Audit Integration (`STUDY_LOG_ADDED`) & Dedicated Audit View Filter:**
-   - Added `"STUDY_LOG_ADDED"` event type to the audit log domain (`audit-log.ts`) mapped to human-readable label `"Study Time Logged"`.
-   - Updated `upsertDailyStudyLog` repository to accept actor details and challenge ID, automatically recording before/after study duration diffs (`previousValue` vs `newValue` in seconds and `HH:MM:SS` clock format).
-   - Wired `logStudyTimeAction` to pass authenticated user profile and challenge ID to the repository.
-   - Updated `EventAuditTab` presentation:
-      - Added emerald-themed `"STUDY_LOGS"` filter tab (`"Study Hour Logs"`).
-      - **Hidden by default**: When viewing `"All Actions"`, study hour logs are excluded so the administrative timeline remains clean. They only appear when an admin/mod explicitly clicks on the `"Study Hour Logs"` tab.
-   - Added full test coverage across domain, repository, server actions, and UI components.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (63 files, 667/667 green) · `npm run build` ✅.
-
-### Session 66 — 2026-10-09 (afnan-jr)
-
-- **Agent Role:** Participant UI & Admin Operations Agent.
-- **Dedicated Public Challenges Directory (`/challenges`) with Role-Gated Admin Controls:**
-   - Moved challenge catalog out of the admin-restricted zone into a dedicated public page at `/challenges` ([`challenges-list-view.tsx`](features/challenges/presentation/challenges-list-view.tsx), [`page.tsx`](app/challenges/page.tsx), [`layout.tsx`](app/challenges/layout.tsx), [`loading.tsx`](app/challenges/loading.tsx)):
-      - Accessible to public spectators, enrolled participants, and moderators/admins alike.
-      - **Role-Gated Actions:** "Create Challenge" (linking to `/admin/challenges/new`) and "Change Accent Color" buttons are only rendered when `canManageChallenges` is true (`ADMIN`/`DEV` in non-preview mode). They are completely hidden for participants, spectators, and admins previewing as participants.
-      - Preserved the full Obsidian dark styling, 3-column responsive card grid, status badges, participant counts, formatted UTC start dates, and "View Challenge" links.
-      - Added participant-friendly empty state when no challenges exist.
-   - **Header & Navigation Integration:**
-      - Added "Challenges" navigation link in `AppHeader` ([`auth-nav.tsx`](features/auth/presentation/auth-nav.tsx)) for 1-click discovery by all users (Closes #44).
-      - Redirected `/admin` to `/challenges` via server-side redirect ([`app/admin/page.tsx`](app/admin/page.tsx)).
-      - Updated back links in `/admin/challenges/new` and post-deletion redirects to `/challenges`.
-   - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (65 files, 675/675 green) · `npm run build` ✅ (9 routes compiled).
+- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours block, past-day todo protection, drag-and-drop due date fixes, cross-day task rescheduling, study log audit integration, public challenges catalog (`/challenges`), and role-gated admin controls.
 
 ### Session 67 — 2026-10-09 (krish)
 
@@ -288,71 +159,67 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Compact variant for narrow cards and sidebars.
       - Auto-hides gracefully when `totalPages <= 1`.
       - Comprehensive unit test suite in `data-pagination.test.tsx` (4/4 tests green).
-   - **Leaderboard Standings (`challenge-leaderboard-tab.tsx`):**
-      - Paginated standings list to `10` scholars per page across desktop table and mobile cards.
-      - Integrated search query reset (`setCurrentPage(1)` on typing) and test verification in `challenge-leaderboard-tab.test.tsx`.
-   - **Participant Overview List (`challenge-overview-tab.tsx`):**
-      - Paginated participant card to `8` scholars per page with compact pagination controls.
-      - Replaced unbounded "View all participants" toggle to eliminate vertical overflow.
-      - Unit test verification in `challenge-overview-tab.test.tsx`.
-   - **Event Audit Log (`event-audit-tab.tsx`):**
-      - Paginated audit log timeline to `10` events per page.
-      - Reset page to 1 upon searching or changing category filters ("All", "Details", "Roster", "Hours", "Study Logs", "Lifecycle").
-   - **Participant Rosters & Study Hours Management (`challenge-manage-tab.tsx`):**
-      - Section 4 roster list paginated to `8` participants per page.
-      - Added instant text search filter (`Search roster...`) for admin management.
-   - **Public Challenges Directory Grid (`challenges-list-view.tsx`):**
-      - Integrated `DataPagination` to paginate challenge cards to `9` challenges per page ($3 \times 3$ grid layout).
-   - **Manual Leaderboard Standings (`manual-leaderboard-view.tsx`):**
-      - Paginated participant standings to `10` scholars per page.
-   - Reconciled and merged PR #45 (`dev` branch) into `krish`.
+   - Leaderboard standings (`challenge-leaderboard-tab.tsx`), participant overview roster (`challenge-overview-tab.tsx`), event audit log (`event-audit-tab.tsx`), admin roster (`challenge-manage-tab.tsx`), public challenges grid (`challenges-list-view.tsx`), and manual leaderboard (`manual-leaderboard-view.tsx`) all paginated and protected against layout overflows.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (all tests green) · `npx next build` ✅.
 
 ### Session 68 — 2026-10-09 (afnan)
 
 - **Agent Role:** Participant UI & Scoring / Engine Agent.
 - **Challenge-Specific Participant Statistics & Read-Only Profiles (`FEAT-LEAD-06`):**
-   - **Dedicated Route (`/challenge/[id]/participant/[participantId]`):**
-      - Created dynamic server-rendered page (`app/challenge/[id]/participant/[participantId]/page.tsx`) and skeleton loader (`loading.tsx`).
-      - Generated dynamic page metadata with participant display name and challenge title.
-      - Enforced strict server-side cross-challenge isolation: checks `participant.challengeId === challengeId`, returning an empty state if mismatched or missing.
-   - **Pure Domain Calculations (`features/participant-stats/domain/`):**
-      - `calculateParticipantDailyTimeline`: Computes full chronological timeline (Day 1..Day N), preserving zero-study rest days (`00:00:00`), second-level duration precision, cumulative durations, and override flags.
-      - `calculateParticipantSummaryStats`: Safe division handling for goal completion %, total logged clock, today's logged clock, rank, remaining duration, and target completion excess.
-      - `calculateParticipantTeamStats`: House contribution percentage and house cumulative hours for team-based challenges.
-      - `calculateParticipantAccountability`: Deficit, dynamic daily required pace, and pardon/forfeit statuses.
-      - 11 unit tests in `participant-stats.test.ts` (100% green).
-   - **Repository Layer (`features/participant-stats/data/`):**
-      - `getChallengeParticipantStats`: Scoped data retrieval joining user profile, team identity, daily study logs, and authoritative scoreboard standing to ensure rank consistency.
-      - 5 integration tests in `participant-stats.repository.test.ts` (100% green).
-   - **Presentation Layer (`features/participant-stats/presentation/`):**
-      - `ParticipantProfileHeader`: Avatar with initials fallback, display name, `@username`, house badge, challenge rank pill, pace status, and breadcrumbs (`Challenges / [Challenge] / Leaderboard / [Participant]`).
-      - `ParticipantSummaryCards`: 6 responsive metric cards matching Obsidian Dark palette.
-      - `ParticipantProgressChart`: Lightweight, responsive SVG/HTML bar chart of daily study duration with hover tooltips and accessible screen-reader table.
-      - `ParticipantDailyHistory`: Full chronological table (desktop) and card list (mobile) with override indicators.
-      - `ParticipantTeamStats`: Team standing, team total, and member contribution meter (omitted for `SOLOS`).
-      - `ParticipantAccountability`: Target deficit, required catch-up pace per day, and pardon/forfeit badges.
-      - 7 component tests in `participant-stats-view.test.tsx` (100% green).
-   - **Interactive Navigation Entry Points:**
-      - Made participant names and avatars clickable across `challenge-leaderboard-tab.tsx` (top 3 podium cards, mobile cards, desktop table rows), `challenge-overview-tab.tsx` (participant list), and `challenge-manage-tab.tsx` (admin roster).
-   - **Read-Only Security Guarantee:**
-      - Ordinary viewers and spectators have strictly read-only views with zero form inputs or mutation buttons.
-      - Admins have an intentional "Admin Controls" link to the challenge manage tab.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green) · `npm run build` ✅ (10 routes compiled successfully).
+   - **Dedicated Route (`/challenge/[id]/participant/[participantId]`):** dynamic server-rendered page and skeleton loader. Cross-challenge validation returns empty state if mismatched.
+   - **Pure Domain Calculations (`features/participant-stats/domain/`):** chronological timeline with zero-hour rest days, summary stats, team contribution meter, and deficit accountability.
+   - **Repository & Presentation Layers:** joined scoreboard rank, profile header with breadcrumbs, Obsidian summary cards, responsive SVG/HTML daily bar chart, daily history table/cards.
+   - Clickable participant names/avatars across Leaderboard tab, Overview tab, and Admin Roster.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green) · `npm run build` ✅.
 
 ### Session 69 — 2026-10-09 (afnan)
 
 - **Agent Role:** Participant UI & Scoring / Engine Agent.
 - **Bug Fix — House Standing Participant Rank (`FEAT-LEAD-06`):**
-   - **Problem:** "House Standing" card in `ParticipantTeamStats` previously displayed `teamStats.teamRank` (the overall team's rank among all houses in the challenge), causing every member of that team to display the identical rank (e.g. "Rank #1, 14 house members").
-   - **Resolution:**
-      - Added `participantTeamRank: number` to `ParticipantTeamStats` domain type and calculation function (`calculateParticipantTeamStats`).
-      - In `participant-stats.repository.ts`, filtered `scoreboard.standings` by `s.teamId === participant.teamId` and calculated `participantTeamRankIndex + 1` to determine the participant's exact individual standing within their team.
-      - Updated `ParticipantTeamStats` presentation component to render `Rank #{teamStats.participantTeamRank}` and `of {teamStats.companionCount} house members`.
-      - Moved overall house standing into the header badge next to the house name: `<span>{teamStats.teamName}</span> (House #{teamStats.teamRank})`.
-   - **Test Updates:**
-      - Updated `features/participant-stats/domain/participant-stats.test.ts` to assert `participantTeamRank`.
-      - Updated `features/participant-stats/data/participant-stats.repository.test.ts` to verify `participantTeamRank` calculation from team standings.
-      - Updated `features/participant-stats/presentation/participant-stats-view.test.tsx` to assert "Rank #2", "of 3 house members", and "(House #1)" badge.
+   - Corrected "House Standing" card in `ParticipantTeamStats` to calculate and display participant's rank within their own team (`participantTeamRank`) rather than the overall team standing.
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green).
+
+### Session 70 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring / Engine Agent.
+- **Multi-View Search, Filtering & "View by Team" Mode Across Data Lists:**
+   - **Upstream Sync:** Fast-forward merged latest `dev`/`main` (`1ced769`) into local `krish` branch.
+   - **Leaderboard Tab (`challenge-leaderboard-tab.tsx`):**
+      - Instant text search across display name, `@username`, and team/house name with live match counts.
+      - House/Team filter dropdown (`All Teams`, individual teams with icons, name, and member counts).
+      - Pace/Status filter dropdown (`All Pace Statuses`, `On Track / Ahead`, `Catch-Up / Behind`).
+      - High-level View Mode toggle: **`Overall Rank`** vs **`View by Team`**.
+      - In **`View by Team`** mode: Renders distinct house cards grouping enrolled scholars by competing house, featuring house emoji, name, leader badge, house logged clock vs house target clock, visual progress bar, and intra-house scholar rankings (`#1 in House (#X Overall)`), avatars, today's hours, total hours, pace badges, and admin hour overrides.
+      - Active filter badge pills with 1-click dismissal and styled empty filter state with reset action.
+   - **Overview Tab Enrolled Roster (`challenge-overview-tab.tsx`):**
+      - Added instant text search and House/Team filter dropdown with active filter count and reset button.
+   - **Manage Tab Admin Roster Grid (`challenge-manage-tab.tsx`):**
+      - Added House filter dropdown (`All Houses`, individual houses, `Unassigned Scholars`) with counter badge (`X of Y scholars`) and reset controls beside the existing roster search.
+   - **Public Challenges Directory Grid (`challenges-list-view.tsx`):**
+      - Added instant text search across challenge title, format, host name/username, and participating team names.
+      - Added status filter tabs (`All`, `Active`, `Upcoming`, `Completed`) with real-time challenge counts.
+      - Added format filter dropdown (`All Formats`, `Team vs Team`, `Solo Battles`, `Duo Battles`, `Squad Battles`).
+      - Styled empty filter state with 1-click filter reset.
+   - **Manual Leaderboard Standings (`manual-leaderboard-view.tsx`):**
+      - Added search input and team filter dropdown for manual slot standings with empty state reset.
+   - **Test Suite Updates:**
+      - Added unit and interaction tests across `challenge-leaderboard-tab.test.tsx`, `challenge-overview-tab.test.tsx`, `challenges-list-view.test.tsx`, and created `manual-leaderboard-view.test.tsx`.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 713/713 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 71 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring / Engine Agent.
+- **Side-by-Side "View by Team" Responsive Grid Layout:**
+   - **Side-by-Side Teams Layout (`challenge-leaderboard-tab.tsx`):**
+      - Upgraded the "View by Team" section from a stacked vertical list to a responsive 2-column grid (`grid grid-cols-1 lg:grid-cols-2 gap-6 items-start`) whenever multiple teams exist.
+      - On desktop / laptop viewports (`lg: 1024px+`), competing houses are presented side-by-side, utilizing horizontal screen real estate effectively.
+      - Preserved full responsiveness: mobile viewports (< 1024px, 360px+) gracefully render in a single column without horizontal overflow or clipped text.
+      - Applied `items-start` so competing houses with different roster sizes keep their natural card height without empty stretched bottom areas.
+      - Added dynamic column adjustment: when filtered to a single house via dropdown, the card cleanly takes full width (`grid-cols-1`).
+      - Fine-tuned intra-card scholar rows and summary headers: flex-wrap badges, compact progress bars (`w-20 sm:w-28`), and responsive width caps to prevent overflow even with long scholar names and pace badges.
+      - Added `initialViewMode` prop support (`"individual"` | `"team"`) to facilitate deep linking and robust SSR unit testing.
+   - **Test Suite Updates (`challenge-leaderboard-tab.test.tsx`):**
+      - Added unit tests verifying side-by-side grid rendering (`lg:grid-cols-2`) when multiple teams exist in team view mode.
+      - Added unit test verifying single column fallback when only one team exists.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 715/715 green) · `npm run build` ✅ (10 routes compiled successfully).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
