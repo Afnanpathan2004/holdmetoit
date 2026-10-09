@@ -29,16 +29,22 @@ import { DataPagination } from "@/components/ui/data-pagination";
 interface ChallengeLeaderboardTabProps {
    challenge: ChallengeScoreboardViewModel;
    isAdmin?: boolean;
+   initialViewMode?: "individual" | "team";
 }
 
 export function ChallengeLeaderboardTab({
    challenge,
    isAdmin = false,
+   initialViewMode = "individual",
 }: ChallengeLeaderboardTabProps) {
    const [searchQuery, setSearchQuery] = useState("");
    const [selectedTeamId, setSelectedTeamId] = useState("ALL");
-   const [statusFilter, setStatusFilter] = useState<"ALL" | "on-track" | "catch-up">("ALL");
-   const [viewMode, setViewMode] = useState<"individual" | "team">("individual");
+   const [statusFilter, setStatusFilter] = useState<
+      "ALL" | "on-track" | "catch-up"
+   >("ALL");
+   const [viewMode, setViewMode] = useState<"individual" | "team">(
+      initialViewMode
+   );
    const [currentPage, setCurrentPage] = useState(1);
    const pageSize = 10;
    const [overrideParticipant, setOverrideParticipant] =
@@ -77,7 +83,10 @@ export function ChallengeLeaderboardTab({
 
       // 2. Team Filter
       if (selectedTeamId !== "ALL") {
-         if (entry.teamId !== selectedTeamId && entry.teamName !== selectedTeamId) {
+         if (
+            entry.teamId !== selectedTeamId &&
+            entry.teamName !== selectedTeamId
+         ) {
             return false;
          }
       }
@@ -88,7 +97,10 @@ export function ChallengeLeaderboardTab({
             return false;
          }
       } else if (statusFilter === "catch-up") {
-         if (entry.paceStatus !== "catch-up" && entry.paceStatus !== "punished") {
+         if (
+            entry.paceStatus !== "catch-up" &&
+            entry.paceStatus !== "punished"
+         ) {
             return false;
          }
       }
@@ -361,7 +373,10 @@ export function ChallengeLeaderboardTab({
                         Leaderboard Standings
                      </h3>
                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#1c1c1c] border border-[#292929] text-[#868686]">
-                        {filteredStandings.length} {filteredStandings.length === 1 ? "scholar" : "scholars"}
+                        {filteredStandings.length}{" "}
+                        {filteredStandings.length === 1
+                           ? "scholar"
+                           : "scholars"}
                      </span>
                   </div>
 
@@ -434,10 +449,13 @@ export function ChallengeLeaderboardTab({
                         }}
                         className="h-9 w-full rounded-xl border border-[#333333] bg-[#1c1c1c] px-3 pr-8 text-xs text-[#ffffff] focus:border-[#ffffff]/60 focus:outline-none appearance-none cursor-pointer"
                      >
-                        <option value="ALL">All Teams ({standings.length})</option>
+                        <option value="ALL">
+                           All Teams ({standings.length})
+                        </option>
                         {teams.map((t) => (
                            <option key={t.id} value={t.id}>
-                              {t.iconEmoji ? `${t.iconEmoji} ` : ""}{t.name} ({t.companionCount})
+                              {t.iconEmoji ? `${t.iconEmoji} ` : ""}
+                              {t.name} ({t.companionCount})
                            </option>
                         ))}
                      </select>
@@ -449,7 +467,9 @@ export function ChallengeLeaderboardTab({
                      <select
                         value={statusFilter}
                         onChange={(e) => {
-                           setStatusFilter(e.target.value as "ALL" | "on-track" | "catch-up");
+                           setStatusFilter(
+                              e.target.value as "ALL" | "on-track" | "catch-up"
+                           );
                            setCurrentPage(1);
                         }}
                         className="h-9 w-full rounded-xl border border-[#333333] bg-[#1c1c1c] px-3 pr-8 text-xs text-[#ffffff] focus:border-[#ffffff]/60 focus:outline-none appearance-none cursor-pointer"
@@ -470,23 +490,39 @@ export function ChallengeLeaderboardTab({
                         {searchQuery && (
                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#292929] border border-[#383838] text-white text-[11px]">
                               &quot;{searchQuery}&quot;
-                              <button type="button" onClick={() => setSearchQuery("")} className="hover:text-[#ef4444]">
+                              <button
+                                 type="button"
+                                 onClick={() => setSearchQuery("")}
+                                 className="hover:text-[#ef4444]"
+                              >
                                  <X className="h-3 w-3" />
                               </button>
                            </span>
                         )}
                         {selectedTeamId !== "ALL" && (
                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#292929] border border-[#383838] text-white text-[11px]">
-                              Team: {teams.find((t) => t.id === selectedTeamId)?.name || selectedTeamId}
-                              <button type="button" onClick={() => setSelectedTeamId("ALL")} className="hover:text-[#ef4444]">
+                              Team:{" "}
+                              {teams.find((t) => t.id === selectedTeamId)
+                                 ?.name || selectedTeamId}
+                              <button
+                                 type="button"
+                                 onClick={() => setSelectedTeamId("ALL")}
+                                 className="hover:text-[#ef4444]"
+                              >
                                  <X className="h-3 w-3" />
                               </button>
                            </span>
                         )}
                         {statusFilter !== "ALL" && (
                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#292929] border border-[#383838] text-white text-[11px]">
-                              {statusFilter === "on-track" ? "On Track" : "Catch-Up"}
-                              <button type="button" onClick={() => setStatusFilter("ALL")} className="hover:text-[#ef4444]">
+                              {statusFilter === "on-track"
+                                 ? "On Track"
+                                 : "Catch-Up"}
+                              <button
+                                 type="button"
+                                 onClick={() => setStatusFilter("ALL")}
+                                 className="hover:text-[#ef4444]"
+                              >
                                  <X className="h-3 w-3" />
                               </button>
                            </span>
@@ -509,7 +545,8 @@ export function ChallengeLeaderboardTab({
                      No scholars match your search or filter criteria.
                   </p>
                   <p className="text-xs text-[#868686]">
-                     No scholars match your search. Try adjusting your search query or selecting another team.
+                     No scholars match your search. Try adjusting your search
+                     query or selecting another team.
                   </p>
                   {hasActiveFilters && (
                      <Button
@@ -525,167 +562,206 @@ export function ChallengeLeaderboardTab({
                   )}
                </div>
             ) : viewMode === "team" ? (
-               /* View by Team Section */
-               <div className="space-y-6">
-                  {(selectedTeamId === "ALL"
-                     ? teams
-                     : teams.filter((t) => t.id === selectedTeamId || t.name === selectedTeamId)
-                  ).map((t) => {
-                     const teamScholars = filteredStandings.filter(
-                        (e) => e.teamId === t.id || e.teamName === t.name
-                     );
-                     const isTeamA = teamA && t.name === teamA.name;
-                     const badgeTint = isTeamA
-                        ? "bg-[#144520] border-[#22c55e]/40 text-[#85ff93]"
-                        : "bg-[#102d40] border-[#3b82f6]/40 text-[#85d6ff]";
+               /* View by Team Section (Side-by-Side on Desktop/Tablet Landscape) */
+               (() => {
+                  const teamsToRender =
+                     selectedTeamId === "ALL"
+                        ? teams
+                        : teams.filter(
+                             (t) =>
+                                t.id === selectedTeamId ||
+                                t.name === selectedTeamId
+                          );
 
-                     return (
-                        <div
-                           key={t.id}
-                           className="rounded-2xl border border-[#262626] bg-[#181818] p-4 sm:p-5 space-y-4 shadow-sm"
-                        >
-                           {/* Team Header Summary Card */}
-                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#292929]">
-                              <div className="flex items-center gap-3">
-                                 <span className="text-2xl">{t.iconEmoji || "🛡️"}</span>
-                                 <div>
-                                    <div className="flex items-center gap-2">
-                                       <h4 className="text-base font-bold text-white">
-                                          {t.name}
-                                       </h4>
-                                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badgeTint}`}>
-                                          {teamScholars.length} / {t.companionCount} scholars
+                  return (
+                     <div
+                        className={`grid grid-cols-1 ${
+                           teamsToRender.length > 1 ? "lg:grid-cols-2" : ""
+                        } gap-6 items-start`}
+                     >
+                        {teamsToRender.map((t) => {
+                           const teamScholars = filteredStandings.filter(
+                              (e) => e.teamId === t.id || e.teamName === t.name
+                           );
+                           const isTeamA = teamA && t.name === teamA.name;
+                           const badgeTint = isTeamA
+                              ? "bg-[#144520] border-[#22c55e]/40 text-[#85ff93]"
+                              : "bg-[#102d40] border-[#3b82f6]/40 text-[#85d6ff]";
+
+                           return (
+                              <div
+                                 key={t.id}
+                                 className="rounded-2xl border border-[#262626] bg-[#181818] p-4 sm:p-5 space-y-4 shadow-sm"
+                              >
+                                 {/* Team Header Summary Card */}
+                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#292929]">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                       <span className="text-2xl shrink-0">
+                                          {t.iconEmoji || "🛡️"}
                                        </span>
-                                       {t.isLeader && (
-                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#22c55e]/20 text-[#85ff93] border border-[#22c55e]/30">
-                                             Leading House
-                                          </span>
-                                       )}
-                                    </div>
-                                    <p className="text-xs text-[#868686] mt-0.5">
-                                       Weekly Target: {t.targetHours}h • Completed: {t.completionPercentage}%
-                                    </p>
-                                 </div>
-                              </div>
-
-                              <div className="flex items-center gap-3 text-xs font-sans font-sans-tabular">
-                                 <div>
-                                    <span className="text-[#868686]">Total: </span>
-                                    <span className="font-bold text-white">{t.totalLoggedClock}</span>
-                                 </div>
-                                 <div className="w-24 sm:w-32 h-2 rounded-full bg-[#1c1c1c] overflow-hidden border border-[#333333]">
-                                    <div
-                                       className="h-full bg-[#22c55e] transition-all duration-500"
-                                       style={{ width: `${Math.min(100, t.completionPercentage)}%` }}
-                                    />
-                                 </div>
-                              </div>
-                           </div>
-
-                           {/* Team Scholars List */}
-                           {teamScholars.length === 0 ? (
-                              <p className="text-center py-4 text-xs text-[#868686]">
-                                 No scholars in {t.name} match the active filters.
-                              </p>
-                           ) : (
-                              <div className="space-y-2.5">
-                                 {teamScholars.map((entry, idx) => (
-                                    <div
-                                       key={entry.participantId}
-                                       className="rounded-xl border border-[#262626] bg-[#141414] p-3 flex items-center justify-between gap-3 hover:border-[#383838] transition-colors"
-                                    >
-                                       {/* Intra-team Rank & Overall Rank */}
-                                       <div className="flex items-center gap-3 min-w-0">
-                                          <div className="flex flex-col items-center justify-center w-8 shrink-0 text-center">
-                                             <span className="text-xs font-bold text-white font-sans">
-                                                #{idx + 1}
+                                       <div className="min-w-0">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                             <h4 className="text-base font-bold text-white truncate">
+                                                {t.name}
+                                             </h4>
+                                             <span
+                                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${badgeTint}`}
+                                             >
+                                                {teamScholars.length} /{" "}
+                                                {t.companionCount} scholars
                                              </span>
-                                             <span className="text-[9px] text-[#868686]">
-                                                (#{entry.rank})
-                                             </span>
-                                          </div>
-
-                                          {/* Avatar */}
-                                          <Link
-                                             href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
-                                             className="h-8 w-8 rounded-full bg-[#292929] border border-[#383838] overflow-hidden flex items-center justify-center shrink-0 text-xs hover:border-[#22c55e] transition-colors"
-                                          >
-                                             {entry.image ? (
-                                                <Image
-                                                   src={entry.image}
-                                                   alt={entry.displayName}
-                                                   width={32}
-                                                   height={32}
-                                                   className="h-full w-full object-cover"
-                                                   unoptimized
-                                                />
-                                             ) : (
-                                                <span className="font-bold text-white">
-                                                   {entry.displayName.charAt(0).toUpperCase()}
+                                             {t.isLeader && (
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#22c55e]/20 text-[#85ff93] border border-[#22c55e]/30 shrink-0">
+                                                   Leading House
                                                 </span>
                                              )}
-                                          </Link>
-
-                                          {/* Name & Pace */}
-                                          <div className="min-w-0">
-                                             <div className="flex items-center gap-1.5 flex-wrap">
-                                                <Link
-                                                   href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
-                                                   className="text-xs font-bold text-[#ffffff] hover:text-[#22c55e] hover:underline truncate max-w-[120px] sm:max-w-[180px] block"
-                                                >
-                                                   {entry.displayName}
-                                                </Link>
-                                                {entry.paceLabel && (
-                                                   <span
-                                                      className={`px-1.5 py-0.2 rounded text-[9px] font-semibold ${
-                                                         entry.paceStatus === "on-track" || entry.paceStatus === "serene"
-                                                            ? "bg-[#144520] text-[#85ff93]"
-                                                            : "bg-[#401010] text-[#ff5757]"
-                                                      }`}
-                                                    >
-                                                      {entry.paceLabel}
-                                                   </span>
-                                                )}
-                                             </div>
-                                             <p className="text-[10px] text-[#868686] truncate">
-                                                @{entry.username || "scholar"}
-                                             </p>
                                           </div>
-                                       </div>
-
-                                       {/* Clock & Admin edit */}
-                                       <div className="shrink-0 text-right font-sans font-sans-tabular flex items-center gap-2">
-                                          <div>
-                                             <p className="text-xs font-bold text-[#ffffff]">
-                                                {entry.totalLoggedClock}
-                                                <span className="text-[10px] font-normal text-[#868686]">
-                                                   /{entry.targetClock}
-                                                </span>
-                                             </p>
-                                             <p className="text-[11px] font-semibold text-[#4ade80]">
-                                                +{entry.todayLoggedClock}
-                                             </p>
-                                          </div>
-                                          {isAdmin && (
-                                             <button
-                                                type="button"
-                                                onClick={() => handleOpenOverride(entry)}
-                                                className="px-2 py-1 rounded-lg bg-[#242424] hover:bg-[#333333] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1 text-[10px] font-semibold shrink-0"
-                                                title="Admin: Edit Study Hours"
-                                             >
-                                                <Clock className="h-3 w-3 text-[#3b82f6]" />
-                                                <span>Edit hr</span>
-                                             </button>
-                                          )}
+                                          <p className="text-xs text-[#868686] mt-0.5 truncate">
+                                             Weekly Target: {t.targetHours}h •
+                                             Completed: {t.completionPercentage}
+                                             %
+                                          </p>
                                        </div>
                                     </div>
-                                 ))}
+
+                                    <div className="flex items-center gap-3 text-xs font-sans font-sans-tabular shrink-0">
+                                       <div>
+                                          <span className="text-[#868686]">
+                                             Total:{" "}
+                                          </span>
+                                          <span className="font-bold text-white">
+                                             {t.totalLoggedClock}
+                                          </span>
+                                       </div>
+                                       <div className="w-20 sm:w-28 h-2 rounded-full bg-[#1c1c1c] overflow-hidden border border-[#333333]">
+                                          <div
+                                             className="h-full bg-[#22c55e] transition-all duration-500"
+                                             style={{
+                                                width: `${Math.min(100, t.completionPercentage)}%`,
+                                             }}
+                                          />
+                                       </div>
+                                    </div>
+                                 </div>
+
+                                 {/* Team Scholars List */}
+                                 {teamScholars.length === 0 ? (
+                                    <p className="text-center py-4 text-xs text-[#868686]">
+                                       No scholars in {t.name} match the active
+                                       filters.
+                                    </p>
+                                 ) : (
+                                    <div className="space-y-2.5">
+                                       {teamScholars.map((entry, idx) => (
+                                          <div
+                                             key={entry.participantId}
+                                             className="rounded-xl border border-[#262626] bg-[#141414] p-3 flex items-center justify-between gap-2.5 hover:border-[#383838] transition-colors"
+                                          >
+                                             {/* Intra-team Rank & Overall Rank */}
+                                             <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="flex flex-col items-center justify-center w-7 shrink-0 text-center">
+                                                   <span className="text-xs font-bold text-white font-sans">
+                                                      #{idx + 1}
+                                                   </span>
+                                                   <span className="text-[9px] text-[#868686]">
+                                                      (#{entry.rank})
+                                                   </span>
+                                                </div>
+
+                                                {/* Avatar */}
+                                                <Link
+                                                   href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
+                                                   className="h-8 w-8 rounded-full bg-[#292929] border border-[#383838] overflow-hidden flex items-center justify-center shrink-0 text-xs hover:border-[#22c55e] transition-colors"
+                                                >
+                                                   {entry.image ? (
+                                                      <Image
+                                                         src={entry.image}
+                                                         alt={entry.displayName}
+                                                         width={32}
+                                                         height={32}
+                                                         className="h-full w-full object-cover"
+                                                         unoptimized
+                                                      />
+                                                   ) : (
+                                                      <span className="font-bold text-white">
+                                                         {entry.displayName
+                                                            .charAt(0)
+                                                            .toUpperCase()}
+                                                      </span>
+                                                   )}
+                                                </Link>
+
+                                                {/* Name & Pace */}
+                                                <div className="min-w-0">
+                                                   <div className="flex items-center gap-1.5 flex-wrap">
+                                                      <Link
+                                                         href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
+                                                         className="text-xs font-bold text-[#ffffff] hover:text-[#22c55e] hover:underline truncate max-w-[110px] sm:max-w-[150px] lg:max-w-[130px] xl:max-w-[180px] block"
+                                                      >
+                                                         {entry.displayName}
+                                                      </Link>
+                                                      {entry.paceLabel && (
+                                                         <span
+                                                            className={`px-1.5 py-0.2 rounded text-[9px] font-semibold shrink-0 ${
+                                                               entry.paceStatus ===
+                                                                  "on-track" ||
+                                                               entry.paceStatus ===
+                                                                  "serene"
+                                                                  ? "bg-[#144520] text-[#85ff93]"
+                                                                  : "bg-[#401010] text-[#ff5757]"
+                                                            }`}
+                                                         >
+                                                            {entry.paceLabel}
+                                                         </span>
+                                                      )}
+                                                   </div>
+                                                   <p className="text-[10px] text-[#868686] truncate">
+                                                      @
+                                                      {entry.username ||
+                                                         "scholar"}
+                                                   </p>
+                                                </div>
+                                             </div>
+
+                                             {/* Clock & Admin edit */}
+                                             <div className="shrink-0 text-right font-sans font-sans-tabular flex items-center gap-2">
+                                                <div>
+                                                   <p className="text-xs font-bold text-[#ffffff]">
+                                                      {entry.totalLoggedClock}
+                                                      <span className="text-[10px] font-normal text-[#868686]">
+                                                         /{entry.targetClock}
+                                                      </span>
+                                                   </p>
+                                                   <p className="text-[11px] font-semibold text-[#4ade80]">
+                                                      +{entry.todayLoggedClock}
+                                                   </p>
+                                                </div>
+                                                {isAdmin && (
+                                                   <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                         handleOpenOverride(
+                                                            entry
+                                                         )
+                                                      }
+                                                      className="px-2 py-1 rounded-lg bg-[#242424] hover:bg-[#333333] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1 text-[10px] font-semibold shrink-0"
+                                                      title="Admin: Edit Study Hours"
+                                                   >
+                                                      <Clock className="h-3 w-3 text-[#3b82f6]" />
+                                                      <span>Edit hr</span>
+                                                   </button>
+                                                )}
+                                             </div>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
                               </div>
-                           )}
-                        </div>
-                     );
-                  })}
-               </div>
+                           );
+                        })}
+                     </div>
+                  );
+               })()
             ) : (
                <>
                   {/* Mobile Leaderboard View (sm:hidden) matching wireframe */}

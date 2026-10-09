@@ -4,21 +4,21 @@
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-09 (Session 70 — multi-view search, filtering & View by Team mode)  
+> **Last Updated:** 2026-10-09 (Session 71 — View by Team side-by-side layout)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-09, branch `krish`)                                                                                                                                                                                                               |
-| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                  |
-| `npm run test`                               | ✅ 71 files green (713/713 tests passing)                                                                                                                                                                                                         |
-| `npm run build`                              | ✅ 10 routes compiled                                                                                                                                                                                                                             |
+| Gate                                         | Result (2026-10-09, branch `krish`)                                                                                                                                                                                                                                   |
+| :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                                      |
+| `npm run test`                               | ✅ 71 files green (715/715 tests passing)                                                                                                                                                                                                                             |
+| `npm run build`                              | ✅ 10 routes compiled                                                                                                                                                                                                                                                 |
 | Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~88%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
-| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                        |
-| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                    |
+| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                                            |
+| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                                        |
 
 ### 1.1 Live Routes
 
@@ -205,4 +205,21 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
    - **Test Suite Updates:**
       - Added unit and interaction tests across `challenge-leaderboard-tab.test.tsx`, `challenge-overview-tab.test.tsx`, `challenges-list-view.test.tsx`, and created `manual-leaderboard-view.test.tsx`.
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 713/713 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 71 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring / Engine Agent.
+- **Side-by-Side "View by Team" Responsive Grid Layout:**
+   - **Side-by-Side Teams Layout (`challenge-leaderboard-tab.tsx`):**
+      - Upgraded the "View by Team" section from a stacked vertical list to a responsive 2-column grid (`grid grid-cols-1 lg:grid-cols-2 gap-6 items-start`) whenever multiple teams exist.
+      - On desktop / laptop viewports (`lg: 1024px+`), competing houses are presented side-by-side, utilizing horizontal screen real estate effectively.
+      - Preserved full responsiveness: mobile viewports (< 1024px, 360px+) gracefully render in a single column without horizontal overflow or clipped text.
+      - Applied `items-start` so competing houses with different roster sizes keep their natural card height without empty stretched bottom areas.
+      - Added dynamic column adjustment: when filtered to a single house via dropdown, the card cleanly takes full width (`grid-cols-1`).
+      - Fine-tuned intra-card scholar rows and summary headers: flex-wrap badges, compact progress bars (`w-20 sm:w-28`), and responsive width caps to prevent overflow even with long scholar names and pace badges.
+      - Added `initialViewMode` prop support (`"individual"` | `"team"`) to facilitate deep linking and robust SSR unit testing.
+   - **Test Suite Updates (`challenge-leaderboard-tab.test.tsx`):**
+      - Added unit tests verifying side-by-side grid rendering (`lg:grid-cols-2`) when multiple teams exist in team view mode.
+      - Added unit test verifying single column fallback when only one team exists.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 715/715 green) · `npm run build` ✅ (10 routes compiled successfully).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
