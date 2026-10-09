@@ -160,4 +160,16 @@ describe("ChallengeOverviewTab", () => {
     expect(html).toContain("1/2");
     expect(html).toContain("Next");
   });
+
+  it("renders search input and team filter dropdown in participants section", () => {
+    const html = renderToStaticMarkup(
+      createElement(ChallengeOverviewTab, {
+        challenge: mockChallenge,
+      }),
+    );
+
+    expect(html).toContain("Search participants...");
+    expect(html).toContain("All Teams");
+    expect(html).toContain("Honey Bees");
+  });
 });

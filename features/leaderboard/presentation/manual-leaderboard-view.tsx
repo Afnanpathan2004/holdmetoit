@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Search, ChevronDown, X, RotateCcw, Users } from "lucide-react";
 
 import {
   captureLogRocketException,
@@ -29,12 +30,44 @@ export function ManualLeaderboardView({
   const { challenge, summary } = data;
   const { teams, standings, matchBanner, slotDates, totalHoursLogged } = summary;
 
+  // Search & Filtering State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState("ALL");
+
   // Pagination for individual standings
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
-  const totalPages = Math.ceil(standings.length / pageSize);
-  const safePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
-  const paginatedStandings = standings.slice(
+
+  const filteredStandings = standings.filter((p) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      const matches =
+        p.discordName.toLowerCase().includes(q) ||
+        (p.discordId && p.discordId.toLowerCase().includes(q)) ||
+        (p.teamName && p.teamName.toLowerCase().includes(q));
+      if (!matches) return false;
+    }
+
+    if (selectedTeam !== "ALL") {
+      if (p.teamName !== selectedTeam) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const hasActiveFilters = searchQuery.trim() !== "" || selectedTeam !== "ALL";
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedTeam("ALL");
+    setCurrentPage(1);
+  };
+
+  const totalPages = Math.ceil(filteredStandings.length / pageSize) || 1;
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedStandings = filteredStandings.slice(
     (safePage - 1) * pageSize,
     safePage * pageSize
   );
@@ -257,10 +290,82 @@ export function ManualLeaderboardView({
       )}
 
       {/* 3. Individual Standings & Slot Matrix */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold text-[#ffffff]">
-          Individual Participant Standings
-        </h2>
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-bold text-[#ffffff]">
+              Individual Participant Standings
+            </h2>
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#1c1c1c] border border-[#292929] text-[#868686]">
+              {filteredStandings.length} of {standings.length} scholars
+            </span>
+          </div>
+        </div>
+
+        {/* Search & Team Filter Bar */}
+        {standings.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#868686]" />
+              <Input
+                type="text"
+                placeholder="Search scholars by name, ID, team..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-9 pl-9 pr-8 bg-[#141414] border-[#292929] text-white placeholder:text-[#868686] text-xs rounded-xl"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#868686] hover:text-white p-0.5"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {teams.length > 0 && (
+              <div className="relative w-full sm:w-52 shrink-0">
+                <select
+                  value={selectedTeam}
+                  onChange={(e) => {
+                    setSelectedTeam(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="h-9 w-full rounded-xl border border-[#292929] bg-[#141414] px-3 pr-8 text-xs text-[#ffffff] focus:border-[#ffffff]/60 focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="ALL">All Teams ({standings.length})</option>
+                  {teams.map((t) => (
+                    <option key={t.teamId || t.teamName} value={t.teamName}>
+                      {t.teamName} ({t.memberCount})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#868686] pointer-events-none" />
+              </div>
+            )}
+
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-9 px-3 text-xs rounded-xl border-[#383838] bg-[#1c1c1c] hover:bg-[#292929] text-[#d1d1d1] shrink-0"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                Reset
+              </Button>
+            )}
+          </div>
+        )}
 
         {standings.length === 0 ? (
           /* Empty state */
@@ -269,6 +374,25 @@ export function ManualLeaderboardView({
             <p className="mt-1 text-xs">
               Click &quot;Log Session Hours&quot; above to add your first study session.
             </p>
+          </div>
+        ) : filteredStandings.length === 0 ? (
+          <div className="rounded-2xl border border-[#262626] bg-[#141414] p-8 text-center space-y-3">
+            <p className="text-sm font-semibold text-white">
+              No scholars match your search or team filter.
+            </p>
+            <p className="text-xs text-[#868686]">
+              Try adjusting your search terms or clearing your team selection.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+              className="rounded-full border-[#383838] bg-[#242424] hover:bg-[#333333] text-white text-xs"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Reset all filters
+            </Button>
           </div>
         ) : (
           <>
@@ -358,7 +482,7 @@ export function ManualLeaderboardView({
           <DataPagination
             currentPage={safePage}
             totalPages={totalPages}
-            totalItems={standings.length}
+            totalItems={filteredStandings.length}
             pageSize={pageSize}
             onPageChange={setCurrentPage}
             itemLabel="scholars"
