@@ -142,18 +142,21 @@ describe("calculateParticipantSummaryStats", () => {
 });
 
 describe("calculateParticipantTeamStats", () => {
-   it("calculates contribution percentage correctly", () => {
+   it("calculates contribution percentage and preserves participant team rank correctly", () => {
       const teamStats = calculateParticipantTeamStats({
          teamId: "team-1",
          teamName: "Honey Bees",
          teamColor: "#eab308",
          teamIcon: "🐝",
          teamRank: 1,
+         participantTeamRank: 2,
          teamTotalLoggedSeconds: 100_000,
          participantTotalLoggedSeconds: 25_000,
          companionCount: 4,
       });
 
+      expect(teamStats.participantTeamRank).toBe(2);
+      expect(teamStats.teamRank).toBe(1);
       expect(teamStats.participantContributionPercentage).toBe(25);
       expect(teamStats.teamTotalLoggedClock).toBe("27:46:40");
       expect(teamStats.teamName).toBe("Honey Bees");
@@ -166,11 +169,13 @@ describe("calculateParticipantTeamStats", () => {
          teamColor: "#3b82f6",
          teamIcon: "🦋",
          teamRank: 2,
+         participantTeamRank: 1,
          teamTotalLoggedSeconds: 0,
          participantTotalLoggedSeconds: 0,
          companionCount: 3,
       });
 
+      expect(teamStats.participantTeamRank).toBe(1);
       expect(teamStats.participantContributionPercentage).toBe(0);
       expect(Number.isNaN(teamStats.participantContributionPercentage)).toBe(
          false

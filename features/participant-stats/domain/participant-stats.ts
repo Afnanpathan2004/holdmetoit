@@ -181,6 +181,7 @@ export function calculateParticipantTeamStats(params: {
    teamColor: string | null;
    teamIcon: string | null;
    teamRank: number;
+   participantTeamRank: number;
    teamTotalLoggedSeconds: number;
    participantTotalLoggedSeconds: number;
    companionCount: number;
@@ -191,6 +192,7 @@ export function calculateParticipantTeamStats(params: {
       teamColor,
       teamIcon,
       teamRank,
+      participantTeamRank,
       teamTotalLoggedSeconds,
       participantTotalLoggedSeconds,
       companionCount,
@@ -216,6 +218,7 @@ export function calculateParticipantTeamStats(params: {
       teamColor,
       teamIcon,
       teamRank,
+      participantTeamRank: Math.max(1, participantTeamRank),
       teamTotalLoggedSeconds,
       teamTotalLoggedClock: formatSecondsToClock(teamTotalLoggedSeconds),
       participantContributionPercentage,

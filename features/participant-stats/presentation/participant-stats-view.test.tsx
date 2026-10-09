@@ -133,6 +133,7 @@ describe("ParticipantStatsView", () => {
          teamColor: "#eab308",
          teamIcon: "🐝",
          teamRank: 1,
+         participantTeamRank: 2,
          teamTotalLoggedSeconds: 100000,
          teamTotalLoggedClock: "27:46:40",
          participantContributionPercentage: 29,
@@ -204,6 +205,9 @@ describe("ParticipantStatsView", () => {
       );
 
       expect(html).toContain("Team Standing &amp; Contribution");
+      expect(html).toContain("Rank #2");
+      expect(html).toContain("of 3 house members");
+      expect(html).toContain("House #1");
       expect(html).toContain("27:46:40");
       expect(html).toContain("29%");
       expect(html).toContain("Honey Bees");

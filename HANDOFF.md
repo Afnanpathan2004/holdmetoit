@@ -339,4 +339,20 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Ordinary viewers and spectators have strictly read-only views with zero form inputs or mutation buttons.
       - Admins have an intentional "Admin Controls" link to the challenge manage tab.
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 69 — 2026-10-09 (afnan)
+
+- **Agent Role:** Participant UI & Scoring / Engine Agent.
+- **Bug Fix — House Standing Participant Rank (`FEAT-LEAD-06`):**
+   - **Problem:** "House Standing" card in `ParticipantTeamStats` previously displayed `teamStats.teamRank` (the overall team's rank among all houses in the challenge), causing every member of that team to display the identical rank (e.g. "Rank #1, 14 house members").
+   - **Resolution:**
+      - Added `participantTeamRank: number` to `ParticipantTeamStats` domain type and calculation function (`calculateParticipantTeamStats`).
+      - In `participant-stats.repository.ts`, filtered `scoreboard.standings` by `s.teamId === participant.teamId` and calculated `participantTeamRankIndex + 1` to determine the participant's exact individual standing within their team.
+      - Updated `ParticipantTeamStats` presentation component to render `Rank #{teamStats.participantTeamRank}` and `of {teamStats.companionCount} house members`.
+      - Moved overall house standing into the header badge next to the house name: `<span>{teamStats.teamName}</span> (House #{teamStats.teamRank})`.
+   - **Test Updates:**
+      - Updated `features/participant-stats/domain/participant-stats.test.ts` to assert `participantTeamRank`.
+      - Updated `features/participant-stats/data/participant-stats.repository.test.ts` to verify `participantTeamRank` calculation from team standings.
+      - Updated `features/participant-stats/presentation/participant-stats-view.test.tsx` to assert "Rank #2", "of 3 house members", and "(House #1)" badge.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
