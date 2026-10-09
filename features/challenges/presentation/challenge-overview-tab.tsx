@@ -54,6 +54,7 @@ export function ChallengeOverviewTab({
          teamName: entry.teamName,
          teamColor: entry.teamColor,
          dailyLogs: entry.dailyLogs,
+         totalLoggedSeconds: entry.totalLoggedSeconds,
       });
       setIsOverrideModalOpen(true);
    };
@@ -78,7 +79,8 @@ export function ChallengeOverviewTab({
       return true;
    });
 
-   const hasActiveFilters = searchQuery.trim() !== "" || selectedTeamId !== "ALL";
+   const hasActiveFilters =
+      searchQuery.trim() !== "" || selectedTeamId !== "ALL";
 
    const handleResetFilters = () => {
       setSearchQuery("");
@@ -86,9 +88,8 @@ export function ChallengeOverviewTab({
       setParticipantPage(1);
    };
 
-   const totalParticipantPages = Math.ceil(
-      filteredParticipants.length / participantPageSize
-   ) || 1;
+   const totalParticipantPages =
+      Math.ceil(filteredParticipants.length / participantPageSize) || 1;
    const safeParticipantPage = Math.min(
       Math.max(1, participantPage),
       Math.max(1, totalParticipantPages)
@@ -244,10 +245,13 @@ export function ChallengeOverviewTab({
                               }}
                               className="h-8 w-full rounded-xl border border-[#333333] bg-[#1c1c1c] px-3 pr-8 text-xs text-[#ffffff] focus:border-[#ffffff]/60 focus:outline-none appearance-none cursor-pointer"
                            >
-                              <option value="ALL">All Teams ({standings.length})</option>
+                              <option value="ALL">
+                                 All Teams ({standings.length})
+                              </option>
                               {teams.map((t) => (
                                  <option key={t.id} value={t.id}>
-                                    {t.iconEmoji ? `${t.iconEmoji} ` : ""}{t.name} ({t.companionCount})
+                                    {t.iconEmoji ? `${t.iconEmoji} ` : ""}
+                                    {t.name} ({t.companionCount})
                                  </option>
                               ))}
                            </select>

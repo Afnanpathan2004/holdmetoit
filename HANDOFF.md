@@ -4,7 +4,7 @@
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-09 (Session 71 — View by Team side-by-side layout)  
+> **Last Updated:** 2026-10-09 (Session 72 — Overall time reset to 0 & zero-hour submit unblock)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
@@ -14,7 +14,7 @@
 | Gate                                         | Result (2026-10-09, branch `krish`)                                                                                                                                                                                                                                   |
 | :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                                      |
-| `npm run test`                               | ✅ 71 files green (715/715 tests passing)                                                                                                                                                                                                                             |
+| `npm run test`                               | ✅ 71 files green (723/723 tests passing)                                                                                                                                                                                                                             |
 | `npm run build`                              | ✅ 10 routes compiled                                                                                                                                                                                                                                                 |
 | Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~88%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                                            |
@@ -222,4 +222,31 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Added unit tests verifying side-by-side grid rendering (`lg:grid-cols-2`) when multiple teams exist in team view mode.
       - Added unit test verifying single column fallback when only one team exists.
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 715/715 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 72 — 2026-10-09 (krish)
+
+- **Agent Role:** Admin Operations & Broadcaster Agent / Data & Identity Agent.
+- **Overall Time Reset to 0 & Zero-Hour Override Unblock (`Law L5` / `FEAT-LOG-04`):**
+   - **Problem Resolved:** Moderators and developers were unable to update study time to 0 (`00:00:00`) because:
+      1. Submit buttons were unconditionally disabled when audit reasons were empty, even when clearing time to 0.
+      2. Backend validation strictly rejected empty reasons even when clearing/resetting hours.
+      3. Mods could only adjust day-by-day (D1..D7), with no way to reset a participant's overall challenge time to 0 in one action.
+      4. Manual leaderboard entry modal had `hours <= 0` and `min="0.1"` preventing 0 hour submissions.
+   - **Repository Layer (`features/study-logs/data/admin-override.repository.ts`):**
+      - Added `executeAdminResetOverallHours`: batch updates all existing `DailyStudyLog` entries for a participant to `durationSeconds = 0` (`isOverride = true`, `overrideById`, `overrideReason`), or provisions a baseline 0s log if none exist.
+      - Logs immutable `HOURS_OVERRIDE` audit event on `PARTICIPANT` recording previous and new totals.
+   - **Action Layer (`features/study-logs/api/admin-override.actions.ts`):**
+      - Added `adminResetParticipantOverallHoursAction` with tag invalidation (`cacheTags.challengeScoreboard`) and path revalidations.
+      - Updated `adminOverrideStudyHoursAction` so that when `durationSeconds === 0`, reasons default gracefully to `"Set study hours to 00:00:00 by moderator"` without failing schema validation.
+   - **Presentation Layer (`admin-hours-override-modal.tsx`):**
+      - Added scope toggle: **`Single Day (D1–D7)`** vs **`Overall Time (Reset to 0)`**.
+      - In **`Overall Time`** mode: displays current overall logged clock, new `00:00:00` clock, confirmation notice, and a prominent 1-click `Reset Overall Time to 0` action.
+      - In **`Single Day`** mode: when clearing time to 0 or entering `00:00:00`, the reason is marked optional, automatically defaulted, and the submit button is never disabled.
+   - **Modal Callers Updated:**
+      - Hydrated `totalLoggedSeconds` into `AdminHoursOverrideParticipant` in `challenge-manage-tab.tsx`, `challenge-overview-tab.tsx`, and `challenge-leaderboard-tab.tsx`.
+   - **Manual Leaderboard Updated (`manual-leaderboard-view.tsx`):**
+      - Changed `hours <= 0` to `hours < 0` and `min="0.1"` to `min="0"` so manual logging supports 0 hours.
+   - **Unit Tests:**
+      - Added 8 new tests across `admin-override.actions.test.ts`, `admin-hours-override-modal.test.tsx`, and `manual-leaderboard-view.test.tsx`.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 723/723 green) · `npx next build` ✅ (10 routes compiled successfully).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).

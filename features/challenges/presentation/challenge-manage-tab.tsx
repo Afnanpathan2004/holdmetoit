@@ -112,7 +112,9 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                return false;
             }
          } else {
-            const matchedTeam = challenge.teams.find((t) => t.id === rosterTeamFilter);
+            const matchedTeam = challenge.teams.find(
+               (t) => t.id === rosterTeamFilter
+            );
             if (
                currentTeamId !== rosterTeamFilter &&
                (!matchedTeam || p.teamName !== matchedTeam.name)
@@ -163,6 +165,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
          teamName: participant.teamName,
          teamColor: participant.teamColor,
          dailyLogs: participant.dailyLogs,
+         totalLoggedSeconds: participant.totalLoggedSeconds,
       });
       setOverrideInitialDay(dayNum);
       setIsOverrideModalOpen(true);
@@ -725,7 +728,8 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                   </div>
 
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#1c1c1c] border border-[#292929] text-[#868686] self-start sm:self-auto">
-                     {filteredRoster.length} of {challenge.standings.length} scholars
+                     {filteredRoster.length} of {challenge.standings.length}{" "}
+                     scholars
                   </span>
                </div>
 
@@ -768,13 +772,21 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                            }}
                            className="h-8 w-full rounded-xl border border-[#383838] bg-[#242424] px-3 pr-8 text-xs text-[#ffffff] focus:border-[#ffffff]/60 focus:outline-none appearance-none cursor-pointer"
                         >
-                           <option value="ALL">All Houses ({challenge.standings.length})</option>
+                           <option value="ALL">
+                              All Houses ({challenge.standings.length})
+                           </option>
                            {teams.map((t) => (
-                              <option key={t.id || t.name} value={t.id || t.name}>
-                                 {t.iconEmoji ? `${t.iconEmoji} ` : ""}{t.name}
+                              <option
+                                 key={t.id || t.name}
+                                 value={t.id || t.name}
+                              >
+                                 {t.iconEmoji ? `${t.iconEmoji} ` : ""}
+                                 {t.name}
                               </option>
                            ))}
-                           <option value="UNASSIGNED">Unassigned Scholars</option>
+                           <option value="UNASSIGNED">
+                              Unassigned Scholars
+                           </option>
                         </select>
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#868686] pointer-events-none" />
                      </div>
