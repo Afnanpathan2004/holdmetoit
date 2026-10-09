@@ -8,6 +8,7 @@ import {
    Clock,
 } from "lucide-react";
 import type { ParticipantProfileHeader as ProfileHeaderType } from "../domain/participant-stats.types";
+import { getTeamBadgeStyle } from "@/features/challenges/domain/team-colors";
 
 interface ParticipantProfileHeaderProps {
    profile: ProfileHeaderType;
@@ -107,15 +108,7 @@ export function ParticipantProfileHeader({
                         {profile.teamName && (
                            <span
                               className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border"
-                              style={{
-                                 borderColor: profile.teamColor
-                                    ? `${profile.teamColor}60`
-                                    : "#383838",
-                                 backgroundColor: profile.teamColor
-                                    ? `${profile.teamColor}20`
-                                    : "#1c1c1c",
-                                 color: profile.teamColor || "#f4f3f6",
-                              }}
+                              style={getTeamBadgeStyle(profile.teamColor)}
                            >
                               <span>{profile.teamIcon || "🛡️"}</span>
                               <span>{profile.teamName}</span>

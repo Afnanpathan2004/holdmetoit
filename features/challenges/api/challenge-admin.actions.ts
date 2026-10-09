@@ -24,6 +24,8 @@ import {
    extractManagedObjectPath,
    type ChallengeImagePurpose,
 } from "@/features/challenges/domain/punishment-pfp";
+import { cacheTags, invalidateTags } from "@/core/cache";
+import { clearTeamColorCache } from "@/features/challenges/domain/team-colors";
 
 const BANNER_REQUIRED_MESSAGE = "Please upload an event header image.";
 const PFP_REQUIRED_MESSAGE = "Please upload a punishment PFP.";
@@ -148,6 +150,11 @@ export async function kickoffChallengeAction(
          username: admin.username,
       });
 
+      invalidateTags([
+         cacheTags.challengeScoreboard(challengeId),
+         cacheTags.challengeMetadata(challengeId),
+      ]);
+
       revalidatePath(`/challenge/${challengeId}`);
       revalidatePath(`/admin/challenges/${challengeId}`);
       revalidatePath("/challenges");
@@ -175,6 +182,11 @@ export async function lockChallengeResultsAction(
          id: admin.id,
          username: admin.username,
       });
+
+      invalidateTags([
+         cacheTags.challengeScoreboard(challengeId),
+         cacheTags.challengeMetadata(challengeId),
+      ]);
 
       revalidatePath(`/challenge/${challengeId}`);
       revalidatePath(`/admin/challenges/${challengeId}`);
@@ -231,6 +243,14 @@ export async function adminEnrollParticipantAction(
             username: admin.username,
          },
       });
+
+      invalidateTags([
+         cacheTags.challengeScoreboard(parsed.data.challengeId),
+         cacheTags.participantCockpit(
+            parsed.data.userId,
+            parsed.data.challengeId
+         ),
+      ]);
 
       revalidatePath(`/admin/challenges/${parsed.data.challengeId}`);
       revalidatePath(`/admin/challenges/${parsed.data.challengeId}/roster`);
@@ -373,6 +393,12 @@ export async function updateChallengeAction(
       }
       await cleanupUnreferencedChallengeImages(replacedUrls);
 
+      invalidateTags([
+         cacheTags.challengeScoreboard(parsed.data.challengeId),
+         cacheTags.challengeMetadata(parsed.data.challengeId),
+      ]);
+      clearTeamColorCache();
+
       revalidatePath(`/challenge/${parsed.data.challengeId}`);
       revalidatePath("/challenges");
       revalidatePath("/admin");
@@ -431,6 +457,8 @@ export async function reassignParticipantTeamAction(
          },
       });
 
+      invalidateTags([cacheTags.challengeScoreboard(parsed.data.challengeId)]);
+
       revalidatePath(`/challenge/${parsed.data.challengeId}`);
       revalidatePath("/challenges");
       revalidatePath("/admin");
@@ -481,6 +509,12 @@ export async function deleteChallengeAction(
          previousImages?.eventBannerUrl,
          previousImages?.punishmentPfpUrl,
       ]);
+
+      invalidateTags([
+         cacheTags.challengeScoreboard(challengeId),
+         cacheTags.challengeMetadata(challengeId),
+      ]);
+      clearTeamColorCache();
 
       revalidatePath("/challenges");
       revalidatePath("/admin");

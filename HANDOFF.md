@@ -4,17 +4,17 @@
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-09 (Session 66 — multi-view pagination & overflow guard overhaul)  
+> **Last Updated:** 2026-10-09 (Session 71 — team colors review, edge cases & 5-minute dual-layer caching engine)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-09, branch `afnan`)                                                                                                                                                                                                               |
+| Gate                                         | Result (2026-10-09, branch `afnan-jr`)                                                                                                                                                                                                            |
 | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                  |
-| `npm run test`                               | ✅ 70 files green (709/709 tests passing)                                                                                                                                                                                                         |
+| `npm run test`                               | ✅ 71 files green (730/730 tests passing)                                                                                                                                                                                                         |
 | `npm run build`                              | ✅ 10 routes compiled                                                                                                                                                                                                                             |
 | Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~86%** — Dedicated public /challenges catalog, challenge-specific participant statistics cockpit (/challenge/[id]/participant/[participantId]), multi-view pagination guards, 2-card hours logging, mod audit log & hours overrides complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                        |
@@ -146,138 +146,9 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ## 7. Session Changelog (Last 3–5 Sessions)
 
-### Sessions 1–60 (Summarized)
+### Sessions 1–66 (Summarized)
 
-- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, and law labels UI cleanup.
-
-### Session 61 — 2026-10-08 (krish)
-
-- **Agent Role:** Admin Operations & Scoring Engine Agent.
-- **Moderator Future Hours Prevention:**
-   - Implemented strict guards across domain, API, and UI layers so even moderators/admins cannot add or edit future hours for participants:
-      - **Domain (`challenge-day.ts`):** `getChallengeDayOptions` correctly flags future days as `isFuture: true` even if a challenge is upcoming. Added `validateAdminOverrideChallengeDay` which allows earlier past days (unlike participants who are locked to today/yesterday) while strictly rejecting future challenge days or future dates with `FUTURE_DATE_NOT_ALLOWED`.
-      - **Server Action (`admin-override.actions.ts`):** Added a future date check on `parsed.data.logDate > todayDateKey` returning `{ ok: false, code: "FUTURE_DATE_NOT_ALLOWED", message: "Cannot log or edit study time for future dates." }`.
-      - **Repository (`admin-override.repository.ts`):** Added safety invariant throwing an error if attempting to execute an override on a future date.
-      - **Admin Override Modal (`admin-hours-override-modal.tsx`):** Clamped initial day selection, disabled future day buttons, and guarded submit.
-      - **Challenge Manage Tab (`challenge-manage-tab.tsx`):** Disabled future day buttons in 7-day breakdown strip.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 639/639 green) · `npm run build` ✅.
-
-### Session 62 — 2026-10-08 (krish)
-
-- **Agent Role:** Participant UI & Scoring Engine Agent.
-- **Block Adding Todo Tasks to Past Challenge Days:**
-   - Implemented comprehensive guards across domain and presentation layers to block adding new todo tasks to past days of the challenge while preserving status changes and edits for existing tasks:
-      - **Domain (`challenge-day.ts`):**
-         - Added `isPast: boolean` property to `ChallengeDayOption`.
-         - Computed `isPast` across both `getChallengeDayOptions` (`rawCurrentDayNumber > 0 && d < rawCurrentDayNumber`) and `getCalendarWeekDayOptions` (`dayUtc < todayUtc`).
-         - Added `isChallengeDayInPast` and `validateAddTaskChallengeDay` domain validation helpers with unit tests in `challenge-day.test.ts`.
-      - **Presentation (`cockpit-tasks-section.tsx`):**
-         - Added `isActiveDayPast` state detection based on `activeDayOption.isPast` and `selectedDateKey < effectiveTodayDate`.
-         - **Daily Todos Header:** Displays a `Locked` badge alongside the day badge when viewing a past day.
-         - **Empty State:** When viewing a past day with no tasks, displays a locked past-day notice ("This challenge day has passed. New tasks cannot be added to past days.") and hides the "+ Add todo" button.
-         - **Bottom Action Button:** Replaced "+ Add more todos" with a disabled, styled locked button ("Past day locked (new tasks blocked)").
-         - **Add Todo Modal:**
-            - Clamped `openAddDailyModal` so opening the modal while viewing a past day defaults to today or the earliest available non-past day.
-            - In the 7-day selector grid, disabled past days with `disabled={true}`, opacity-40, `cursor-not-allowed`, and a lock icon.
-            - Guarded `handleAddTodoSubmit` against submitting tasks for past challenge days.
-         - **Drag & Drop:** Blocked dropping tasks or categories from weekly into daily when viewing a past day.
-         - **Existing Tasks on Past Days:**
-            - Checkbox toggles and status badges ("Completed", "In Progress", "Crossed Out") remain fully functional.
-            - Edit Task Modal keeps the task's original past day selected while locking all other past days from being selected, and `handleSaveEditTask` prevents moving tasks into different past days.
-            - Deleting tasks or categories containing tasks on past days is strictly blocked with disabled buttons and locked tooltips.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 647/647 green) · `npx next build` ✅ (8 routes compiled).
-- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
-
-### Session 63 — 2026-10-09 (krish)
-
-- **Agent Role:** Participant UI & Scoring Engine Agent.
-- **Fix Weekly-to-Daily Drag-and-Drop Due Date Bug:**
-   - Resolved bug where dragging a task from Weekly Todos to Daily Todos assigned it to Day 1 of the challenge (due to fallback to `task.createdAt`) instead of the active/selected challenge day:
-      - **Domain (`task-reorder.ts`):**
-         - Added optional `targetDueDate?: string | null` to `MoveTaskParams` and `MoveCategoryParams`.
-         - In `moveTaskBetweenCategories`, resolved `dueDate`: if `targetDueDate` is provided, assign `targetDueDate`; if moving to `"weekly"`, reset `dueDate: null`; otherwise preserve existing `dueDate`.
-         - In `moveCategoryBetweenColumns`, cascaded `targetDueDate` to member tasks when moving cross-column.
-         - Added unit tests in `task-reorder.test.ts` verifying `targetDueDate` assignment when moving tasks or categories.
-      - **Presentation (`cockpit-tasks-section.tsx`):**
-         - In `handleTaskDrop`, `handleCategoryDrop`, and `handleColumnDrop`: passed `targetDueDate: selectedDateKey` when moving from Weekly to Daily (`isMovingWeeklyToDaily`), and `targetDueDate: null` when moving from Daily to Weekly.
-         - Updated local IndexedDB persistence (`putLocalTasks` / `putLocalTask`) to store the resolved `dueDate`.
-         - Included `dueDate: res.movedTask.dueDate ?? null` in `enqueueMutation` payload for `action: "MOVE"` to synchronize the assigned day with the server.
-         - Added unit tests in `cockpit-tasks-section.test.tsx` verifying that a daily task with Day 1 `createdAt` and Day 4 `dueDate` renders under Day 4 in Daily Todos.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
-- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
-
-### Session 63 — 2026-10-09 (krish)
-
-- **Agent Role:** Participant UI & Scoring Engine Agent.
-- **Fix Weekly-to-Daily Drag-and-Drop Due Date Bug:**
-   - Resolved bug where dragging a task from Weekly Todos to Daily Todos assigned it to Day 1 of the challenge (due to fallback to `task.createdAt`) instead of the active/selected challenge day:
-      - **Domain (`task-reorder.ts`):**
-         - Added optional `targetDueDate?: string | null` to `MoveTaskParams` and `MoveCategoryParams`.
-         - In `moveTaskBetweenCategories`, resolved `dueDate`: if `targetDueDate` is provided, assign `targetDueDate`; if moving to `"weekly"`, reset `dueDate: null`; otherwise preserve existing `dueDate`.
-         - In `moveCategoryBetweenColumns`, cascaded `targetDueDate` to member tasks when moving cross-column.
-         - Added unit tests in `task-reorder.test.ts` verifying `targetDueDate` assignment when moving tasks or categories.
-      - **Presentation (`cockpit-tasks-section.tsx`):**
-         - In `handleTaskDrop`, `handleCategoryDrop`, and `handleColumnDrop`: passed `targetDueDate: selectedDateKey` when moving from Weekly to Daily (`isMovingWeeklyToDaily`), and `targetDueDate: null` when moving from Daily to Weekly.
-         - Updated local IndexedDB persistence (`putLocalTasks` / `putLocalTask`) to store the resolved `dueDate`.
-         - Included `dueDate: res.movedTask.dueDate ?? null` in `enqueueMutation` payload for `action: "MOVE"` to synchronize the assigned day with the server.
-         - Added unit tests in `cockpit-tasks-section.test.tsx` verifying that a daily task with Day 1 `createdAt` and Day 4 `dueDate` renders under Day 4 in Daily Todos.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
-- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
-
-### Session 64 — 2026-10-09 (krish)
-
-- **Agent Role:** Participant UI & Scoring Engine Agent.
-- **Move Daily Todo Tasks Across Challenge Days (with Past Day Guard):**
-   - Implemented the ability to reschedule/move daily todo tasks from previous days to another day (today or future), with strict rejection of moving present or future tasks to past challenge days:
-      - **Domain (`challenge-day.ts`):**
-         - Created `validateMoveTaskChallengeDay(sourceDateKey, targetDateKey, todayDateKey)` pure domain validation function:
-            - Allows moving tasks from previous days to today or future challenge days (`MOVED_FROM_PAST_TO_PRESENT_OR_FUTURE`).
-            - Allows moving tasks between non-past days (`MOVED_FUTURE`, `MOVED_SAME_DAY`).
-            - Strictly rejects moving present/future tasks to past days with `PAST_DAY_MOVE_NOT_ALLOWED`.
-            - Rejects moving past-day tasks to a different past day with `TARGET_DAY_IN_PAST`.
-            - Permitted maintaining tasks on the same day (`SAME_DAY`).
-         - Added 8 unit tests covering all matrix permutations in `challenge-day.test.ts` (38/38 tests green).
-      - **Presentation (`cockpit-tasks-section.tsx`):**
-         - Implemented `moveTaskToDay(taskId, targetDateKey, sourceCatIdx, sourceColumn)`: updates local state, writes to IndexedDB (`putLocalTask`), enqueues sync mutation (`UPDATE`/`MOVE`), and executes server action (`updateTaskAction`).
-         - **7-Day Strip Drag & Drop:**
-            - Updated `handleTaskDragStart` to record `sourceDateKey` on `draggedItem`.
-            - Added `handleDayPillDragOver` and `handleDayPillDrop` on the 7-day pill switcher buttons.
-            - Added reactive drag feedback: green drop highlight ring for eligible days, red ring / cursor-not-allowed / lock icon indicator for disallowed past days.
-         - **3-Dots / Context Menu Quick Actions:**
-            - Added "Move to Day" section for daily tasks with 1-click "Move to Today" (highlighted emerald when task is on a past day) and quick buttons for other eligible future challenge days.
-         - **Edit Task Modal:**
-            - Enabled selecting today or future days when editing a past-day task; past days remain locked for tasks on present or future days.
-            - Validated day changes with `validateMoveTaskChallengeDay` on modal save.
-         - Added tests in `cockpit-tasks-section.test.tsx` verifying day tab attributes and rendering.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 659/659 green) · `npx next build` ✅ (8 routes compiled).
-
-### Session 65 — 2026-10-09 (afnan-jr)
-
-- **Agent Role:** Participant UI & Data / Identity Agent.
-- **Participant Study Log Audit Integration (`STUDY_LOG_ADDED`) & Dedicated Audit View Filter:**
-   - Added `"STUDY_LOG_ADDED"` event type to the audit log domain (`audit-log.ts`) mapped to human-readable label `"Study Time Logged"`.
-   - Updated `upsertDailyStudyLog` repository to accept actor details and challenge ID, automatically recording before/after study duration diffs (`previousValue` vs `newValue` in seconds and `HH:MM:SS` clock format).
-   - Wired `logStudyTimeAction` to pass authenticated user profile and challenge ID to the repository.
-   - Updated `EventAuditTab` presentation:
-      - Added emerald-themed `"STUDY_LOGS"` filter tab (`"Study Hour Logs"`).
-      - **Hidden by default**: When viewing `"All Actions"`, study hour logs are excluded so the administrative timeline remains clean. They only appear when an admin/mod explicitly clicks on the `"Study Hour Logs"` tab.
-   - Added full test coverage across domain, repository, server actions, and UI components.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (63 files, 667/667 green) · `npm run build` ✅.
-
-### Session 66 — 2026-10-09 (afnan-jr)
-
-- **Agent Role:** Participant UI & Admin Operations Agent.
-- **Dedicated Public Challenges Directory (`/challenges`) with Role-Gated Admin Controls:**
-   - Moved challenge catalog out of the admin-restricted zone into a dedicated public page at `/challenges` ([`challenges-list-view.tsx`](features/challenges/presentation/challenges-list-view.tsx), [`page.tsx`](app/challenges/page.tsx), [`layout.tsx`](app/challenges/layout.tsx), [`loading.tsx`](app/challenges/loading.tsx)):
-      - Accessible to public spectators, enrolled participants, and moderators/admins alike.
-      - **Role-Gated Actions:** "Create Challenge" (linking to `/admin/challenges/new`) and "Change Accent Color" buttons are only rendered when `canManageChallenges` is true (`ADMIN`/`DEV` in non-preview mode). They are completely hidden for participants, spectators, and admins previewing as participants.
-      - Preserved the full Obsidian dark styling, 3-column responsive card grid, status badges, participant counts, formatted UTC start dates, and "View Challenge" links.
-      - Added participant-friendly empty state when no challenges exist.
-   - **Header & Navigation Integration:**
-      - Added "Challenges" navigation link in `AppHeader` ([`auth-nav.tsx`](features/auth/presentation/auth-nav.tsx)) for 1-click discovery by all users (Closes #44).
-      - Redirected `/admin` to `/challenges` via server-side redirect ([`app/admin/page.tsx`](app/admin/page.tsx)).
-      - Updated back links in `/admin/challenges/new` and post-deletion redirects to `/challenges`.
-   - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (65 files, 675/675 green) · `npm run build` ✅ (9 routes compiled).
+- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours prevention, past challenge day task-adding guards, cross-day task moving/rescheduling with validation, participant study log audit trail integration (`STUDY_LOG_ADDED`), and dedicated public challenges catalog (`/challenges`) with role-gated admin controls.
 
 ### Session 67 — 2026-10-09 (krish)
 
@@ -355,4 +226,47 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Updated `features/participant-stats/data/participant-stats.repository.test.ts` to verify `participantTeamRank` calculation from team standings.
       - Updated `features/participant-stats/presentation/participant-stats-view.test.tsx` to assert "Rank #2", "of 3 house members", and "(House #1)" badge.
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green).
+
+### Session 70 — 2026-10-09 (afnan-jr)
+
+- **Agent Role:** Scoring & Engine Agent & Participant UI Agent.
+- **Dynamic Single-Hex Team Color System Migration:**
+   - **Problem:** Team match cards, split-share tug-of-war meter, and participant rows previously hardcoded Team A as green (`#22c55e`) and Team B as blue (`#3b82f6`), ignoring dynamic admin-configured team hex values (such as Honey Bees `#d9822b` and Lavender Butterflies `#9986b8`).
+   - **Pure Domain Color Engine (`features/challenges/domain/team-colors.ts`):**
+      - Created pure TypeScript functional engine adhering to **Law L7** (zero React/Next.js/ORM dependencies).
+      - Converts any 3 or 6 digit hex into RGB and HSL space.
+      - Implemented `getReadableTextColor(hex)`: locks the team's Hue ($H$) and Saturation ($S$) and dynamically lifts Lightness ($L \ge 76\%$, or $\ge 82\%$ if low saturation) to ensure WCAG AA contrast ($>6.5:1$) on Obsidian dark surfaces (`#0d0d0d` / `#141414`).
+      - Generates complete 10-token dark palette (`palette.solid`, `subtleBg`, `cardBg`, `border`, `subtleBorder`, `text`, `glow`, `hoverBorder`, `headerBg`, `avatarBg`).
+      - Created helper style utilities `getTeamBadgeStyle` and `getTeamCardStyle`.
+      - Comprehensive unit test suite in `team-colors.test.ts` (14/14 tests green).
+   - **ViewModel Hydration (`cockpit-data.ts`):**
+      - Added `teamColor: string | null` to `CockpitViewModel` and hydrated it from `participant.team.color`.
+   - **Presentation Layer Migration:**
+      - **Leaderboard Tab (`challenge-leaderboard-tab.tsx`):**
+         - Team A & Team B cards dynamically render `paletteA` and `paletteB` for surfaces, borders, and progress bar fills.
+         - Tug-of-War Split Share Bar renders dynamic `paletteA.solid` / `paletteB.solid` and `paletteA.text` / `paletteB.text`.
+         - Rank 1 (MVP) podium card dynamically adopts leader's `top1Palette`.
+         - Mobile cards and desktop table rows/team badges render dynamic `entryPalette` via `getTeamColorPalette(entry.teamColor, entry.rank)`.
+      - **Overview Tab (`challenge-overview-tab.tsx`):** Participant list renders dynamic house badge pills with `pPalette`.
+      - **Participant Statistics (`participant-profile-header.tsx`, `participant-team-stats.tsx`):** House badge and contribution meter use `palette.solid` and `palette.text`.
+      - **Admin Hours Override Modal (`admin-hours-override-modal.tsx`):** Renders team badge using `getTeamBadgeStyle`.
+      - **Cockpit Progress Card (`cockpit-progress-card.tsx`):** Added participant's dynamic house badge pill next to weekly progress title.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 724/724 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 71 — 2026-10-09 (afnan-jr)
+
+- **Agent Role:** Scoring & Engine Agent & Data / Identity Agent.
+- **Team Colors Code Review, Edge Case Hardening & Dual-Layer 5-Minute Caching Engine:**
+   - **Senior Engineering Code Review & Bug Fixes (`features/challenges/domain/team-colors.ts`):**
+      - **Strict Hex Regex Guard:** Replaced permissive `parseInt` validation with `/^(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/`, preventing strings with trailing non-hex characters (e.g. `#d9822z`, `#12345!`) from silently producing corrupted RGB values.
+      - **CSS 4-Character Hex Support:** Added support for `#rgba` shorthand (e.g. `#f0a8`), expanding RGB from characters 0, 1, and 2.
+      - **Float & NaN `fallbackIndex` Sanitization:** Implemented `sanitizeFallbackIndex`, eliminating unhandled `TypeError` crashes when non-integer or float indices are provided.
+      - **Dark Mode Pitch-Black Visibility Safeguard:** Added relative luminance threshold guard ($L_{rel} < 0.05$); pitch-black `#000000` receives an ambient charcoal border (`rgba(70, 70, 70, 0.45)`) and surface tint (`rgba(35, 35, 35, 0.40)`) preventing card disappearance on `#0d0d0d` Obsidian canvas.
+      - **In-Memory 5-Minute TTL Palette Cache:** Created pure domain in-memory cache (`PALETTE_CACHE_TTL_MS = 300_000ms`, max 256 entries) with `clearTeamColorCache()` and `getTeamColorCacheSize()`, eliminating repetitive trigonometric and parsing overhead on table/card renders.
+   - **Server-Side 5-Minute Data Caching (`features/leaderboard/data/leaderboard-data.ts`):**
+      - Updated `getCachedChallengeScoreboardPayload` to use `revalidate: CACHE_REVALIDATE_SECONDS.stable` (300 seconds = 5 minutes).
+   - **Admin Instant Tag Invalidation (`features/challenges/api/challenge-admin.actions.ts`):**
+      - Added `invalidateTags([cacheTags.challengeScoreboard(challengeId), cacheTags.challengeMetadata(challengeId)])` and `clearTeamColorCache()` to `updateChallengeAction`, `reassignParticipantTeamAction`, `adminEnrollParticipantAction`, `kickoffChallengeAction`, `lockChallengeResultsAction`, and `deleteChallengeAction`, ensuring admin changes flush instantly while preserving 5-minute cached TTL for public and participant read traffic.
+   - **Unit Tests:** Added 6 new unit tests in `team-colors.test.ts` (20/20 green) and updated mocks in `challenge-admin.actions.test.ts` (71/71 green).
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 730/730 green) · `npm run build` ✅ (10 routes compiled successfully).
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
