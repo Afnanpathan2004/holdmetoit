@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, Users, CheckCircle, Shield, Award, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DataPagination } from "@/components/ui/data-pagination";
 import {
   AdminHoursOverrideModal,
   type AdminHoursOverrideParticipant,
@@ -23,7 +24,8 @@ export function ChallengeOverviewTab({
   challenge,
   isAdmin = false,
 }: ChallengeOverviewTabProps) {
-  const [showAllParticipants, setShowAllParticipants] = useState(false);
+  const [participantPage, setParticipantPage] = useState(1);
+  const participantPageSize = 8;
   const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
   const [overrideParticipant, setOverrideParticipant] =
     useState<AdminHoursOverrideParticipant | null>(null);
@@ -43,9 +45,15 @@ export function ChallengeOverviewTab({
   };
   const { standings, teams } = challenge;
 
-  const displayedParticipants = showAllParticipants
-    ? standings
-    : standings.slice(0, 8);
+  const totalParticipantPages = Math.ceil(standings.length / participantPageSize);
+  const safeParticipantPage = Math.min(
+    Math.max(1, participantPage),
+    Math.max(1, totalParticipantPages)
+  );
+  const displayedParticipants = standings.slice(
+    (safeParticipantPage - 1) * participantPageSize,
+    safeParticipantPage * participantPageSize
+  );
 
   const teamA = teams[0];
 
@@ -205,17 +213,15 @@ export function ChallengeOverviewTab({
             </div>
           )}
 
-          {standings.length > 8 && (
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={() => setShowAllParticipants(!showAllParticipants)}
-                className="text-xs font-semibold text-[#ffffff] hover:underline"
-              >
-                {showAllParticipants ? "Show less" : "View all participants →"}
-              </button>
-            </div>
-          )}
+          <DataPagination
+            currentPage={safeParticipantPage}
+            totalPages={totalParticipantPages}
+            totalItems={standings.length}
+            pageSize={participantPageSize}
+            onPageChange={setParticipantPage}
+            itemLabel="participants"
+            compact={true}
+          />
         </div>
       </div>
 

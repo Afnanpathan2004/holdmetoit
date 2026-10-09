@@ -166,4 +166,42 @@ describe("ChallengesListView", () => {
       expect(html).toContain('href="/"');
       expect(html).not.toContain("Create First Challenge");
    });
+
+   it("renders pagination controls when challenge count exceeds 9", () => {
+      const manyChallenges = Array.from({ length: 12 }, (_, i) => ({
+         id: `chal-${i + 1}`,
+         title: `Challenge ${i + 1}`,
+         format: "TEAM_VS_TEAM" as const,
+         challengeColor: null,
+         status: "ACTIVE" as const,
+         startAt: new Date("2026-10-04T01:00:00.000Z"),
+         endAt: new Date("2026-10-10T01:00:00.000Z"),
+         eventBannerUrl: null,
+         punishmentPfpUrl: null,
+         hostId: "admin-1",
+         createdAt: new Date("2026-10-01T00:00:00.000Z"),
+         updatedAt: new Date("2026-10-01T00:00:00.000Z"),
+         host: {
+            id: "admin-1",
+            displayName: "Host Admin",
+            username: "admin",
+            image: null,
+         },
+         _count: { participants: 2 },
+         teams: [],
+      }));
+
+      const html = renderToStaticMarkup(
+         <ChallengesListView
+            challenges={manyChallenges}
+            canManageChallenges={false}
+         />
+      );
+
+      expect(html).toContain("Showing");
+      expect(html).toContain("1–9");
+      expect(html).toContain("12");
+      expect(html).toContain("challenges");
+      expect(html).toContain("Next");
+   });
 });

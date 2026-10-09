@@ -14,12 +14,14 @@ import {
    Play,
    Plus,
    RefreshCw,
+   Search,
    Trash2,
    User as UserIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DataPagination } from "@/components/ui/data-pagination";
 import type {
    ChallengeScoreboardViewModel,
    ScoreboardStandingEntry,
@@ -72,6 +74,31 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
       useState<AdminHoursOverrideParticipant | null>(null);
    const [overrideInitialDay, setOverrideInitialDay] = useState<number>(1);
    const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
+
+   // Participant Roster & Hours Management Pagination State
+   const [rosterSearch, setRosterSearch] = useState("");
+   const [rosterPage, setRosterPage] = useState(1);
+   const rosterPageSize = 8;
+
+   const filteredRoster = challenge.standings.filter((p) => {
+      const q = rosterSearch.toLowerCase().trim();
+      if (!q) return true;
+      return (
+         p.displayName.toLowerCase().includes(q) ||
+         (p.username && p.username.toLowerCase().includes(q)) ||
+         p.teamName.toLowerCase().includes(q)
+      );
+   });
+
+   const totalRosterPages = Math.ceil(filteredRoster.length / rosterPageSize);
+   const safeRosterPage = Math.min(
+      Math.max(1, rosterPage),
+      Math.max(1, totalRosterPages)
+   );
+   const paginatedRoster = filteredRoster.slice(
+      (safeRosterPage - 1) * rosterPageSize,
+      safeRosterPage * rosterPageSize
+   );
 
    const dayOptions: ChallengeDayOption[] = getChallengeDayOptions(
       challenge.startAt,
@@ -651,24 +678,46 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
 
             {/* SECTION 4: PARTICIPANT ROSTERS & HOURS MANAGEMENT (ADMIN OVERRIDE) */}
             <section className="space-y-5 pt-4 border-t border-[#262626]">
-               <div className="space-y-1">
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
-                     Participant Rosters & Study Hours Management
-                  </h3>
-                  <p className="text-xs text-[#868686]">
-                     Reassign houses or override participant logged hours for
-                     throughout the challenge week (D1–D7). All manual
-                     adjustments require an audit reason.
-                  </p>
+               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                     <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#ffffff]">
+                        Participant Rosters & Study Hours Management
+                     </h3>
+                     <p className="text-xs text-[#868686]">
+                        Reassign houses or override participant logged hours
+                        throughout the challenge week (D1–D7). All manual
+                        adjustments require an audit reason.
+                     </p>
+                  </div>
+
+                  {challenge.standings.length > 0 && (
+                     <div className="relative w-full sm:w-56 shrink-0">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#868686]" />
+                        <Input
+                           type="text"
+                           placeholder="Search roster..."
+                           value={rosterSearch}
+                           onChange={(e) => {
+                              setRosterSearch(e.target.value);
+                              setRosterPage(1);
+                           }}
+                           className="h-8 pl-8 pr-3 bg-[#242424] border-[#383838] text-[#ffffff] placeholder-[#868686] text-xs rounded-xl"
+                        />
+                     </div>
+                  )}
                </div>
 
                {challenge.standings.length === 0 ? (
                   <div className="rounded-2xl border border-[#262626] bg-[#1c1c1c] p-6 text-center text-xs text-[#868686]">
                      No scholars have enrolled in this challenge yet.
                   </div>
+               ) : filteredRoster.length === 0 ? (
+                  <div className="rounded-2xl border border-[#262626] bg-[#1c1c1c] p-6 text-center text-xs text-[#868686]">
+                     No scholars match your roster search.
+                  </div>
                ) : (
                   <div className="space-y-3 rounded-2xl border border-[#262626] bg-[#1a1a1a] p-3 sm:p-4">
-                     {challenge.standings.map((participant) => {
+                     {paginatedRoster.map((participant) => {
                         const currentSelectedTeamId =
                            participantTeamMap[participant.participantId] ||
                            participant.teamId ||
@@ -838,6 +887,15 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                            </div>
                         );
                      })}
+
+                     <DataPagination
+                        currentPage={safeRosterPage}
+                        totalPages={totalRosterPages}
+                        totalItems={filteredRoster.length}
+                        pageSize={rosterPageSize}
+                        onPageChange={setRosterPage}
+                        itemLabel="scholars"
+                     />
                   </div>
                )}
             </section>

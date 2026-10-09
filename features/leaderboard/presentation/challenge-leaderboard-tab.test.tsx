@@ -209,4 +209,30 @@ describe("ChallengeLeaderboardTab", () => {
 
     expect(html).toContain("Edit hr");
   });
+
+  it("renders pagination controls when standings exceed page size", () => {
+    const manyStandings = Array.from({ length: 15 }, (_, i) => ({
+      ...mockChallenge.standings[0]!,
+      participantId: `part-${i + 1}`,
+      userId: `user-${i + 1}`,
+      displayName: `Scholar ${i + 1}`,
+      username: `scholar_${i + 1}`,
+      rank: i + 1,
+    }));
+
+    const html = renderToStaticMarkup(
+      createElement(ChallengeLeaderboardTab, {
+        challenge: {
+          ...mockChallenge,
+          standings: manyStandings,
+        },
+      }),
+    );
+
+    expect(html).toContain("Showing");
+    expect(html).toContain("1–10");
+    expect(html).toContain("15");
+    expect(html).toContain("scholars");
+    expect(html).toContain("Next");
+  });
 });
