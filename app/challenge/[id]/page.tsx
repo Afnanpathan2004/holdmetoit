@@ -1,49 +1,75 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import Link from "next/link";
+import { cookies } from "next/headers";
 
+import { EmptyState } from "@/components/state/empty-state";
+import { ErrorState } from "@/components/state/error-state";
+import { Button } from "@/components/ui/button";
 import { auth } from "@/core/auth";
-import { getScoreboardData } from "@/features/leaderboard/data/scoreboard.repository";
-import { ChallengeScoreboardView } from "@/features/leaderboard/presentation/challenge-scoreboard-view";
+import {
+  getEffectiveAdminState,
+  PARTICIPANT_PREVIEW_COOKIE,
+} from "@/features/auth/domain/preview-mode";
+import { getChallengeScoreboard } from "@/features/leaderboard/data/leaderboard-data";
+import { ChallengeView } from "@/features/challenges/presentation/challenge-view";
 
 interface ChallengePageProps {
   params: {
     id: string;
   };
-}
-
-export async function generateMetadata({
-  params,
-}: ChallengePageProps): Promise<Metadata> {
-  const scoreboard = await getScoreboardData(params.id);
-  if (!scoreboard) {
-    return {
-      title: "Challenge Not Found | HoldMeToIt",
-    };
-  }
-
-  return {
-    title: `${scoreboard.challenge.title} | Live Scoreboard & Standings`,
-    description: `Real-time leaderboard, house margin, and participant standings for ${scoreboard.challenge.title}.`,
+  searchParams?: {
+    tab?: "overview" | "leaderboard" | "about" | "manage" | "audit";
+    as?: string;
   };
 }
 
-export default async function ChallengePage({ params }: ChallengePageProps) {
-  const [scoreboardData, session] = await Promise.all([
-    getScoreboardData(params.id),
-    auth().catch(() => null),
-  ]);
+export default async function ChallengePage({
+  params,
+  searchParams,
+}: ChallengePageProps) {
+  const session = await auth();
+  const cookieStore = await cookies();
+  const previewCookie = cookieStore.get(PARTICIPANT_PREVIEW_COOKIE)?.value;
 
-  if (!scoreboardData) {
-    notFound();
-  }
+  const { isAdmin } = getEffectiveAdminState({
+    userRole: session?.user?.role,
+    previewCookie,
+    searchParamAs: searchParams?.as,
+  });
 
-  return (
-    <main className="min-h-screen bg-cafe-bg pb-16 text-cafe-parchment">
-      <ChallengeScoreboardView
-        initialData={scoreboardData}
-        isAuthenticated={Boolean(session?.user?.id)}
+  try {
+    const challenge = await getChallengeScoreboard(
+      params.id,
+      session?.user?.id,
+    );
+
+    if (!challenge) {
+      return (
+        <EmptyState
+          title="Challenge not found"
+          description="We couldn't locate this study challenge in our records. It may not exist or might still be in draft setup."
+          action={
+            <Button asChild variant="secondary" className="min-h-[44px]">
+              <Link href="/">Return to Study Lounge</Link>
+            </Button>
+          }
+        />
+      );
+    }
+
+    return (
+      <ChallengeView
+        challenge={challenge}
+        initialTab={searchParams?.tab ?? "overview"}
+        isAdmin={isAdmin}
       />
-    </main>
-  );
+    );
+  } catch (error) {
+    console.error("Failed to load challenge scoreboard:", error);
+    return (
+      <ErrorState
+        title="Could not load scoreboard"
+        message="Something went wrong while fetching the live standings. Please refresh the page."
+      />
+    );
+  }
 }
-

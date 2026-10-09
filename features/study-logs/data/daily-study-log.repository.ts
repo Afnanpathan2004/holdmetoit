@@ -1,157 +1,124 @@
 import { prisma } from "@/core/db";
+import { recordAuditEvent } from "@/features/audit/data/audit-log.repository";
+import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
 
 function toUtcDateOnly(dateInput: string | Date): Date {
-  if (typeof dateInput === "string") {
-    const [year, month, day] = dateInput.split("-").map(Number);
-    return new Date(Date.UTC(year, month - 1, day));
-  }
+   if (typeof dateInput === "string") {
+      const [year, month, day] = dateInput.split("-").map(Number);
+      return new Date(Date.UTC(year, month - 1, day));
+   }
 
-  return new Date(
-    Date.UTC(
-      dateInput.getUTCFullYear(),
-      dateInput.getUTCMonth(),
-      dateInput.getUTCDate(),
-    ),
-  );
+   return new Date(
+      Date.UTC(
+         dateInput.getUTCFullYear(),
+         dateInput.getUTCMonth(),
+         dateInput.getUTCDate()
+      )
+   );
 }
 
-export async function upsertDailyStudyLog(params: {
-  participantId: string;
-  logDate: string | Date;
-  durationSeconds: number;
-}) {
-  const logDate = toUtcDateOnly(params.logDate);
+function formatUtcDateKey(dateInput: string | Date): string {
+   if (typeof dateInput === "string") {
+      return dateInput.slice(0, 10);
+   }
+   return dateInput.toISOString().slice(0, 10);
+}
 
-  return prisma.dailyStudyLog.upsert({
-    where: {
-      participantId_logDate: {
-        participantId: params.participantId,
-        logDate,
+export interface UpsertDailyStudyLogParams {
+   participantId: string;
+   logDate: string | Date;
+   durationSeconds: number;
+   challengeId?: string;
+   actor?: {
+      id: string;
+      username: string;
+      displayName?: string | null;
+      image?: string | null;
+   };
+}
+
+export async function upsertDailyStudyLog(params: UpsertDailyStudyLogParams) {
+   const logDate = toUtcDateOnly(params.logDate);
+
+   let existingLog = null;
+   if (params.actor && params.challengeId) {
+      existingLog = await prisma.dailyStudyLog.findUnique({
+         where: {
+            participantId_logDate: {
+               participantId: params.participantId,
+               logDate,
+            },
+         },
+      });
+   }
+
+   const updatedLog = await prisma.dailyStudyLog.upsert({
+      where: {
+         participantId_logDate: {
+            participantId: params.participantId,
+            logDate,
+         },
       },
-    },
-    create: {
-      participantId: params.participantId,
-      logDate,
-      durationSeconds: params.durationSeconds,
-    },
-    update: {
-      durationSeconds: params.durationSeconds,
-      isOverride: false,
-      overrideById: null,
-      overrideReason: null,
-    },
-  });
+      create: {
+         participantId: params.participantId,
+         logDate,
+         durationSeconds: params.durationSeconds,
+      },
+      update: {
+         durationSeconds: params.durationSeconds,
+         isOverride: false,
+         overrideById: null,
+         overrideReason: null,
+      },
+   });
+
+   if (params.actor && params.challengeId) {
+      const dateKey = formatUtcDateKey(updatedLog.logDate);
+      await recordAuditEvent({
+         actorId: params.actor.id,
+         actorUsername: params.actor.username,
+         actorDisplayName: params.actor.displayName ?? null,
+         actorImage: params.actor.image ?? null,
+         actionType: "STUDY_LOG_ADDED",
+         targetEntityId: updatedLog.id,
+         targetEntityType: "DAILY_STUDY_LOG",
+         targetEntityName: params.actor.displayName || params.actor.username,
+         challengeId: params.challengeId,
+         previousValue: existingLog
+            ? {
+                 durationSeconds: existingLog.durationSeconds,
+                 durationClock: formatSecondsToClock(
+                    existingLog.durationSeconds
+                 ),
+                 logDate: dateKey,
+              }
+            : null,
+         newValue: {
+            durationSeconds: updatedLog.durationSeconds,
+            durationClock: formatSecondsToClock(updatedLog.durationSeconds),
+            logDate: dateKey,
+         },
+         auditReason: existingLog
+            ? `Updated study time from ${formatSecondsToClock(existingLog.durationSeconds)} to ${formatSecondsToClock(updatedLog.durationSeconds)}`
+            : `Logged ${formatSecondsToClock(updatedLog.durationSeconds)} of study time`,
+      });
+   }
+
+   return updatedLog;
 }
 
 export async function findDailyLog(
-  participantId: string,
-  logDate: string | Date,
+   participantId: string,
+   logDate: string | Date
 ) {
-  const normalized = toUtcDateOnly(logDate);
+   const normalized = toUtcDateOnly(logDate);
 
-  return prisma.dailyStudyLog.findUnique({
-    where: {
-      participantId_logDate: {
-        participantId,
-        logDate: normalized,
-      },
-    },
-  });
-}
-
-/**
- * Admin inline hours override with audit entry (FEAT-LOG-04 / Law L5).
- */
-export async function adminOverrideDailyStudyLog(params: {
-  challengeId?: string;
-  participantId: string;
-  logDate: string | Date;
-  durationSeconds: number;
-  reason: string;
-  actor: { id: string; username: string };
-}) {
-  const trimmedReason = params.reason.trim();
-  if (!trimmedReason) {
-    throw new Error("Audit reason is required for hours override.");
-  }
-
-  if (
-    !Number.isInteger(params.durationSeconds) ||
-    params.durationSeconds < 0 ||
-    params.durationSeconds > 86_400
-  ) {
-    throw new Error(
-      "Duration must be an integer between 0 and 86,400 seconds (24 hours).",
-    );
-  }
-
-  const logDate = toUtcDateOnly(params.logDate);
-
-  return prisma.$transaction(async (tx) => {
-    if (params.challengeId) {
-      const participant = await tx.challengeParticipant.findUnique({
-        where: { id: params.participantId },
-        select: { challengeId: true },
-      });
-      if (!participant) {
-        throw new Error("Participant not found.");
-      }
-      if (participant.challengeId !== params.challengeId) {
-        throw new Error("Participant does not belong to this challenge.");
-      }
-    }
-
-    const existing = await tx.dailyStudyLog.findUnique({
+   return prisma.dailyStudyLog.findUnique({
       where: {
-        participantId_logDate: {
-          participantId: params.participantId,
-          logDate,
-        },
+         participantId_logDate: {
+            participantId,
+            logDate: normalized,
+         },
       },
-    });
-
-    const updated = await tx.dailyStudyLog.upsert({
-      where: {
-        participantId_logDate: {
-          participantId: params.participantId,
-          logDate,
-        },
-      },
-      create: {
-        participantId: params.participantId,
-        logDate,
-        durationSeconds: params.durationSeconds,
-        isOverride: true,
-        overrideById: params.actor.id,
-        overrideReason: trimmedReason,
-      },
-      update: {
-        durationSeconds: params.durationSeconds,
-        isOverride: true,
-        overrideById: params.actor.id,
-        overrideReason: trimmedReason,
-      },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        actorId: params.actor.id,
-        actorUsername: params.actor.username,
-        actionType: "HOURS_OVERRIDE",
-        targetEntityId: updated.id,
-        targetEntityType: "DAILY_STUDY_LOG",
-        previousValue: existing
-          ? JSON.stringify({ durationSeconds: existing.durationSeconds })
-          : null,
-        newValue: JSON.stringify({
-          durationSeconds: updated.durationSeconds,
-          isOverride: true,
-        }),
-        auditReason: trimmedReason,
-      },
-    });
-
-    return updated;
-  });
+   });
 }
-

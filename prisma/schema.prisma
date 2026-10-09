@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------------------------------------------------------------------------
@@ -36,6 +37,12 @@ model User {
   participations ChallengeParticipant[]
   overriddenLogs DailyStudyLog[] @relation("LogOverrideAdmin")
   pardonsIssued  PunishmentRecord[] @relation("PardonAdmin")
+  teamMemberships    TeamMember[]
+  leaderboardEntries LeaderboardEntry[]
+  categories         Category[]
+  tasks              Task[]
+  feedbacks          Feedback[]
+  auditLogsWritten   AuditLog[] @relation("AuditLogsWritten")
 }
 
 model Account {
@@ -85,9 +92,9 @@ model Challenge {
   id               String          @id @default(cuid())
   title            String
   format           ChallengeFormat
-  status           ChallengeStatus @default(UPCOMING)
   startAt          DateTime
   endAt            DateTime
+  eventBannerUrl   String?
   punishmentPfpUrl String?
 
   hostId String?
@@ -96,11 +103,13 @@ model Challenge {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  teams        Team[]
-  participants ChallengeParticipant[]
-  punishments  PunishmentRecord[]
+  challengeColor   String?
+  teams            Team[]
+  participants     ChallengeParticipant[]
+  punishments      PunishmentRecord[]
+  leaderboardEntries LeaderboardEntry[]
+  auditLogs        AuditLog[]
 
-  @@index([status])
   @@index([hostId])
 }
 
@@ -117,6 +126,7 @@ model Team {
 
   challenge    Challenge              @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   participants ChallengeParticipant[]
+  members      TeamMember[]
 
   @@unique([challengeId, name])
   @@index([challengeId])
@@ -126,7 +136,7 @@ model ChallengeParticipant {
   id            String            @id @default(cuid())
   challengeId   String
   userId        String
-  teamId        String
+  teamId        String?
   targetSeconds Int               @default(0)
   status        ParticipantStatus @default(NORMAL)
 
@@ -135,10 +145,9 @@ model ChallengeParticipant {
 
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  team      Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   dailyStudyLogs   DailyStudyLog[]
-  weeklyGoals      WeeklyGoal[]
   punishmentRecord PunishmentRecord?
 
   @@unique([challengeId, userId])
@@ -172,20 +181,48 @@ model DailyStudyLog {
   @@index([logDate])
 }
 
-model WeeklyGoal {
-  id            String  @id @default(cuid())
-  participantId String
-  description   String
-  completed     Boolean @default(false)
-  sortOrder     Int     @default(0)
+// ---------------------------------------------------------------------------
+// Categorizable Todo List (User-scoped daily and weekly tasks)
+// ---------------------------------------------------------------------------
 
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model Category {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String   @db.VarChar(255)
+  taskType  TaskType @default(DAILY) @map("task_type")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  participant ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
 
-  @@index([participantId])
+  @@unique([userId, name, taskType])
+  @@index([userId, taskType])
+  @@map("categories")
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  userId      String
+  categoryId  String
+  title       String    @db.VarChar(255)
+  taskType    TaskType  @map("task_type")
+  sortOrder   Int        @default(0) @map("sort_order")
+  isComplete  Boolean    @default(false) @map("is_complete")
+  status      TaskStatus @default(TODO)
+  dueDate     DateTime?  @map("due_date") @db.Date
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  completedAt DateTime?  @map("completed_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId, taskType])
+  @@index([userId, dueDate])
+  @@index([categoryId])
+  @@map("tasks")
 }
 
 // ---------------------------------------------------------------------------
@@ -216,25 +253,102 @@ model PunishmentRecord {
 }
 
 // ---------------------------------------------------------------------------
-// Audit Trail (FEAT-AUDIT-01 — Append-only immutable admin audit trail)
+// Manual Weekly Leaderboard (Slice: Manual Weekly Challenge Leaderboard)
+// ---------------------------------------------------------------------------
+
+model TeamMember {
+  teamId    String   @map("team_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@index([userId])
+  @@index([teamId])
+  @@map("team_members")
+}
+
+model LeaderboardEntry {
+  id           String   @id @default(cuid()) @map("entry_id")
+  challengeId  String   @map("challenge_id")
+  userId       String   @map("user_id")
+  sessionHours Decimal  @map("session_hours") @db.Decimal(6, 2)
+  slotDate     DateTime @map("slot_date") @db.Date
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("last_updated_at")
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId, slotDate])
+  @@index([challengeId, slotDate])
+  @@index([userId])
+  @@map("leaderboard_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Feedback and Bug Reporting
+// ---------------------------------------------------------------------------
+
+model Feedback {
+  id                 String                @id @default(cuid())
+  feedbackNumber     Int                   @default(autoincrement()) @map("feedback_number")
+  type               FeedbackType
+  title              String                @db.VarChar(255)
+  description        String                @db.Text
+  url                String                @db.VarChar(1024)
+  status             FeedbackStatus        @default(OPEN)
+
+  logrocketSessionId String?               @map("logrocket_session_id")
+
+  discordStatus      DiscordDeliveryStatus @default(PENDING) @map("discord_status")
+  discordMessageId   String?               @map("discord_message_id")
+  discordChannelId   String?               @map("discord_channel_id")
+
+  userId             String?               @map("user_id")
+  user               User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+
+  @@unique([feedbackNumber])
+  @@index([type])
+  @@index([status])
+  @@index([discordStatus])
+  @@index([userId])
+  @@map("feedbacks")
+}
+
+// ---------------------------------------------------------------------------
+// Audit Logging (Law L5 — Append-Only Immutable System Audit Trail)
 // ---------------------------------------------------------------------------
 
 model AuditLog {
   id               String   @id @default(cuid())
-  timestamp        DateTime @default(now())
-  actorId          String
-  actorUsername    String
-  actionType       String
-  targetEntityId   String
-  targetEntityType String
-  previousValue    String?  @db.Text
-  newValue         String?  @db.Text
-  auditReason      String?  @db.Text
+  challengeId      String?  @map("challenge_id")
+  actorId          String?  @map("actor_id")
+  actorUsername    String   @map("actor_username")
+  actorDisplayName String?  @map("actor_display_name")
+  actorImage       String?  @map("actor_image")
+  actionType       String   @map("action_type") @db.VarChar(64)
+  targetEntityId   String   @map("target_entity_id")
+  targetEntityType String   @map("target_entity_type") @db.VarChar(64)
+  targetEntityName String?  @map("target_entity_name") @db.VarChar(255)
+  previousValue    Json?    @map("previous_value")
+  newValue         Json?    @map("new_value")
+  auditReason      String?  @map("audit_reason") @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
 
-  @@index([actionType])
-  @@index([targetEntityId])
+  challenge Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  actor     User?      @relation("AuditLogsWritten", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([challengeId, createdAt(sort: Desc)])
   @@index([actorId])
-  @@index([timestamp])
+  @@index([actionType])
+  @@map("audit_logs")
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +358,7 @@ model AuditLog {
 enum UserRole {
   PARTICIPANT
   ADMIN
+  DEV
 }
 
 enum ChallengeFormat {
@@ -252,15 +367,38 @@ enum ChallengeFormat {
   SOLOS
 }
 
-enum ChallengeStatus {
-  UPCOMING
-  ACTIVE
-  COMPLETED
-}
-
 enum ParticipantStatus {
   NORMAL
   DEFICIT
   EXCUSED
   PUNISHED
 }
+
+enum TaskType {
+  DAILY
+  WEEKLY
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+  CROSSED_OUT
+}
+
+enum FeedbackType {
+  BUG
+  ENHANCEMENT
+}
+
+enum FeedbackStatus {
+  OPEN
+  CLOSED
+}
+
+enum DiscordDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+

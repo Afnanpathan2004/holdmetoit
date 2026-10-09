@@ -4,6 +4,7 @@ import { DurationRangeError } from "@/features/study-logs/domain/duration";
 import {
   aggregateTeamScores,
   calculateLeadMargin,
+  calculateSharePercentages,
 } from "@/features/leaderboard/domain/leaderboard";
 
 const teams = [
@@ -111,3 +112,64 @@ describe("calculateLeadMargin", () => {
     expect(() => calculateLeadMargin(0, -1)).toThrow(DurationRangeError);
   });
 });
+
+describe("calculateSharePercentages", () => {
+  it("returns 100% and 0% when Team A has all hours and Team B has zero", () => {
+    const result = calculateSharePercentages(25_200, 0);
+
+    expect(result).toEqual({
+      ratioPercentageA: 100,
+      ratioPercentageB: 0,
+    });
+  });
+
+  it("returns 0% and 100% when Team A has zero and Team B has all hours", () => {
+    const result = calculateSharePercentages(0, 18_000);
+
+    expect(result).toEqual({
+      ratioPercentageA: 0,
+      ratioPercentageB: 100,
+    });
+  });
+
+  it("returns 0% and 0% when neither team has logged any hours", () => {
+    const result = calculateSharePercentages(0, 0);
+
+    expect(result).toEqual({
+      ratioPercentageA: 0,
+      ratioPercentageB: 0,
+    });
+  });
+
+  it("splits equally when both teams have logged identical hours", () => {
+    const result = calculateSharePercentages(18_000, 18_000);
+
+    expect(result).toEqual({
+      ratioPercentageA: 50,
+      ratioPercentageB: 50,
+    });
+  });
+
+  it("calculates 75% and 25% share correctly", () => {
+    const result = calculateSharePercentages(27_000, 9_000);
+
+    expect(result).toEqual({
+      ratioPercentageA: 75,
+      ratioPercentageB: 25,
+    });
+  });
+
+  it("handles fractional percentages summing to 100%", () => {
+    const result = calculateSharePercentages(10_000, 20_000);
+
+    expect(result.ratioPercentageA).toBe(33.3);
+    expect(result.ratioPercentageB).toBe(66.7);
+    expect(result.ratioPercentageA + result.ratioPercentageB).toBe(100);
+  });
+
+  it("rejects negative totals", () => {
+    expect(() => calculateSharePercentages(-1, 0)).toThrow(DurationRangeError);
+    expect(() => calculateSharePercentages(0, -1)).toThrow(DurationRangeError);
+  });
+});
+

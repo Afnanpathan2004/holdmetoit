@@ -1,186 +1,310 @@
 # HANDOFF.md — Engineering Operational Relay & Milestone Tracker
 
 > **Project:** HoldMeToIt (Gamified Study Accountability & Challenge Management Platform)  
-> **Repository:** `e:\Projects\HoldMeToIt-Git`  
-> **Current Branch:** `afnan`  
+> **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
+> **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-09-06  
-> **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**  
+> **Last Updated:** 2026-10-09 (Session 66 — multi-view pagination & overflow guard overhaul)  
+> **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
-## 1. Executive Summary & Repository Analysis
+## 1. Current State at a Glance
 
-HoldMeToIt is an automated web platform engineered to eliminate **Admin Burnout** in Discord study communities. It replaces manual Google Sheets, tedious Yeolpumta (YPT) screenshot verification, manual deficit arithmetic, and manual punishment policing with a streamlined, real-time challenge engine.
+| Gate                                         | Result (2026-10-09, branch `krish`)                                                                                                                                                                          |
+| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                              |
+| `npm run test`                               | ✅ 65 files green                                                                                                                                                                                             |
+| `npm run build`                              | ✅ 9 routes compiled                                                                                                                                                                                          |
+| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~82%** — Dedicated public /challenges catalog with role-gated admin controls, global participant preview toggle, multi-view pagination guards, core daily/weekly loop, 2-card hours logging, mod audit log & hours overrides complete |
+| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                   |
+| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                               |
 
-### 1.1 Analysis of Repository State & Documentation Suite
-The repository contains the authoritative 5-document specification suite ratified for implementation. All architectural boundaries, product specifications, visual design tokens, and multi-agent coordination rules are fully synchronized:
+### 1.1 Live Routes
 
-| File | Status | Key Architectural Takeaway & Authority Scope |
-| :--- | :---: | :--- |
-| **`AGENTS.md`** | **Active** | Absolute authority on agent protocol, locked technology stack, 9 non-negotiable Product & Stack Laws (L1–L9), 6 E2E user journeys (J1–J6), git safety rules, and DoD. Section 9.3 governs strict handoff obsolescence pruning. |
-| **`FEATURES.md`** | **Active** | Absolute authority on product behavior, screen layouts, and roadmap phases (`[P0]` to `[V2]`). Catalogs 22 granular feature IDs (`FEAT-AUTH-01` to `FEAT-DUEL-01`) and specifies rejected anti-features (no in-browser timers, no grace passes). |
-| **`DESIGN.md`** | **Active** | Absolute authority on visual identity: *Cozy Study Café & Late-Night Library*. Defines complete warm color palette (`#121110` roasted espresso, `#f59e0b` amber, `#10b981` sage, `#f87171` terracotta), monospace tabular clocks (`HH:MM:SS`), component specs, and strict 360px+ mobile responsiveness. |
-| **`ROADMAP.md`** | **Active** | Milestone-gated evolutionary trajectory across 4 phases: Phase 0 (MVP Core) $\rightarrow$ Phase 1 (YPT Ingestion & Bot) $\rightarrow$ Phase 2 (Gamification & Fair Balancing) $\rightarrow$ Phase 3 (Spontaneous 1v1 Duels & Multi-Guild). Defines architectural evolution and risk mitigation. |
-| **`README.md`** | **Active** | High-level project mission, locked technology matrix, team roles, and local developer environment onboarding. |
+| Route                    | Purpose                                                                                        | Access                                 |
+| :----------------------- | :--------------------------------------------------------------------------------------------- | :------------------------------------- |
+| `/`                      | Home cockpit: banner variants, progress/deficit card, Log Hours modal, Daily/Weekly task board | Guest (local tasks only) / Participant |
+| `/challenges`            | Dedicated public challenges directory (Events card grid, role-gated Create Challenge button)   | Public spectator / Participant / Admin |
+| `/challenge/[id]`        | Tabs: Overview · Leaderboard · About · Manage (admin only)                                     | Public spectator                       |
+| `/challenge/[id]/manual` | Manual weekly slot-hours leaderboard (host-entered)                                            | Public view, admin entry               |
+| `/admin`                 | Server redirect to `/challenges`                                                               | `ADMIN` / `DEV`                        |
+| `/admin/challenges/new`  | Challenge creator wizard (2 required image uploads)                                            | `ADMIN` / `DEV`                        |
+| `POST /api/feedback`     | Bug/suggestion intake → DB + Discord embed                                                     | Anyone                                 |
+| `POST /api/tasks/sync`   | Offline task queue batch sync                                                                  | Authenticated                          |
 
-### 1.2 Current Development State
-- **Specification Phase:** 100% Complete. All 5 core documents are aligned with zero conflicting requirements.
-- **Codebase Implementation:** Slices 0, 1, 2, 3, 4, 5, 6, and 7 are complete. Full test suite (254 tests across 39 files) is 100% green.
-- **Deployment Readiness:** **DEPLOYMENT-READY** (Infrastructure & baseline migrations prepared; awaiting human operator configuration of live PostgreSQL, Discord OAuth, and Vercel project).
-- **Git State:** Branch `afnan`, working tree verified against all quality gates (ready for staging/commit upon user instruction).
+> **Removed routes:** `/dashboard` (replaced by `/`) and `/admin/challenges/[id]/roster` (replaced by the Manage tab). Several `revalidatePath("/dashboard")` calls remain and do nothing; they're harmless but should be cleaned up.
 
----
+### 1.2 RBAC Model
 
-## 2. Phase 0 (MVP Core) Feature Status Matrix
-
-Phase 0 focuses exclusively on **The Spreadsheet Exorcism** — running a full weekly study battle without Google Sheets.
-
-| Feature ID | Feature Name | Module | Target Persona | Status | DoD Completed? |
-| :--- | :--- | :--- | :---: | :---: | :---: |
-| `FEAT-AUTH-01` | Discord OAuth 2.0 (`identify` scope) | Auth & Identity | Participant, Admin | `DONE` | ✅ Completed in Slice 2 |
-| `FEAT-AUTH-02` | Public Read-Only Spectator Mode | Auth & Identity | Spectator | `DONE` | ✅ Completed in Slice 4 |
-| `FEAT-CHAL-01` | Multi-Format Challenge Creator (Team/Duo/Solo) | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 |
-| `FEAT-CHAL-02` | Host Manual Event Kickoff Trigger | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 |
-| `FEAT-CHAL-05` | Event Lock & Freeze Final Results | Challenge Ops | Admin | `DONE` | ✅ Completed in Slice 5 |
-| `FEAT-CHAL-06` | Duo Partner Self-Naming & Dynamic Team Identities | Challenge Ops | Participant, Admin | `DONE` | ✅ Completed in Slice 5 |
-| `FEAT-DECL-01` | Declared Target Hours (`HH:MM:SS`) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 |
-| `FEAT-DECL-02` | Mandatory Weekly Goals Checklist (1–10 tasks) | Declarations | Participant | `DONE` | ✅ Completed in Slice 3 |
-| `FEAT-DECL-03` | Pre-Kickoff Declaration Lock on `ACTIVE` | Declarations | System | `DONE` | ✅ Completed in Slice 3 |
-| `FEAT-DECL-04` | Host Goal Unlock & Mid-Event Edit Modal | Declarations | Admin | `DONE` | ✅ Completed in Slice 5 |
-| `FEAT-LOG-01` | Daily Clock-Time Self-Logging (`HH:MM:SS`) | Study Logging | Participant | `DONE` | ✅ Completed in Slice 3 |
-| `FEAT-LOG-02` | 24-Hour Single-Day Limit Validation ($\le 86,400\text{s}$) | Study Logging | System | `DONE` | ✅ Completed in Slice 3 |
-| `FEAT-LOG-04` | Admin Inline Hours Override Grid (`is_override=true`) | Study Logging | Admin | `DONE` | ✅ Completed in Slice 5 |
-| `FEAT-LEAD-01` | Head-to-Head Live Scoreboard (Crown + Delta) | Standings & Math | All Users | `DONE` | ✅ Completed in Slice 4 |
-| `FEAT-LEAD-02` | Unified Roster Standings Table | Standings & Math | All Users | `DONE` | ✅ Completed in Slice 4 |
-| `FEAT-LEAD-03` | Dynamic Daily Catch-Up Deficit Engine | Standings & Math | Participant | `DONE` | ✅ Completed in Slice 1 & 3 |
-| `FEAT-PUN-01` | Dual-Failure Auto-Flagging Engine | Accountability | System | `DONE` | ✅ Completed in Slice 1 & 4 |
-| `FEAT-PUN-02` | Punishment Wall & Deficit Roster | Accountability | All Users | `DONE` | ✅ Completed in Slice 4 |
-| `FEAT-PUN-03` | Direct Punishment PFP Asset Download Button | Accountability | Flagged User | `DONE` | ✅ Completed in Slice 4 |
-| `FEAT-PUN-04` | Host Pardon / Excuse Override | Accountability | Admin | `DONE` | ✅ Completed in Slice 5 |
-| `FEAT-DISC-01` | 1-Click Formatted Markdown Summary Copy | Discord Broadcaster | Admin | `DONE` | ✅ Completed in Slice 5 |
-| `FEAT-AUDIT-01` | Append-Only Immutable System Audit Trail | Admin & Audit | System, Admin | `DONE` | ✅ Completed in Slice 5 |
+- `DEV` → Discord snowflake listed in `DEV_DISCORD_IDS` (JSON array; legacy alias `DISCORD_DEV_IDS` still read).
+- `ADMIN` → user holds a role in `DISCORD_ADMIN_ROLE_IDS` within `DISCORD_GUILD_ID` (looked up with `DISCORD_BOT_TOKEN`; OAuth scope stays `identify`).
+- `PARTICIPANT` → everyone else. The `DISCORD_ADMIN_IDS` whitelist has been removed.
+- **Global Participant Preview:** Admins and devs can toggle a global cookie (`holdmetoit_preview_as_participant`) from the header next to "Admin Console". When active, all pages (`/`, `/challenge/[id]`, etc.) render exactly as regular participants see them (hiding Manage tab, Event Audit tab, host override controls, and DEV badge).
 
 ---
 
-## 3. Foundational Product & Stack Laws (Operational Checklist)
+## 2. Phase 0 (MVP Core) Feature Status Matrix — Verified Against Code
 
-Every incoming agent must verify their pull requests and code modifications against these 9 immutable laws:
+Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spec · ❌ Missing
 
-- [ ] **Law L1 (Mathematical Unity):** Solo = Team with `maxMembers=1`; Duo = Team with `maxMembers=2`. Never create separate solo tables or services.
-- [ ] **Law L2 (Spreadsheet Exorcism):** Zero manual addition or spreadsheet export required for hosts.
-- [ ] **Law L3 (Catch-Up Deficit Model):** No grace passes or freeze days. $\text{Deficit} = \max(0, \text{Target} - \text{Logged})$; $\text{Required Pace} = \frac{\text{Deficit}}{\text{Days Remaining}}$.
-- [ ] **Law L4 (Discord Identity Primacy):** Exclusively Discord OAuth 2.0 (`identify` scope). No local passwords or email registration. Public spectator access without login.
-- [ ] **Law L5 (Admin Override Absolute):** Hosts can override any log or goal. Every override flags `is_override = true` and `overrideBy = hostId`.
-- [ ] **Law L6 (Dual-Failure Accountability Invariant):** Punished if $(\text{Logged} < \text{Target}) \lor (\text{Incomplete Goals} > 0)$.
-- [ ] **Law L7 (Pure Domain Isolation):** Business math (`domain/`) must be 100% pure TypeScript with zero imports from Next.js, React, Prisma, or external UI libraries.
-- [ ] **Law L8 (Second-Level Precision):** Internal storage is integer total seconds. Display format is `HH:MM:SS` (tabular monospace numbers).
-- [ ] **Law L9 (Zero-State & Error Resilience):** All UI components implement explicit Loading skeleton, Empty state, and Error fallback screens down to 360px.
+| Feature ID      | Feature                            | Status | Evidence / Gap                                                                                                                                                                                                                         |
+| :-------------- | :--------------------------------- | :----: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FEAT-AUTH-01`  | Discord OAuth (`identify`)         |   ✅   | `core/auth/index.ts`; role synced on sign-in via `syncUserRoleFromDiscord`                                                                                                                                                             |
+| `FEAT-AUTH-02`  | Public spectator mode              |   ✅   | `app/challenge/[id]/page.tsx` renders without a session                                                                                                                                                                                |
+| `FEAT-CHAL-01`  | Multi-format challenge creator     |   ✅   | `/admin/challenges/new`; banner + PFP uploads go to Supabase Storage                                                                                                                                                                   |
+| `FEAT-CHAL-02`  | Host manual kickoff                |   ✅   | Manage tab → `kickoffChallengeAction` (sets `startAt = now`; status is derived from timestamps)                                                                                                                                        |
+| `FEAT-CHAL-05`  | Lock final results                 |   ⚠️   | Manage tab → `lockChallengeResultsAction`. **Bug:** once `endAt` passes on its own, status becomes `COMPLETED` and `assertCanLockChallenge` throws, so punishments are **never evaluated** unless the host locks _before_ the end time |
+| `FEAT-CHAL-06`  | Duo partner self-naming            |   ❌   | No participant-side duo naming code exists. Only hosts can rename teams (Manage tab → Team Identities)                                                                                                                                 |
+| `FEAT-AUDIT-01` | Append-only audit trail            |   ⚠️   | `features/audit/data/audit-log.repository.ts` stores events in PostgreSQL (`audit_logs`) and in-memory fallback. Event Audit tab UI live in `/challenge/[id]`.                                                                         |
+| `FEAT-DECL-01`  | Declared target hours (`HH:MM:SS`) |   ✅   | Entered in the enrollment modal (1–105h). Note: `leaveDays` is accepted by the action but **silently discarded** (no column)                                                                                                           |
+| `FEAT-DECL-02`  | Mandatory weekly goals checklist   |   ⚠️   | `WeeklyGoal` was dropped (migration `20261004030000`). It was replaced by **user-scoped** Daily/Weekly categorized tasks (`features/tasks/`) that are **not linked to any challenge**                                                  |
+| `FEAT-DECL-03`  | Declaration lock on `ACTIVE`       |   ✅   | Targets can't be edited after enrollment at all. Late enrollment is still allowed while `ACTIVE` (only `COMPLETED` blocks it)                                                                                                          |
+| `FEAT-DECL-04`  | Host goal/target edit              |   ❌   | No goals exist to edit, and `updateParticipantTargetSeconds` has no callers                                                                                                                                                            |
+| `FEAT-LOG-01`   | Daily `HH:MM:SS` self-logging      |   ✅   | `daily-hours-modal.tsx`: participants restricted to today/yesterday self-logging (`ONLY_TODAY_OR_YESTERDAY_ALLOWED`), non-scrolling 7-day selector, native picker (`max=today`), domain guards                                         |
+| `FEAT-LOG-02`   | 24h single-day limit               |   ✅   | `MAX_DAILY_LOG_SECONDS` in `daily-log.validation.ts`                                                                                                                                                                                   |
+| `FEAT-LOG-04`   | Admin inline hours override UI     |   ✅   | `AdminHoursOverrideModal`: mods and devs (`ADMIN`, `DEV`) can override any participant's hours for any day of the week (D1..D7) with mandatory audit reason; integrated into Manage tab roster & Leaderboard tab                       |
+| `FEAT-LEAD-01`  | Head-to-head scoreboard            |   ✅   | `challenge-leaderboard-tab.tsx`: matchup card with share % and team targets                                                                                                                                                            |
+| `FEAT-LEAD-02`  | Unified standings table            |   ✅   | Desktop table plus mobile card layout. No "Goals Done" column (goals no longer exist)                                                                                                                                                  |
+| `FEAT-LEAD-03`  | Catch-up deficit engine            |   ✅   | `deficit.ts` + `cockpit-progress-card.tsx`                                                                                                                                                                                             |
+| `FEAT-PUN-01`   | Dual-failure auto-flagging         |   ⚠️   | `lockChallengeResults` passes `[]` as goals, so **Law L6 runs on hours only**                                                                                                                                                          |
+| `FEAT-PUN-02`   | Punishment Wall                    |   ❌   | `punishment-wall.tsx` was deleted in `88779bd`. The Overview tab only mentions it in copy                                                                                                                                              |
+| `FEAT-PUN-03`   | Punishment PFP download button     |   ❌   | PFP upload works; there's no download button anywhere in the UI                                                                                                                                                                        |
+| `FEAT-PUN-04`   | Host pardon                        |   ⚠️   | `adminPardonAction` exists; **no UI** (`admin-goals-pardons.tsx` was deleted in `364c7a1`)                                                                                                                                             |
+| `FEAT-DISC-01`  | 1-click Discord summary copy       |   ⚠️   | `generateDiscordSummary()` is a pure domain function; **no UI** (`discord-summary-card.tsx` was deleted in `364c7a1`)                                                                                                                  |
 
----
+### 2.1 Shipped Beyond the Original P0 Spec
 
-## 4. Work Breakdown & Vertical Slices Execution Plan
-
-```mermaid
-graph TD
-    S0["Slice 0: Next.js 14 Scaffolding & Shared Tooling"] --> S1["Slice 1: Pure Domain Engine (Scoring Agent)"]
-    S0 --> S2["Slice 2: Data Persistence & Auth (Data Agent)"]
-    S1 --> S3["Slice 3: Participant Cockpit (UI Agent)"]
-    S2 --> S3
-    S1 --> S4["Slice 4: Match Scoreboard & Standings (UI Agent)"]
-    S2 --> S4
-    S3 & S4 --> S5["Slice 5: Admin Operations & Discord Broadcaster (Admin Agent)"]
-    S5 --> S6["Slice 6: E2E Quality Matrix J1–J6 Gate Verification"]
-    S6 --> S7["Slice 7: Production Deployment & Go-Live Readiness"]
-```
-
-### Slice 0: Foundation, Project Scaffolding & Tooling (Completed)
-- **Target:** Repository Root
-- **Deliverables:** Next.js 14+ (App Router) scaffolding with TypeScript (`strict: true`), Cozy theme tokens, Vitest test runner, shadcn/ui primitives.
-
-### Slice 1: Pure Domain Business Engine (`features/*/domain/`) (Completed)
-- **Deliverables:** `duration.ts`, `deficit.ts`, `leaderboard.ts`, `punishment.ts` pure calculation functions. 100% test coverage.
-
-### Slice 2: Data Persistence & Auth (`prisma/`, `core/db/`, `core/auth/`) (Completed)
-- **Deliverables:** Prisma schema, Auth.js Discord OAuth configuration with profile mapper, database seed script.
-
-### Slice 3: Participant Cockpit & Daily Logging (`features/study-logs/`, `app/(dashboard)/`) (Completed)
-- **Deliverables:** `HH:MM:SS` duration inputs with chips, deficit encouragement gauge, weekly goals checklist, mobile logging bottom sheet.
-
-### Slice 4: Head-to-Head Live Scoreboard & Standings (`features/leaderboard/`, `app/challenge/[id]/`) (Completed)
-- **Deliverables:** Top match banner with crown & lead margin, unified standings table with podium highlights, House filter tabs, Punishment Nook with PFP asset download button, public spectator mode.
-
-### Slice 5: Admin Operations & Discord Broadcaster (`features/challenges/`, `features/discord/`, `features/audit/`, `app/(admin)/`) (Completed)
-- **Deliverables:** Multi-format challenge wizard, manual kickoff controls with prerequisite validation, finalize results with auto-punishment evaluation, Duo renaming, inline hours override grid, goal unlock modals, pardon controls, 1-click Discord summary generator, append-only system audit trail.
-
-### Slice 6: E2E Quality Verification & Release Gate (Completed)
-- **Deliverables:** Automated integration test suite (`journey-j1.test.ts` through `journey-j6.test.ts`), cross-challenge security boundary validation, 254 tests green across 39 files, strict typecheck and build validation.
-
-### Slice 7: Production Deployment & Go-Live Readiness (Completed)
-- **Deliverables:**
-  - Baseline PostgreSQL migration (`prisma/migrations/0_init/migration.sql`) and lock file (`prisma/migrations/migration_lock.toml`) for automated `prisma migrate deploy`.
-  - Auth.js Vercel hardening (`trustHost: true` in `core/auth/index.ts`).
-  - Deployment scripts in `package.json` (`db:migrate:deploy`, `db:migrate:status`).
-  - Production environment template [`.env.example`](file:///home/afnanesakpathan/projects/holdmetoit/.env.example).
-  - Production runbook & smoke-test checklist in [`DEPLOYMENT.md`](file:///home/afnanesakpathan/projects/holdmetoit/DEPLOYMENT.md).
-  - Status: **DEPLOYMENT-READY (Awaiting Operator Infrastructure Configuration)**.
+| Capability                                            | Location                                                     | Notes                                                                                               |
+| :---------------------------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- |
+| Categorized Daily/Weekly to-do board with drag & drop | `features/tasks/`, `cockpit-tasks-section.tsx`               | Offline-first IndexedDB (`holdmetoit_db`), debounced background sync, guest→user migration on login |
+| Global Participant Preview Mode                       | `features/auth/presentation/auth-nav.tsx`, `preview-mode.ts` | 1-click header toggle for mods/devs to view all pages as regular participants globally              |
+| Feedback & bug reporting                              | `features/feedback/`, `app/api/feedback/route.ts`            | Floating trigger button, `FB-XX` codes, Discord bot embeds, LogRocket session link                  |
+| LogRocket observability                               | `core/observability/`                                        | Session replay, `error.tsx` / `global-error.tsx` boundaries                                         |
+| Manual weekly slot leaderboard                        | `features/leaderboard/*manual*`, `/challenge/[id]/manual`    | ⚠️ Stores `sessionHours` as `Decimal(6,2)`, which violates **Law L8** (integer seconds)             |
+| Dynamic cockpit banner (7 variants) & hero banner     | `cockpit-banner.ts`, `challenge-hero-banner.tsx`             | Matches the Figma                                                                                   |
+| `DEV` role                                            | `auth-roles.ts`, `discord-guild.service.ts`                  | Grants full admin plus developer access                                                             |
 
 ---
 
-## 5. Immediate Next Step (For Operator / Incoming Agent)
+## 3. Known Defects & Technical Debt (Prioritized)
 
-> [!IMPORTANT]  
-> **EXACT OPERATOR ACTION REQUIRED FOR PRODUCTION GO-LIVE:**  
-> The codebase is fully hardened and deployment-ready. The human operator must execute the real infrastructure provisioning following [`DEPLOYMENT.md`](file:///home/afnanesakpathan/projects/holdmetoit/DEPLOYMENT.md):  
-> 1. **Provision PostgreSQL Database:** Create a Supabase or Neon PostgreSQL instance and obtain the pooled connection string.  
-> 2. **Configure Discord Developer Portal:** Register an application at [discord.com/developers](https://discord.com/developers/applications), obtain `AUTH_DISCORD_ID` & `AUTH_DISCORD_SECRET`, and whitelist `https://[YOUR-DOMAIN]/api/auth/callback/discord`.  
-> 3. **Generate Auth Secret:** Run `openssl rand -base64 32` to generate `AUTH_SECRET`.  
-> 4. **Deploy Database Schema:** Execute `npm run db:migrate:deploy` against the production database. (Optionally seed via `npm run db:seed`).  
-> 5. **Deploy to Vercel:** Import the GitHub repo into Vercel, inject the environment variables (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET`, `AUTH_TRUST_HOST=true`), and click Deploy.  
-> 6. **Execute Smoke Tests:** Run through the 6-phase Production Smoke-Test Checklist in [`DEPLOYMENT.md`](file:///home/afnanesakpathan/projects/holdmetoit/DEPLOYMENT.md#4-production-smoke-test-checklist) against the live URL.  
-
----
-
-## 6. Handoff Hygiene & Pruning Policy (Rule §9.3)
-
-In accordance with **`AGENTS.md` Rule §9.3**:
-1. **No Outdated Baggage:** Whenever an engineering session completes, the incoming/outgoing agent must review this `HANDOFF.md` file.
-2. **Prune Stale Details:** Once a task or slice is completed, remove its temporary debugging steps and intermediate scratch notes from active sections.
-3. **Session Log Retention:** Keep only the **last 3 to 5 sessions** in the Session Changelog below. Older logs must be trimmed or consolidated.
-4. **Zero Contradictions:** If an architectural decision is superseded, update the corresponding reference immediately so future agents never encounter conflicting instructions.
+|  #  | Severity | Issue                                                                                                                                                                                                                          | Suggested Fix                                                                                                                                                                     |
+| :-: | :------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | 🔴 High  | Lock Results fails after natural expiry, so punishments are never evaluated (`assertCanLockChallenge` rejects `COMPLETED`)                                                                                                     | Allow lock/evaluate when status is `COMPLETED` and the challenge hasn't been finalized yet. That needs a persisted `finalizedAt` (or `resultsLockedAt`) column to stay idempotent |
+| D2  | 🔴 High  | Audit trail in-memory fallback needs full persistence validation                                                                                                                                                               | Add migration check and verify Prisma `audit_logs` model insertion across all environments                                                                                        |
+| D3  | 🔴 High  | Five P0 features have backend code but no UI: override grid, pardon, Discord summary copy, Punishment Wall, PFP download                                                                                                       | Rebuild them in Obsidian styling inside the Manage tab (admin) and the Overview tab (public wall + download)                                                                      |
+| D4  |  🟠 Med  | Law L6 runs on hours only: goals aren't challenge-scoped any more                                                                                                                                                              | **Product decision needed** (see §4)                                                                                                                                              |
+| D5  |  🟠 Med  | Schema drift: the `feedbacks` table and the `sort_order` columns on `categories`/`tasks` were applied with `db push` and have **no migration files**. `prisma migrate deploy` on a fresh DB would produce an incomplete schema | Generate catch-up migrations (`prisma migrate diff`) and `migrate resolve` them on existing DBs                                                                                   |
+| D6  |  🟡 Low  | `leaveDays` is collected in the enrollment modal and then discarded                                                                                                                                                            | Either persist it and feed it into the deficit/target math, or remove it from the UI                                                                                              |
+| D7  |  🟡 Low  | Manual leaderboard uses `Decimal` hours (Law L8 deviation)                                                                                                                                                                     | Migrate to integer `sessionSeconds`                                                                                                                                               |
+| D8  |  🟡 Low  | Stale `revalidatePath("/dashboard")` calls; `DISCORD_DEV_IDS` alias; `DEFAULT_FEEDBACK_CHANNEL_ID` hardcoded                                                                                                                   | Clean up                                                                                                                                                                          |
+| D9  |  🟡 Low  | "E2E J1–J6" suite (`features/e2e/quality-matrix-j1-j6.test.ts`) mocks Prisma; there's no real browser E2E                                                                                                                      | Add Playwright journeys once the D3 UIs are back                                                                                                                                  |
+| D10 |  🟡 Low  | Duplicate lockfiles (`bun.lock` + `package-lock.json`); `npm audit` reports 20 vulns (3 critical)                                                                                                                              | Pick one package manager; run `npm audit` triage                                                                                                                                  |
 
 ---
 
-## 7. Session Changelog
+## 4. Open Product Decisions (Require Team Sign-off)
 
-### Previous Sessions (Summarized)
-- **Sessions 1–7 (2026-09-06):** Scaffold, domain engine, persistence & Discord OAuth profile mapping, cozy theme tokens, participant cockpit at `/dashboard`, UTC date normalization, and 24h limit checks.
+1. **Goals vs Law L6:** Should challenges get a challenge-scoped goal list again (e.g. link Weekly tasks to an enrollment), or should Law L6 be formally amended to hours-only? Until this is decided, `FEAT-DECL-02/04` and `FEAT-PUN-01` stay ⚠️.
+2. **Leave days:** Should declared leave days reduce the target or the days remaining in the catch-up math? Law L3 forbids grace passes, so this needs an explicit ruling.
+3. **Late enrollment while `ACTIVE`:** Is this intended? It's allowed today.
+4. **Design authority:** `DESIGN.md` now documents the Obsidian system (it replaced "Cozy Study Café" on 2026-10-04). Confirm this is ratified.
 
-### Session 8 — 2026-09-06
-- **Agent Role:** Participant UI & Scoring Agent
-- **Git Branch:** `afnan`
-- **Changes Completed (Slice 4):** Deterministic ranking engine (`standings.ts`), scoreboard view-model repository, head-to-head match banner (`MatchScoreboardBanner`), team filter tabs, standings table with podium styling, and punishment nook with forfeit PFP download.
+---
 
-### Session 9 — 2026-09-06
-- **Agent Role:** Admin Operations & Broadcaster Agent
-- **Git Branch:** `afnan`
-- **Changes Completed (Slice 5):** Added append-only `AuditLog` model and repository; challenge state machine (`lifecycle.ts`); Discord markdown summary generator; multi-format challenge creation with Law L1 parity; kickoff declaration locking; finalize dual-failure punishment evaluation; inline hours override grid; goal unlock and pardon controls; host dashboard and challenge hub pages.
+## 5. Foundational Laws — Compliance Snapshot
 
-### Session 10 — 2026-09-06
-- **Agent Role:** Senior QA Engineer, Integration Engineer & Release Gatekeeper
-- **Git Branch:** `afnan`
-- **Changes Completed (Slice 6: E2E Quality Verification & Release Gate):**
-  - **Security Hardening:** Cross-challenge ownership boundary validation across admin operations (`adminOverrideDailyStudyLog`, `adminEditGoal`, `adminToggleGoalCompletion`, `adminAddGoal`, `adminPardonParticipant`, `adminRevokePardon`, and `renameDuoTeam`).
-  - **Journey Integration Suite (`features/quality/journeys/`):** Full automated integration suite for Journeys J1 through J6 (`journey-j1.test.ts` to `journey-j6.test.ts`).
-  - **Quality Gates:** 254 total tests passing across 39 test files (100% green exit); `npm run typecheck` exits 0; `npm run build` exits 0.
+| Law                        | Status | Note                                                                                             |
+| :------------------------- | :----: | :----------------------------------------------------------------------------------------------- |
+| L1 Mathematical Unity      |   ✅   | Single `Team` entity with `maxMembers`                                                           |
+| L2 Spreadsheet Exorcism    |   ✅   | Full-week admin override UI and auto-aggregating standings eliminate manual arithmetic           |
+| L3 Catch-Up Deficit        |   ✅   | `deficit.ts`; no grace passes                                                                    |
+| L4 Discord Identity        |   ✅   | OAuth only; public spectator                                                                     |
+| L5 Admin Override Absolute |   ✅   | `adminOverrideStudyHoursAction` + `AdminHoursOverrideModal` live in Manage tab & Leaderboard tab |
+| L6 Dual-Failure            |   ⚠️   | Hours-only (D4)                                                                                  |
+| L7 Pure Domain Isolation   |   ✅   | `domain/` folders are framework-free                                                             |
+| L8 Second-Level Precision  |   ⚠️   | Main logs ✅; manual leaderboard uses `Decimal` hours (D7)                                       |
+| L9 Zero-State Resilience   |   ✅   | `loading.tsx` on all routes; `EmptyState` / `ErrorState` components                              |
 
-### Session 11 — 2026-09-07 (Current Session)
-- **Agent Role:** DevOps & Release Reliability Engineer
-- **Git Branch:** `afnan`
-- **Changes Completed (Slice 7: Production Deployment & Go-Live Readiness):**
-  - **Prisma Baseline Migrations:** Created `prisma/migrations/0_init/migration.sql` and `prisma/migrations/migration_lock.toml` for automated production schema provisioning via `npm run db:migrate:deploy`.
-  - **Auth.js Vercel Hardening:** Added `trustHost: true` to `core/auth/index.ts` to guarantee proper reverse-proxy host resolution on Vercel preview/production domains.
-  - **Deployment Scripts:** Added `db:migrate:deploy` and `db:migrate:status` to `package.json`.
-  - **Environment Documentation:** Created comprehensive `.env.example` template with zero exposed secrets.
-  - **Operator Manual:** Authored [`DEPLOYMENT.md`](file:///home/afnanesakpathan/projects/holdmetoit/DEPLOYMENT.md) runbook covering PostgreSQL setup (Supabase/Neon), Discord Developer Portal OAuth configuration, Vercel build/environment setup, and a 6-phase production smoke-test checklist.
-  - **Release Status:** **DEPLOYMENT-READY** (Infrastructure & baseline migrations prepared; awaiting human operator configuration of live PostgreSQL, Discord OAuth, and Vercel project).
+---
+
+## 6. Immediate Next Step (For Incoming Agent)
+
+> [!IMPORTANT]
+> **EXACT NEXT STEP:** Fix **D1 + D2** together as one vertical slice (`fix/challenge-finalization`):
+>
+> 1. Add `Challenge.resultsLockedAt DateTime?` to `prisma/schema.prisma` and create a migration.
+> 2. Ensure `audit-log.repository.ts` persists all audit entries into the `AuditLog` table using Prisma.
+> 3. Let `lockChallengeResults` run when status is `ACTIVE` **or** (`COMPLETED` and `resultsLockedAt IS NULL`); set `resultsLockedAt` inside the transaction.
+> 4. Update the lifecycle and lock unit tests, then run typecheck, test, and build.
+>
+> Then restore the remaining P0 UIs (Punishment Wall + PFP download on the Overview tab; pardon modal and Discord summary copy in the Manage tab).
+
+---
+
+## 7. Session Changelog (Last 3–5 Sessions)
+
+### Sessions 1–60 (Summarized)
+
+- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, and law labels UI cleanup.
+
+### Session 61 — 2026-10-08 (krish)
+
+- **Agent Role:** Admin Operations & Scoring Engine Agent.
+- **Moderator Future Hours Prevention:**
+   - Implemented strict guards across domain, API, and UI layers so even moderators/admins cannot add or edit future hours for participants:
+      - **Domain (`challenge-day.ts`):** `getChallengeDayOptions` correctly flags future days as `isFuture: true` even if a challenge is upcoming. Added `validateAdminOverrideChallengeDay` which allows earlier past days (unlike participants who are locked to today/yesterday) while strictly rejecting future challenge days or future dates with `FUTURE_DATE_NOT_ALLOWED`.
+      - **Server Action (`admin-override.actions.ts`):** Added a future date check on `parsed.data.logDate > todayDateKey` returning `{ ok: false, code: "FUTURE_DATE_NOT_ALLOWED", message: "Cannot log or edit study time for future dates." }`.
+      - **Repository (`admin-override.repository.ts`):** Added safety invariant throwing an error if attempting to execute an override on a future date.
+      - **Admin Override Modal (`admin-hours-override-modal.tsx`):** Clamped initial day selection, disabled future day buttons, and guarded submit.
+      - **Challenge Manage Tab (`challenge-manage-tab.tsx`):** Disabled future day buttons in 7-day breakdown strip.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 639/639 green) · `npm run build` ✅.
+
+### Session 62 — 2026-10-08 (krish)
+
+- **Agent Role:** Participant UI & Scoring Engine Agent.
+- **Block Adding Todo Tasks to Past Challenge Days:**
+   - Implemented comprehensive guards across domain and presentation layers to block adding new todo tasks to past days of the challenge while preserving status changes and edits for existing tasks:
+      - **Domain (`challenge-day.ts`):**
+         - Added `isPast: boolean` property to `ChallengeDayOption`.
+         - Computed `isPast` across both `getChallengeDayOptions` (`rawCurrentDayNumber > 0 && d < rawCurrentDayNumber`) and `getCalendarWeekDayOptions` (`dayUtc < todayUtc`).
+         - Added `isChallengeDayInPast` and `validateAddTaskChallengeDay` domain validation helpers with unit tests in `challenge-day.test.ts`.
+      - **Presentation (`cockpit-tasks-section.tsx`):**
+         - Added `isActiveDayPast` state detection based on `activeDayOption.isPast` and `selectedDateKey < effectiveTodayDate`.
+         - **Daily Todos Header:** Displays a `Locked` badge alongside the day badge when viewing a past day.
+         - **Empty State:** When viewing a past day with no tasks, displays a locked past-day notice ("This challenge day has passed. New tasks cannot be added to past days.") and hides the "+ Add todo" button.
+         - **Bottom Action Button:** Replaced "+ Add more todos" with a disabled, styled locked button ("Past day locked (new tasks blocked)").
+         - **Add Todo Modal:**
+            - Clamped `openAddDailyModal` so opening the modal while viewing a past day defaults to today or the earliest available non-past day.
+            - In the 7-day selector grid, disabled past days with `disabled={true}`, opacity-40, `cursor-not-allowed`, and a lock icon.
+            - Guarded `handleAddTodoSubmit` against submitting tasks for past challenge days.
+         - **Drag & Drop:** Blocked dropping tasks or categories from weekly into daily when viewing a past day.
+         - **Existing Tasks on Past Days:**
+            - Checkbox toggles and status badges ("Completed", "In Progress", "Crossed Out") remain fully functional.
+            - Edit Task Modal keeps the task's original past day selected while locking all other past days from being selected, and `handleSaveEditTask` prevents moving tasks into different past days.
+            - Deleting tasks or categories containing tasks on past days is strictly blocked with disabled buttons and locked tooltips.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 647/647 green) · `npx next build` ✅ (8 routes compiled).
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+
+### Session 63 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring Engine Agent.
+- **Fix Weekly-to-Daily Drag-and-Drop Due Date Bug:**
+   - Resolved bug where dragging a task from Weekly Todos to Daily Todos assigned it to Day 1 of the challenge (due to fallback to `task.createdAt`) instead of the active/selected challenge day:
+      - **Domain (`task-reorder.ts`):**
+         - Added optional `targetDueDate?: string | null` to `MoveTaskParams` and `MoveCategoryParams`.
+         - In `moveTaskBetweenCategories`, resolved `dueDate`: if `targetDueDate` is provided, assign `targetDueDate`; if moving to `"weekly"`, reset `dueDate: null`; otherwise preserve existing `dueDate`.
+         - In `moveCategoryBetweenColumns`, cascaded `targetDueDate` to member tasks when moving cross-column.
+         - Added unit tests in `task-reorder.test.ts` verifying `targetDueDate` assignment when moving tasks or categories.
+      - **Presentation (`cockpit-tasks-section.tsx`):**
+         - In `handleTaskDrop`, `handleCategoryDrop`, and `handleColumnDrop`: passed `targetDueDate: selectedDateKey` when moving from Weekly to Daily (`isMovingWeeklyToDaily`), and `targetDueDate: null` when moving from Daily to Weekly.
+         - Updated local IndexedDB persistence (`putLocalTasks` / `putLocalTask`) to store the resolved `dueDate`.
+         - Included `dueDate: res.movedTask.dueDate ?? null` in `enqueueMutation` payload for `action: "MOVE"` to synchronize the assigned day with the server.
+         - Added unit tests in `cockpit-tasks-section.test.tsx` verifying that a daily task with Day 1 `createdAt` and Day 4 `dueDate` renders under Day 4 in Daily Todos.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+
+
+### Session 63 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring Engine Agent.
+- **Fix Weekly-to-Daily Drag-and-Drop Due Date Bug:**
+   - Resolved bug where dragging a task from Weekly Todos to Daily Todos assigned it to Day 1 of the challenge (due to fallback to `task.createdAt`) instead of the active/selected challenge day:
+      - **Domain (`task-reorder.ts`):**
+         - Added optional `targetDueDate?: string | null` to `MoveTaskParams` and `MoveCategoryParams`.
+         - In `moveTaskBetweenCategories`, resolved `dueDate`: if `targetDueDate` is provided, assign `targetDueDate`; if moving to `"weekly"`, reset `dueDate: null`; otherwise preserve existing `dueDate`.
+         - In `moveCategoryBetweenColumns`, cascaded `targetDueDate` to member tasks when moving cross-column.
+         - Added unit tests in `task-reorder.test.ts` verifying `targetDueDate` assignment when moving tasks or categories.
+      - **Presentation (`cockpit-tasks-section.tsx`):**
+         - In `handleTaskDrop`, `handleCategoryDrop`, and `handleColumnDrop`: passed `targetDueDate: selectedDateKey` when moving from Weekly to Daily (`isMovingWeeklyToDaily`), and `targetDueDate: null` when moving from Daily to Weekly.
+         - Updated local IndexedDB persistence (`putLocalTasks` / `putLocalTask`) to store the resolved `dueDate`.
+         - Included `dueDate: res.movedTask.dueDate ?? null` in `enqueueMutation` payload for `action: "MOVE"` to synchronize the assigned day with the server.
+         - Added unit tests in `cockpit-tasks-section.test.tsx` verifying that a daily task with Day 1 `createdAt` and Day 4 `dueDate` renders under Day 4 in Daily Todos.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 650/650 green) · `npx next build` ✅ (8 routes compiled).
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
+
+### Session 64 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring Engine Agent.
+- **Move Daily Todo Tasks Across Challenge Days (with Past Day Guard):**
+   - Implemented the ability to reschedule/move daily todo tasks from previous days to another day (today or future), with strict rejection of moving present or future tasks to past challenge days:
+      - **Domain (`challenge-day.ts`):**
+         - Created `validateMoveTaskChallengeDay(sourceDateKey, targetDateKey, todayDateKey)` pure domain validation function:
+            - Allows moving tasks from previous days to today or future challenge days (`MOVED_FROM_PAST_TO_PRESENT_OR_FUTURE`).
+            - Allows moving tasks between non-past days (`MOVED_FUTURE`, `MOVED_SAME_DAY`).
+            - Strictly rejects moving present/future tasks to past days with `PAST_DAY_MOVE_NOT_ALLOWED`.
+            - Rejects moving past-day tasks to a different past day with `TARGET_DAY_IN_PAST`.
+            - Permitted maintaining tasks on the same day (`SAME_DAY`).
+         - Added 8 unit tests covering all matrix permutations in `challenge-day.test.ts` (38/38 tests green).
+      - **Presentation (`cockpit-tasks-section.tsx`):**
+         - Implemented `moveTaskToDay(taskId, targetDateKey, sourceCatIdx, sourceColumn)`: updates local state, writes to IndexedDB (`putLocalTask`), enqueues sync mutation (`UPDATE`/`MOVE`), and executes server action (`updateTaskAction`).
+         - **7-Day Strip Drag & Drop:**
+            - Updated `handleTaskDragStart` to record `sourceDateKey` on `draggedItem`.
+            - Added `handleDayPillDragOver` and `handleDayPillDrop` on the 7-day pill switcher buttons.
+            - Added reactive drag feedback: green drop highlight ring for eligible days, red ring / cursor-not-allowed / lock icon indicator for disallowed past days.
+         - **3-Dots / Context Menu Quick Actions:**
+            - Added "Move to Day" section for daily tasks with 1-click "Move to Today" (highlighted emerald when task is on a past day) and quick buttons for other eligible future challenge days.
+         - **Edit Task Modal:**
+            - Enabled selecting today or future days when editing a past-day task; past days remain locked for tasks on present or future days.
+            - Validated day changes with `validateMoveTaskChallengeDay` on modal save.
+         - Added tests in `cockpit-tasks-section.test.tsx` verifying day tab attributes and rendering.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (62 files, 659/659 green) · `npx next build` ✅ (8 routes compiled).
+
+### Session 65 — 2026-10-09 (afnan-jr)
+
+- **Agent Role:** Participant UI & Data / Identity Agent.
+- **Participant Study Log Audit Integration (`STUDY_LOG_ADDED`) & Dedicated Audit View Filter:**
+   - Added `"STUDY_LOG_ADDED"` event type to the audit log domain (`audit-log.ts`) mapped to human-readable label `"Study Time Logged"`.
+   - Updated `upsertDailyStudyLog` repository to accept actor details and challenge ID, automatically recording before/after study duration diffs (`previousValue` vs `newValue` in seconds and `HH:MM:SS` clock format).
+   - Wired `logStudyTimeAction` to pass authenticated user profile and challenge ID to the repository.
+   - Updated `EventAuditTab` presentation:
+      - Added emerald-themed `"STUDY_LOGS"` filter tab (`"Study Hour Logs"`).
+      - **Hidden by default**: When viewing `"All Actions"`, study hour logs are excluded so the administrative timeline remains clean. They only appear when an admin/mod explicitly clicks on the `"Study Hour Logs"` tab.
+   - Added full test coverage across domain, repository, server actions, and UI components.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (63 files, 667/667 green) · `npm run build` ✅.
+
+### Session 66 — 2026-10-09 (afnan-jr)
+
+- **Agent Role:** Participant UI & Admin Operations Agent.
+- **Dedicated Public Challenges Directory (`/challenges`) with Role-Gated Admin Controls:**
+   - Moved challenge catalog out of the admin-restricted zone into a dedicated public page at `/challenges` ([`challenges-list-view.tsx`](features/challenges/presentation/challenges-list-view.tsx), [`page.tsx`](app/challenges/page.tsx), [`layout.tsx`](app/challenges/layout.tsx), [`loading.tsx`](app/challenges/loading.tsx)):
+      - Accessible to public spectators, enrolled participants, and moderators/admins alike.
+      - **Role-Gated Actions:** "Create Challenge" (linking to `/admin/challenges/new`) and "Change Accent Color" buttons are only rendered when `canManageChallenges` is true (`ADMIN`/`DEV` in non-preview mode). They are completely hidden for participants, spectators, and admins previewing as participants.
+      - Preserved the full Obsidian dark styling, 3-column responsive card grid, status badges, participant counts, formatted UTC start dates, and "View Challenge" links.
+      - Added participant-friendly empty state when no challenges exist.
+   - **Header & Navigation Integration:**
+      - Added "Challenges" navigation link in `AppHeader` ([`auth-nav.tsx`](features/auth/presentation/auth-nav.tsx)) for 1-click discovery by all users (Closes #44).
+      - Redirected `/admin` to `/challenges` via server-side redirect ([`app/admin/page.tsx`](app/admin/page.tsx)).
+      - Updated back links in `/admin/challenges/new` and post-deletion redirects to `/challenges`.
+   - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (65 files, 675/675 green) · `npm run build` ✅ (9 routes compiled).
+
+### Session 67 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring / Engine Agent.
+- **Multi-View Pagination & Overflow Guards Across Platform:**
+   - Created reusable Obsidian Dark `DataPagination` component (`components/ui/data-pagination.tsx`):
+      - Responsive: Mobile compact indicator (`Page X of Y` / `X–Y of Z`) and desktop numbered pills with smart ellipsis for large page ranges (`1, 2, ..., 10`).
+      - Compact variant for narrow cards and sidebars.
+      - Auto-hides gracefully when `totalPages <= 1`.
+      - Comprehensive unit test suite in `data-pagination.test.tsx` (4/4 tests green).
+   - **Leaderboard Standings (`challenge-leaderboard-tab.tsx`):**
+      - Paginated standings list to `10` scholars per page across desktop table and mobile cards.
+      - Integrated search query reset (`setCurrentPage(1)` on typing) and test verification in `challenge-leaderboard-tab.test.tsx`.
+   - **Participant Overview List (`challenge-overview-tab.tsx`):**
+      - Paginated participant card to `8` scholars per page with compact pagination controls.
+      - Replaced unbounded "View all participants" toggle to eliminate vertical overflow.
+      - Unit test verification in `challenge-overview-tab.test.tsx`.
+   - **Event Audit Log (`event-audit-tab.tsx`):**
+      - Paginated audit log timeline to `10` events per page.
+      - Reset page to 1 upon searching or changing category filters ("All", "Details", "Roster", "Hours", "Study Logs", "Lifecycle").
+   - **Participant Rosters & Study Hours Management (`challenge-manage-tab.tsx`):**
+      - Section 4 roster list paginated to `8` participants per page.
+      - Added instant text search filter (`Search roster...`) for admin management.
+   - **Public Challenges Directory Grid (`challenges-list-view.tsx`):**
+      - Integrated `DataPagination` to paginate challenge cards to `9` challenges per page ($3 \times 3$ grid layout).
+   - **Manual Leaderboard Standings (`manual-leaderboard-view.tsx`):**
+      - Paginated participant standings to `10` scholars per page.
+   - Reconciled and merged PR #45 (`dev` branch) into `krish`.
+- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (all tests green) · `npx next build` ✅.
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).

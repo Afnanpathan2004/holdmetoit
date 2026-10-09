@@ -129,3 +129,24 @@ export function formatSecondsToHuman(totalSeconds: number): string {
 
   return parts.join(" ");
 }
+
+/**
+ * Decomposes total integer seconds into hours, minutes, and seconds parts.
+ * Non-integer or non-positive values default to zeros.
+ */
+export function decomposeSecondsToParts(totalSeconds: number): {
+  hours: number;
+  minutes: number;
+  seconds: number;
+} {
+  if (!Number.isInteger(totalSeconds) || totalSeconds <= 0) {
+    return { hours: 0, minutes: 0, seconds: 0 };
+  }
+
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return { hours, minutes, seconds };
+}
+

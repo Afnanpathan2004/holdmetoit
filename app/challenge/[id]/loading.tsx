@@ -1,37 +1,27 @@
-export default function ScoreboardLoading() {
+export default function ChallengeLoading() {
   return (
-    <div
-      className="mx-auto max-w-6xl animate-pulse space-y-8 px-4 py-8 sm:px-6 lg:px-8"
-      aria-busy="true"
-      aria-label="Loading scoreboard"
-    >
-      {/* Top Bar Skeleton */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-2xl bg-cafe-card" />
-          <div className="space-y-1.5">
-            <div className="h-5 w-32 rounded bg-cafe-card" />
-            <div className="h-3 w-24 rounded bg-cafe-card" />
-          </div>
-        </div>
-        <div className="h-9 w-36 rounded-full bg-cafe-card" />
-      </div>
-
-      {/* Top Banner Skeleton */}
-      <div className="h-64 rounded-3xl border border-cafe-border bg-cafe-card p-6" />
-
-      {/* Filter Tabs Skeleton */}
-      <div className="flex items-center justify-between">
-        <div className="h-6 w-48 rounded bg-cafe-card" />
-        <div className="flex gap-2">
-          <div className="h-10 w-24 rounded-xl bg-cafe-card" />
-          <div className="h-10 w-28 rounded-xl bg-cafe-card" />
-        </div>
-      </div>
+    <div className="space-y-8 animate-pulse" aria-label="Loading scoreboard">
+      {/* Match Banner Skeleton */}
+      <div className="h-72 rounded-3xl border border-[#262626] bg-[#141414]" />
 
       {/* Standings Table Skeleton */}
-      <div className="h-96 rounded-3xl border border-cafe-border bg-cafe-card" />
+      <div className="space-y-4 rounded-3xl border border-[#262626] bg-[#141414] p-6">
+        <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
+          <div className="h-6 w-48 rounded-lg bg-[#1c1c1c]" />
+          <div className="h-8 w-32 rounded-lg bg-[#1c1c1c]" />
+        </div>
+        <div className="space-y-3 pt-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-12 w-full rounded-xl bg-[#1c1c1c]/50"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Punishment Wall Skeleton */}
+      <div className="h-44 rounded-3xl border border-[#262626] bg-[#141414] p-6" />
     </div>
   );
 }
-

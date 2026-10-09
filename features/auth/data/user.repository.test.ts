@@ -1,154 +1,112 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  findUserById,
-  findUserByDiscordId,
-  countUsers,
-  syncUserFromGoogleProfile,
-  getOrCreateDemoUser,
-  promoteFirstUserToAdminIfNeeded,
-} from "./user.repository";
 import { prisma } from "@/core/db";
+import * as discordService from "./discord-guild.service";
+import {
+  findUserByDiscordId,
+  findUserById,
+  syncUserRoleFromDiscord,
+} from "./user.repository";
 
 vi.mock("@/core/db", () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
-      findMany: vi.fn(),
-      count: vi.fn(),
       update: vi.fn(),
-      create: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
 
-describe("User Repository (features/auth/data/user.repository.ts)", () => {
+vi.mock("./discord-guild.service", () => ({
+  isDiscordAdmin: vi.fn(),
+  isDiscordDev: vi.fn(),
+}));
+
+describe("user.repository", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("finds user by id", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
-      id: "u-1",
-      name: "Afnan",
-    } as any);
+  describe("syncUserRoleFromDiscord", () => {
+    it("assigns DEV role when isDiscordDev is true", async () => {
+      vi.mocked(discordService.isDiscordDev).mockReturnValue(true);
+      vi.mocked(prisma.user.update).mockResolvedValue({
+        id: "user_1",
+        role: "DEV",
+      } as never);
 
-    const user = await findUserById("u-1");
-    expect(user?.id).toBe("u-1");
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: "u-1" } });
-  });
+      const role = await syncUserRoleFromDiscord("user_1", "dev_snowflake");
 
-  it("finds user by discord id", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
-      id: "u-1",
-      discordId: "disc-123",
-    } as any);
-
-    const user = await findUserByDiscordId("disc-123");
-    expect(user?.discordId).toBe("disc-123");
-  });
-
-  it("counts total users", async () => {
-    vi.mocked(prisma.user.count).mockResolvedValueOnce(5);
-
-    const count = await countUsers();
-    expect(count).toBe(5);
-  });
-
-  it("syncs user fields from Google profile", async () => {
-    vi.mocked(prisma.user.update).mockResolvedValueOnce({
-      id: "u-google-1",
-      name: "Jane Doe",
-      displayName: "Jane Doe",
-      username: "jane.doe",
-      image: "https://lh3.googleusercontent.com/avatar.png",
-    } as any);
-
-    const user = await syncUserFromGoogleProfile("u-google-1", {
-      name: "Jane Doe",
-      email: "jane.doe@example.com",
-      image: "https://lh3.googleusercontent.com/avatar.png",
+      expect(role).toBe("DEV");
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: "user_1" },
+        data: { role: "DEV" },
+      });
+      // Admin check should not even be called when dev check matches
+      expect(discordService.isDiscordAdmin).not.toHaveBeenCalled();
     });
 
-    expect(user.displayName).toBe("Jane Doe");
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: "u-google-1" },
-      data: {
-        name: "Jane Doe",
-        displayName: "Jane Doe",
-        username: "jane.doe",
-        image: "https://lh3.googleusercontent.com/avatar.png",
-      },
-    });
-  });
-
-  it("getOrCreateDemoUser returns existing demo user promoted to ADMIN", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
-      id: "usr-demo-existing",
-      email: "demo@holdmetoit.local",
-      role: "PARTICIPANT",
-    } as any);
-
-    vi.mocked(prisma.user.update).mockResolvedValueOnce({
-      id: "usr-demo-existing",
-      email: "demo@holdmetoit.local",
-      role: "ADMIN",
-    } as any);
-
-    const user = await getOrCreateDemoUser();
-    expect(user.role).toBe("ADMIN");
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: "usr-demo-existing" },
-      data: { role: "ADMIN" },
-    });
-  });
-
-  it("getOrCreateDemoUser creates demo user if not existing", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(null);
-    vi.mocked(prisma.user.create).mockResolvedValueOnce({
-      id: "usr-demo-dev",
-      email: "demo@holdmetoit.local",
-      name: "Demo Admin",
-      displayName: "Demo Admin",
-      username: "demo_admin",
-      role: "ADMIN",
-    } as any);
-
-    const user = await getOrCreateDemoUser();
-    expect(user.email).toBe("demo@holdmetoit.local");
-    expect(user.role).toBe("ADMIN");
-    expect(prisma.user.create).toHaveBeenCalledWith({
-      data: {
-        id: "usr-demo-dev",
-        email: "demo@holdmetoit.local",
-        name: "Demo Admin",
-        displayName: "Demo Admin",
-        username: "demo_admin",
+    it("assigns ADMIN role when isDiscordDev is false and isDiscordAdmin is true", async () => {
+      vi.mocked(discordService.isDiscordDev).mockReturnValue(false);
+      vi.mocked(discordService.isDiscordAdmin).mockResolvedValue(true);
+      vi.mocked(prisma.user.update).mockResolvedValue({
+        id: "user_2",
         role: "ADMIN",
-      },
+      } as never);
+
+      const role = await syncUserRoleFromDiscord("user_2", "admin_snowflake");
+
+      expect(role).toBe("ADMIN");
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: "user_2" },
+        data: { role: "ADMIN" },
+      });
+    });
+
+    it("assigns PARTICIPANT role when neither is true", async () => {
+      vi.mocked(discordService.isDiscordDev).mockReturnValue(false);
+      vi.mocked(discordService.isDiscordAdmin).mockResolvedValue(false);
+      vi.mocked(prisma.user.update).mockResolvedValue({
+        id: "user_3",
+        role: "PARTICIPANT",
+      } as never);
+
+      const role = await syncUserRoleFromDiscord("user_3", "normal_snowflake");
+
+      expect(role).toBe("PARTICIPANT");
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: "user_3" },
+        data: { role: "PARTICIPANT" },
+      });
     });
   });
 
-  it("promotes first registered user to ADMIN", async () => {
-    vi.mocked(prisma.user.count).mockResolvedValueOnce(1);
-    vi.mocked(prisma.user.update).mockResolvedValueOnce({
-      id: "u-first",
-      role: "ADMIN",
-    } as any);
+  describe("findUserById", () => {
+    it("calls prisma.user.findUnique with id", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: "user_1",
+      } as never);
 
-    const role = await promoteFirstUserToAdminIfNeeded("u-first");
-    expect(role).toBe("ADMIN");
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: "u-first" },
-      data: { role: "ADMIN" },
+      const user = await findUserById("user_1");
+      expect(user).toEqual({ id: "user_1" });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: "user_1" },
+      });
     });
   });
 
-  it("does not promote user if other users already exist", async () => {
-    vi.mocked(prisma.user.count).mockResolvedValueOnce(2);
+  describe("findUserByDiscordId", () => {
+    it("calls prisma.user.findUnique with discordId", async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: "user_1",
+        discordId: "disc_1",
+      } as never);
 
-    const role = await promoteFirstUserToAdminIfNeeded("u-second");
-    expect(role).toBeNull();
-    expect(prisma.user.update).not.toHaveBeenCalled();
+      const user = await findUserByDiscordId("disc_1");
+      expect(user).toEqual({ id: "user_1", discordId: "disc_1" });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { discordId: "disc_1" },
+      });
+    });
   });
 });
-

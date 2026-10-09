@@ -2,14 +2,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/core/db";
 import {
+  enrollParticipantInChallenge,
   findOwnedParticipant,
   findParticipantForUser,
 } from "@/features/challenges/data/participant.repository";
 
 vi.mock("@/core/db", () => ({
   prisma: {
+    challenge: {
+      findUnique: vi.fn(),
+    },
+    team: {
+      findUnique: vi.fn(),
+    },
     challengeParticipant: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
     },
   },
 }));
@@ -35,7 +44,6 @@ describe("participant repository", () => {
           team: true,
           user: true,
           dailyStudyLogs: { orderBy: { logDate: "asc" } },
-          weeklyGoals: { orderBy: { sortOrder: "asc" } },
         },
       });
     });
@@ -43,7 +51,10 @@ describe("participant repository", () => {
     it("prefers active challenge when challengeId is not specified", async () => {
       const activeParticipant = {
         id: "part_active",
-        challenge: { status: "ACTIVE" },
+        challenge: {
+          startAt: new Date(Date.now() - 3600000),
+          endAt: new Date(Date.now() + 7 * 86400000),
+        },
       };
       vi.mocked(prisma.challengeParticipant.findFirst).mockResolvedValue(
         activeParticipant as never,
@@ -53,10 +64,13 @@ describe("participant repository", () => {
       expect(result).toEqual(activeParticipant);
       expect(prisma.challengeParticipant.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {
+          where: expect.objectContaining({
             userId: "u_1",
-            challenge: { status: "ACTIVE" },
-          },
+            challenge: expect.objectContaining({
+              startAt: expect.any(Object),
+              endAt: expect.any(Object),
+            }),
+          }),
         }),
       );
     });
@@ -74,6 +88,22 @@ describe("participant repository", () => {
       const result = await findParticipantForUser("u_1");
       expect(result).toEqual(upcomingParticipant);
       expect(prisma.challengeParticipant.findFirst).toHaveBeenCalledTimes(2);
+    });
+
+    it("falls back to completed challenge when neither active nor upcoming challenge is found", async () => {
+      const completedParticipant = {
+        id: "part_completed",
+        challenge: { status: "COMPLETED" },
+      };
+
+      vi.mocked(prisma.challengeParticipant.findFirst)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(completedParticipant as never);
+
+      const result = await findParticipantForUser("u_1");
+      expect(result).toEqual(completedParticipant);
+      expect(prisma.challengeParticipant.findFirst).toHaveBeenCalledTimes(3);
     });
   });
 
@@ -95,6 +125,171 @@ describe("participant repository", () => {
       expect(prisma.challengeParticipant.findFirst).toHaveBeenCalledWith({
         where: { userId: "u_1", challengeId: "c_1" },
         include: { challenge: true },
+      });
+    });
+  });
+
+  describe("enrollParticipantInChallenge", () => {
+    it("successfully enrolls a user into an upcoming challenge", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+        status: "UPCOMING",
+      } as never);
+
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(null);
+
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({
+        id: "t_1",
+        name: "Solar",
+        challengeId: "c_1",
+        maxMembers: 5,
+        _count: { participants: 2 },
+      } as never);
+
+      const createdParticipant = {
+        id: "part_new",
+        userId: "u_1",
+        challengeId: "c_1",
+        teamId: "t_1",
+        targetSeconds: 126000,
+        status: "NORMAL",
+      };
+
+      vi.mocked(prisma.challengeParticipant.create).mockResolvedValue(
+        createdParticipant as never,
+      );
+
+      const result = await enrollParticipantInChallenge({
+        challengeId: "c_1",
+        userId: "u_1",
+        teamId: "t_1",
+        targetSeconds: 126000,
+      });
+
+      expect(result).toEqual(createdParticipant);
+      expect(prisma.challengeParticipant.create).toHaveBeenCalledWith({
+        data: {
+          userId: "u_1",
+          challengeId: "c_1",
+          teamId: "t_1",
+          targetSeconds: 126000,
+          status: "NORMAL",
+        },
+        include: {
+          team: true,
+          challenge: true,
+          user: true,
+        },
+      });
+    });
+
+    it("rejects enrollment when challenge is COMPLETED", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+        startAt: new Date(Date.now() - 7 * 86400000),
+        endAt: new Date(Date.now() - 3600000),
+      } as never);
+
+      await expect(
+        enrollParticipantInChallenge({
+          challengeId: "c_1",
+          userId: "u_1",
+          teamId: "t_1",
+          targetSeconds: 126000,
+        }),
+      ).rejects.toThrow("Cannot enroll in a completed challenge.");
+    });
+
+    it("rejects enrollment when user is already enrolled", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
+      } as never);
+
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue({
+        id: "part_existing",
+      } as never);
+
+      await expect(
+        enrollParticipantInChallenge({
+          challengeId: "c_1",
+          userId: "u_1",
+          teamId: "t_1",
+          targetSeconds: 126000,
+        }),
+      ).rejects.toThrow("User is already enrolled in this challenge.");
+    });
+
+    it("rejects enrollment when selected team is full", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
+      } as never);
+
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(null);
+
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({
+        id: "t_1",
+        name: "Solar",
+        challengeId: "c_1",
+        maxMembers: 2,
+        _count: { participants: 2 },
+      } as never);
+
+      await expect(
+        enrollParticipantInChallenge({
+          challengeId: "c_1",
+          userId: "u_1",
+          teamId: "t_1",
+          targetSeconds: 126000,
+        }),
+      ).rejects.toThrow("Team Solar is full (max 2 members).");
+    });
+
+    it("successfully enrolls as unassigned when teamId is omitted or no-assigned", async () => {
+      vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+        id: "c_1",
+        startAt: new Date(Date.now() + 86400000),
+        endAt: new Date(Date.now() + 7 * 86400000),
+      } as never);
+
+      vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(null);
+
+      const createdParticipant = {
+        id: "part_unassigned",
+        userId: "u_1",
+        challengeId: "c_1",
+        teamId: null,
+        targetSeconds: 126000,
+        status: "NORMAL",
+      };
+
+      vi.mocked(prisma.challengeParticipant.create).mockResolvedValue(
+        createdParticipant as never,
+      );
+
+      const result = await enrollParticipantInChallenge({
+        challengeId: "c_1",
+        userId: "u_1",
+        targetSeconds: 126000,
+      });
+
+      expect(result).toEqual(createdParticipant);
+      expect(prisma.challengeParticipant.create).toHaveBeenCalledWith({
+        data: {
+          userId: "u_1",
+          challengeId: "c_1",
+          teamId: null,
+          targetSeconds: 126000,
+          status: "NORMAL",
+        },
+        include: {
+          team: true,
+          challenge: true,
+          user: true,
+        },
       });
     });
   });

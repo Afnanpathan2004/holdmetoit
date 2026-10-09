@@ -1,37 +1,44 @@
-import { prisma } from "@/core/db";
-import { requireSessionUser } from "@/features/auth/api/require-session";
+import { auth } from "@/core/auth";
+import {
+  hasAdminPrivileges,
+  type UserRoleType,
+} from "@/features/auth/domain/auth-roles";
 
 export class AdminAccessError extends Error {
-  constructor(
-    message = "Administrative privileges required to perform this action.",
-  ) {
+  readonly code = "FORBIDDEN_NOT_ADMIN";
+  constructor(message = "Host administrative permissions required.") {
     super(message);
     this.name = "AdminAccessError";
   }
 }
 
-/**
- * Enforces server-side authorization for admin / host operations (Law L5 / Section 8).
- * Permits system administrators (role === "ADMIN") or the designated host of the specified challenge.
- */
-export async function requireAdminOrHost(challengeId?: string) {
-  const user = await requireSessionUser();
+export interface AdminSessionUser {
+  id: string;
+  username: string;
+  displayName: string;
+  role: UserRoleType;
+}
 
-  if (user.role === "ADMIN") {
-    return user;
-  }
+export async function requireAdminUser(): Promise<AdminSessionUser> {
+  const session = await auth();
 
-  if (challengeId) {
-    const challenge = await prisma.challenge.findUnique({
-      where: { id: challengeId },
-      select: { hostId: true },
-    });
-
-    if (challenge?.hostId === user.id) {
-      return user;
+  if (session?.user?.id) {
+    if (hasAdminPrivileges(session.user.role)) {
+      const isDev = session.user.role === "DEV";
+      return {
+        id: session.user.id,
+        username:
+          session.user.displayName ??
+          session.user.name ??
+          (isDev ? "Developer" : "HostAdmin"),
+        displayName:
+          session.user.displayName ??
+          session.user.name ??
+          (isDev ? "Developer" : "Host Admin"),
+        role: session.user.role as UserRoleType,
+      };
     }
   }
 
   throw new AdminAccessError();
 }
-

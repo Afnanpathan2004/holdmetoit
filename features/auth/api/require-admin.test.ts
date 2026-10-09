@@ -1,76 +1,74 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { auth } from "@/core/auth";
+import { AdminAccessError, requireAdminUser } from "./require-admin";
 
-import { requireAdminOrHost, AdminAccessError } from "./require-admin";
-import * as requireSessionModule from "./require-session";
-import { prisma } from "@/core/db";
-
-vi.mock("./require-session", () => ({
-  requireSessionUser: vi.fn(),
-  AuthError: class AuthError extends Error {},
+vi.mock("@/core/auth", () => ({
+  auth: vi.fn(),
 }));
 
-vi.mock("@/core/db", () => ({
-  prisma: {
-    challenge: {
-      findUnique: vi.fn(),
-    },
-  },
-}));
-
-describe("requireAdminOrHost", () => {
+describe("require-admin", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("permits users with ADMIN role unconditionally", async () => {
-    vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValueOnce({
-      id: "u-admin",
-      role: "ADMIN",
-    } as any);
+  it("returns admin session user when role is ADMIN", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: {
+        id: "admin_1",
+        displayName: "ServerHost",
+        role: "ADMIN",
+      },
+    } as never);
 
-    const user = await requireAdminOrHost();
-    expect(user.id).toBe("u-admin");
-    expect(prisma.challenge.findUnique).not.toHaveBeenCalled();
+    const user = await requireAdminUser();
+    expect(user.id).toBe("admin_1");
+    expect(user.displayName).toBe("ServerHost");
+    expect(user.role).toBe("ADMIN");
   });
 
-  it("permits users who are designated hostId of the challenge", async () => {
-    vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValueOnce({
-      id: "u-host",
-      role: "PARTICIPANT",
-    } as any);
+  it("returns admin session user when role is DEV", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: {
+        id: "dev_1",
+        displayName: "CodeArchitect",
+        role: "DEV",
+      },
+    } as never);
 
-    vi.mocked(prisma.challenge.findUnique).mockResolvedValueOnce({
-      hostId: "u-host",
-    } as any);
-
-    const user = await requireAdminOrHost("chal-1");
-    expect(user.id).toBe("u-host");
-    expect(prisma.challenge.findUnique).toHaveBeenCalledWith({
-      where: { id: "chal-1" },
-      select: { hostId: true },
-    });
+    const user = await requireAdminUser();
+    expect(user.id).toBe("dev_1");
+    expect(user.displayName).toBe("CodeArchitect");
+    expect(user.role).toBe("DEV");
   });
 
-  it("throws AdminAccessError for non-admin participants without host rights", async () => {
-    vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValueOnce({
-      id: "u-regular",
-      role: "PARTICIPANT",
-    } as any);
+  it("falls back to 'Developer' when role is DEV and displayName is missing", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: {
+        id: "dev_2",
+        role: "DEV",
+      },
+    } as never);
 
-    vi.mocked(prisma.challenge.findUnique).mockResolvedValueOnce({
-      hostId: "u-someone-else",
-    } as any);
-
-    await expect(requireAdminOrHost("chal-1")).rejects.toThrow(AdminAccessError);
+    const user = await requireAdminUser();
+    expect(user.id).toBe("dev_2");
+    expect(user.displayName).toBe("Developer");
+    expect(user.role).toBe("DEV");
   });
 
-  it("throws AdminAccessError when no challengeId is provided for non-admin user", async () => {
-    vi.mocked(requireSessionModule.requireSessionUser).mockResolvedValueOnce({
-      id: "u-regular",
-      role: "PARTICIPANT",
-    } as any);
+  it("throws AdminAccessError when role is PARTICIPANT", async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: {
+        id: "student_1",
+        role: "PARTICIPANT",
+      },
+    } as never);
 
-    await expect(requireAdminOrHost()).rejects.toThrow(AdminAccessError);
+    await expect(requireAdminUser()).rejects.toThrow(AdminAccessError);
+  });
+
+  it("throws AdminAccessError when session is missing", async () => {
+    vi.mocked(auth).mockResolvedValue(null as never);
+
+    await expect(requireAdminUser()).rejects.toThrow(AdminAccessError);
   });
 });
-
