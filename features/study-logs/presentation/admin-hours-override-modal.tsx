@@ -12,6 +12,7 @@ import {
    ShieldAlert,
    User as UserIcon,
    RotateCcw,
+   Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ export interface AdminHoursOverrideModalProps {
    participant: AdminHoursOverrideParticipant | null;
    initialDayNumber?: number;
    onSuccess?: () => void;
+   onOpenTargetOverride?: () => void;
 }
 
 export function AdminHoursOverrideModal({
@@ -61,6 +63,7 @@ export function AdminHoursOverrideModal({
    participant,
    initialDayNumber = 1,
    onSuccess,
+   onOpenTargetOverride,
 }: AdminHoursOverrideModalProps) {
    const router = useRouter();
    const [isPending, startTransition] = useTransition();
@@ -461,14 +464,30 @@ export function AdminHoursOverrideModal({
                      </p>
                   </div>
                </div>
-               {participant.teamName && (
-                  <span
-                     className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border shrink-0"
-                     style={getTeamBadgeStyle(participant.teamColor)}
-                  >
-                     {participant.teamName}
-                  </span>
-               )}
+               <div className="flex items-center gap-2 shrink-0">
+                  {participant.teamName && (
+                     <span
+                        className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border shrink-0"
+                        style={getTeamBadgeStyle(participant.teamColor)}
+                     >
+                        {participant.teamName}
+                     </span>
+                  )}
+                  {onOpenTargetOverride && (
+                     <button
+                        type="button"
+                        onClick={() => {
+                           onClose();
+                           onOpenTargetOverride();
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#2a1b3d] hover:bg-[#3b2456] border border-[#a855f7]/40 text-[11px] font-semibold text-[#c084fc] hover:text-white transition-colors"
+                        title="Switch to editing weekly target hours"
+                     >
+                        <Target className="h-3 w-3 text-[#c084fc]" />
+                        <span>Edit Target</span>
+                     </button>
+                  )}
+               </div>
             </div>
 
             {/* Scope Selector: Single Day vs Overall Reset */}

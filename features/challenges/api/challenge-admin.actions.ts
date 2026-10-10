@@ -9,6 +9,7 @@ import {
 } from "@/features/auth/api/require-admin";
 import {
    adminEnrollParticipant,
+   adminUpdateParticipantTarget,
    createAdminChallenge,
    deleteAdminChallenge,
    kickoffChallenge,
@@ -21,6 +22,8 @@ import { getStorageUrlConfig } from "@/core/storage/supabase-storage";
 import { findChallengeImageUrls } from "@/features/challenges/data/punishment-pfp.repository";
 import { cleanupUnreferencedChallengeImages } from "@/features/challenges/data/challenge-image-cleanup";
 import { validateChallengeCreation } from "@/features/challenges/domain/challenge-lifecycle";
+import { validateWeeklyTargetSeconds } from "@/features/challenges/domain/target-hours.validation";
+import { composeDurationSeconds } from "@/features/study-logs/domain/daily-log.validation";
 import {
    extractManagedObjectPath,
    type ChallengeImagePurpose,
@@ -540,6 +543,102 @@ export async function removeChallengeParticipantAction(
             error instanceof Error
                ? error.message
                : "Failed to remove participant from challenge.",
+      };
+   }
+}
+
+const adminUpdateParticipantTargetSchema = z.object({
+   challengeId: z.string().min(1),
+   participantId: z.string().min(1),
+   hours: z.number().int().min(0).max(105).optional(),
+   minutes: z.number().int().min(0).max(59).optional(),
+   seconds: z.number().int().min(0).max(59).optional(),
+   targetSeconds: z.number().int().optional(),
+   reason: z.string().optional(),
+});
+
+/**
+ * Host/Mod/Dev manual target hours override action (Law L5 / FEAT-DECL-04).
+ */
+export async function adminUpdateParticipantTargetAction(
+   input: z.infer<typeof adminUpdateParticipantTargetSchema>
+): Promise<AdminActionResult<{ targetSeconds: number }>> {
+   try {
+      const admin = await requireAdminUser();
+      const parsed = adminUpdateParticipantTargetSchema.safeParse(input);
+
+      if (!parsed.success) {
+         return {
+            ok: false,
+            code: "INVALID_INPUT",
+            message:
+               "Please enter valid target hours (between 1 and 105 hours).",
+         };
+      }
+
+      const targetSeconds =
+         parsed.data.targetSeconds !== undefined
+            ? parsed.data.targetSeconds
+            : composeDurationSeconds(
+                 parsed.data.hours ?? 0,
+                 parsed.data.minutes ?? 0,
+                 parsed.data.seconds ?? 0
+              );
+
+      const validation = validateWeeklyTargetSeconds(targetSeconds);
+      if (!validation.ok) {
+         return {
+            ok: false,
+            code: validation.code,
+            message: validation.message,
+         };
+      }
+
+      const updated = await adminUpdateParticipantTarget({
+         challengeId: parsed.data.challengeId,
+         participantId: parsed.data.participantId,
+         targetSeconds,
+         reason: parsed.data.reason,
+         admin: {
+            id: admin.id,
+            username: admin.username,
+         },
+      });
+
+      invalidateTags([
+         cacheTags.challengeScoreboard(parsed.data.challengeId),
+         cacheTags.challengeMetadata(parsed.data.challengeId),
+      ]);
+
+      revalidatePath(`/challenge/${parsed.data.challengeId}`);
+      revalidatePath(
+         `/challenge/${parsed.data.challengeId}/participant/${parsed.data.participantId}`
+      );
+      revalidatePath("/challenges");
+      revalidatePath("/admin");
+      revalidatePath("/dashboard");
+      revalidatePath("/");
+
+      return {
+         ok: true,
+         data: { targetSeconds: updated.targetSeconds },
+      };
+   } catch (error) {
+      if (error instanceof AdminAccessError) {
+         return {
+            ok: false,
+            code: error.code,
+            message: error.message,
+         };
+      }
+
+      return {
+         ok: false,
+         code: "UPDATE_TARGET_FAILED",
+         message:
+            error instanceof Error
+               ? error.message
+               : "Failed to update participant target hours.",
       };
    }
 }

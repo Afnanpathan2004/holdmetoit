@@ -33,13 +33,13 @@
 
 These features have working backend code but **zero UI** — deleted in commits `88779bd` and `364c7a1`:
 
-| Feature                                 | Backend                          | UI Status                             |
-| --------------------------------------- | -------------------------------- | ------------------------------------- |
-| Punishment Wall (`FEAT-PUN-02`)         | `punishment.ts` domain logic     | ❌ `punishment-wall.tsx` deleted      |
-| Punishment PFP Download (`FEAT-PUN-03`) | PFP upload to Supabase works     | ❌ No download button anywhere        |
-| Host Pardon Modal (`FEAT-PUN-04`)       | `adminPardonAction` exists       | ❌ `admin-goals-pardons.tsx` deleted  |
-| Discord Summary Copy (`FEAT-DISC-01`)   | `generateDiscordSummary()` works | ❌ `discord-summary-card.tsx` deleted |
-| Host Goal/Target Edit (`FEAT-DECL-04`)  | `updateParticipantTargetSeconds` | ❌ No callers                         |
+| Feature                                 | Backend                              | UI Status                                                           |
+| --------------------------------------- | ------------------------------------ | ------------------------------------------------------------------- |
+| Punishment Wall (`FEAT-PUN-02`)         | `punishment.ts` domain logic         | ❌ `punishment-wall.tsx` deleted                                    |
+| Punishment PFP Download (`FEAT-PUN-03`) | PFP upload to Supabase works         | ❌ No download button anywhere                                      |
+| Host Pardon Modal (`FEAT-PUN-04`)       | `adminPardonAction` exists           | ❌ `admin-goals-pardons.tsx` deleted                                |
+| Discord Summary Copy (`FEAT-DISC-01`)   | `generateDiscordSummary()` works     | ❌ `discord-summary-card.tsx` deleted                               |
+| Host Goal/Target Edit (`FEAT-DECL-04`)  | `adminUpdateParticipantTargetAction` | ✅ Wired to `AdminTargetOverrideModal` (Manage, Leaderboard, Stats) |
 
 ---
 
@@ -48,6 +48,8 @@ These features have working backend code but **zero UI** — deleted in commits 
 The `feedbacks` table, `categories`, `tasks`, and related `sort_order` columns were applied via `prisma db push` and have **no migration files**. Running `prisma migrate deploy` on a fresh database produces an incomplete schema.
 
 **Fix:** Run `prisma migrate diff` to generate catch-up migrations and `prisma migrate resolve` on existing databases.
+
+**Progress (2026-10-10, Session 79):** This drift class caused the PR #67 production incident — `isLeave` was declared in `schema.prisma` but the push-managed DB never received it, so every Prisma query selecting/including it threw `P2022` at runtime. Resolution: idempotent migration `20261010120000_add_is_leave_to_study_logs` applied (verified by re-introspection), and `scripts/check-schema-migration.sh` + `.github/workflows/ci.yml` now block any PR that changes `prisma/schema.prisma` without a `prisma/migrations` change. Remaining drift to reconcile: `feedbacks`, `sort_order` columns.
 
 ---
 
@@ -126,7 +128,7 @@ The enrollment modal collects a `leaveDays` input from participants, but the val
 | `app/admin/challenges/new/`                       | ❌            | ❌          | ❌              |
 | `app/challenge/[id]/`                             | ✅            | ❌          | ❌              |
 | `app/challenge/[id]/manual/`                      | ✅            | ❌          | ❌              |
-| `app/challenge/[id]/participant/[participantId]/` | ✅            | ❌          | ❌              |
+| `app/challenge/[id]/participant/[participantId]/` | ✅            | ✅          | ❌              |
 | `app/challenges/`                                 | ✅            | ❌          | ❌              |
 
 Law L9 requires **Loading, Empty, and Error** states for every view. The root `error.tsx` catches unhandled errors globally, but route-specific `error.tsx` boundaries would prevent full-page crashes and give better UX. `not-found.tsx` files are needed for dynamic `[id]` routes especially.
@@ -346,3 +348,14 @@ Add CSV/JSON export for challenge results. This complements Law L2 (Spreadsheet 
 10.   **#15** — Consolidate dual team-membership modeling
 11.   **#23** — Add missing TSConfig flags (`forceConsistentCasingInFileNames`)
 12.   Everything else in priority order
+
+---
+
+## 🚨 Incident Log
+
+### 2026-10-10 — PR #67 production regression (schema drift, D5 class)
+
+- **What:** Merging `dev` into `main` (PR #67) shipped `isLeave` in `schema.prisma` with no migration; the push-managed database never received the column (`study_logs_v2` confirmed missing via introspection). Every Prisma query selecting/including it threw `P2022` at request time while typecheck/tests/build stayed green.
+- **Symptoms:** enrolled users saw the unenrolled cockpit ENROLL banner (`app/page.tsx` silently caught the error into `cockpit = null`); participant profile pages opened from the leaderboard errored (unguarded `getChallengeParticipantStats`). Logging hours, the admin Manage tab, and Lock Final Results were broken by the same drift.
+- **Response:** PR #68 reverted the merge (verified byte-clean against pre-PR `main`).
+- **Resolution:** migration `20261010120000_add_is_leave_to_study_logs` applied + verified; PR #67 re-landed via revert-of-revert (`62fd70a`) — a plain `dev → main` merge would NOT have restored the features since `4cbcfb9` is already in main's history; error masking removed (Law L9); CI schema guard added. Session log: `HANDOFF.md` §7 Session 79.
