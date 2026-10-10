@@ -87,8 +87,10 @@ export async function getParticipantCockpit(
    const todayDate = challengeDayBuckets.current.dateKey;
    const yesterdayDate = challengeDayBuckets.previous?.dateKey;
 
-   const totalLoggedSeconds = sumLoggedSeconds(participant.dailyStudyLogs);
-   const todayLog = participant.dailyStudyLogs.find(
+   const participantLogs = participant.dailyStudyLogsV2 ?? [];
+
+   const totalLoggedSeconds = sumLoggedSeconds(participantLogs);
+   const todayLog = participantLogs.find(
       (log) => formatUtcDateKey(log.logDate) === todayDate
    );
    const todayLoggedSeconds = todayLog?.durationSeconds ?? 0;
@@ -98,7 +100,7 @@ export async function getParticipantCockpit(
    );
 
    const yesterdayLog = challengeDayBuckets.previous
-      ? participant.dailyStudyLogs.find(
+      ? participantLogs.find(
            (log) => formatUtcDateKey(log.logDate) === yesterdayDate
         )
       : undefined;
@@ -167,7 +169,7 @@ export async function getParticipantCockpit(
       canLogStudyTime: canLogStudyTime(challengeStatus),
       isReadOnly: isChallengeReadOnly(challengeStatus),
       userTasks,
-      logs: participant.dailyStudyLogs.map((log) => ({
+      logs: participantLogs.map((log) => ({
          logDate: formatUtcDateKey(log.logDate),
          durationSeconds: log.durationSeconds,
          durationClock: formatSecondsToClock(log.durationSeconds),

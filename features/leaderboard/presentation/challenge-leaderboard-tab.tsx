@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -34,11 +34,48 @@ import {
    getTeamColorPalette,
    getTeamBadgeStyle,
 } from "@/features/challenges/domain/team-colors";
+import {
+   rankByTodaySeconds,
+   resolveLeaderboardViewMode,
+   type LeaderboardViewMode,
+} from "../domain/leaderboard";
+
+export type { LeaderboardViewMode };
+
+function getYptStatusBadge(status?: string | null): {
+   label: "Studying" | "Offline";
+   className: string;
+} | null {
+   if (!status) return null;
+   const s = status.toLowerCase();
+   const isStudying = s.includes("studying");
+   return isStudying
+      ? {
+           label: "Studying",
+           className: "bg-[#132717] border-[#225028] text-[#86efac]",
+        }
+      : {
+           label: "Offline",
+           className: "bg-[#1a1a1a] border-[#2e2e2e] text-[#a3a3a3]",
+        };
+}
+
+function YptStatusPill({ status }: { status?: string | null }) {
+   const badge = getYptStatusBadge(status);
+   if (!badge) return null;
+   return (
+      <span
+         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${badge.className}`}
+      >
+         {badge.label}
+      </span>
+   );
+}
 
 interface ChallengeLeaderboardTabProps {
    challenge: ChallengeScoreboardViewModel;
    isAdmin?: boolean;
-   initialViewMode?: "individual" | "team";
+   initialViewMode?: LeaderboardViewMode;
 }
 
 export function ChallengeLeaderboardTab({
@@ -51,9 +88,59 @@ export function ChallengeLeaderboardTab({
    const [statusFilter, setStatusFilter] = useState<
       "ALL" | "on-track" | "catch-up"
    >("ALL");
-   const [viewMode, setViewMode] = useState<"individual" | "team">(
-      initialViewMode
-   );
+   const [viewMode, setViewMode] =
+      useState<LeaderboardViewMode>(initialViewMode);
+
+   useEffect(() => {
+      if (initialViewMode) {
+         setViewMode(initialViewMode);
+      }
+   }, [initialViewMode]);
+
+   useEffect(() => {
+      const syncViewFromUrl = () => {
+         if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const viewParam = params.get("view");
+            if (
+               viewParam === "today" ||
+               viewParam === "team" ||
+               viewParam === "individual"
+            ) {
+               setViewMode(viewParam);
+            }
+         }
+      };
+
+      syncViewFromUrl();
+      window.addEventListener("popstate", syncViewFromUrl);
+      return () => window.removeEventListener("popstate", syncViewFromUrl);
+   }, []);
+
+   const handleViewModeChange = (mode: LeaderboardViewMode) => {
+      setViewMode(mode);
+      setCurrentPage(1);
+
+      if (typeof window !== "undefined") {
+         const url = new URL(window.location.href);
+         if (mode === "individual") {
+            url.searchParams.delete("view");
+         } else {
+            url.searchParams.set("view", mode);
+         }
+         window.history.replaceState(
+            null,
+            "",
+            `${url.pathname}${url.search}${url.hash}`
+         );
+      }
+   };
+
+   const getParticipantProfileUrl = (participantId: string) => {
+      const query = viewMode !== "individual" ? `?view=${viewMode}` : "";
+      return `/challenge/${challenge.id}/participant/${participantId}${query}`;
+   };
+
    const [currentPage, setCurrentPage] = useState(1);
    const pageSize = 10;
    const [overrideParticipant, setOverrideParticipant] =
@@ -76,7 +163,6 @@ export function ChallengeLeaderboardTab({
          teamName: entry.teamName,
          teamColor: entry.teamColor,
          dailyLogs: entry.dailyLogs,
-         totalLoggedSeconds: entry.totalLoggedSeconds,
       });
       setIsOverrideModalOpen(true);
    };
@@ -154,9 +240,14 @@ export function ChallengeLeaderboardTab({
       setCurrentPage(1);
    };
 
-   const totalPages = Math.ceil(filteredStandings.length / pageSize);
+   const displayStandings =
+      viewMode === "today"
+         ? rankByTodaySeconds(filteredStandings)
+         : filteredStandings;
+
+   const totalPages = Math.ceil(displayStandings.length / pageSize);
    const safePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
-   const paginatedStandings = filteredStandings.slice(
+   const paginatedStandings = displayStandings.slice(
       (safePage - 1) * pageSize,
       safePage * pageSize
    );
@@ -360,7 +451,7 @@ export function ChallengeLeaderboardTab({
                   <p className="text-xs text-[#868686]">Runner-up</p>
                   {top2 ? (
                      <Link
-                        href={`/challenge/${challenge.id}/participant/${top2.participantId}`}
+                        href={getParticipantProfileUrl(top2.participantId)}
                         className="text-sm font-bold text-[#ffffff] hover:underline truncate block"
                      >
                         {top2.displayName}
@@ -403,7 +494,7 @@ export function ChallengeLeaderboardTab({
                   </p>
                   {top1 ? (
                      <Link
-                        href={`/challenge/${challenge.id}/participant/${top1.participantId}`}
+                        href={getParticipantProfileUrl(top1.participantId)}
                         className="text-sm font-bold text-[#ffffff] hover:underline truncate block"
                      >
                         {top1.displayName}
@@ -431,7 +522,7 @@ export function ChallengeLeaderboardTab({
                   <p className="text-xs text-[#868686]">Rank 3</p>
                   {top3 ? (
                      <Link
-                        href={`/challenge/${challenge.id}/participant/${top3.participantId}`}
+                        href={getParticipantProfileUrl(top3.participantId)}
                         className="text-sm font-bold text-[#ffffff] hover:text-[#22c55e] hover:underline truncate block"
                      >
                         {top3.displayName}
@@ -464,11 +555,11 @@ export function ChallengeLeaderboardTab({
                      </span>
                   </div>
 
-                  {/* View Mode Toggle: Overall vs View by Team */}
-                  <div className="inline-flex items-center rounded-xl bg-[#1c1c1c] border border-[#292929] p-1 self-start sm:self-auto">
+                  {/* View Mode Toggle: Overall vs Today's LB vs View by Team */}
+                  <div className="inline-flex items-center rounded-xl bg-[#1c1c1c] border border-[#292929] p-1 self-start sm:self-auto gap-1">
                      <button
                         type="button"
-                        onClick={() => setViewMode("individual")}
+                        onClick={() => handleViewModeChange("individual")}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                            viewMode === "individual"
                               ? "bg-[#292929] text-white shadow-sm border border-[#383838]"
@@ -480,7 +571,19 @@ export function ChallengeLeaderboardTab({
                      </button>
                      <button
                         type="button"
-                        onClick={() => setViewMode("team")}
+                        onClick={() => handleViewModeChange("today")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                           viewMode === "today"
+                              ? "bg-[#292929] text-white shadow-sm border border-[#383838]"
+                              : "text-[#868686] hover:text-white"
+                        }`}
+                     >
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>Today&apos;s LB</span>
+                     </button>
+                     <button
+                        type="button"
+                        onClick={() => handleViewModeChange("team")}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                            viewMode === "team"
                               ? "bg-[#292929] text-white shadow-sm border border-[#383838]"
@@ -754,7 +857,9 @@ export function ChallengeLeaderboardTab({
 
                                                 {/* Avatar */}
                                                 <Link
-                                                   href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
+                                                   href={getParticipantProfileUrl(
+                                                      entry.participantId
+                                                   )}
                                                    className="h-8 w-8 rounded-full bg-[#292929] border border-[#383838] overflow-hidden flex items-center justify-center shrink-0 text-xs hover:border-[#22c55e] transition-colors"
                                                 >
                                                    {entry.image ? (
@@ -779,11 +884,16 @@ export function ChallengeLeaderboardTab({
                                                 <div className="min-w-0">
                                                    <div className="flex items-center gap-1.5 flex-wrap">
                                                       <Link
-                                                         href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
+                                                         href={getParticipantProfileUrl(
+                                                            entry.participantId
+                                                         )}
                                                          className="text-xs font-bold text-[#ffffff] hover:text-[#22c55e] hover:underline truncate max-w-[110px] sm:max-w-[150px] lg:max-w-[130px] xl:max-w-[180px] block"
                                                       >
                                                          {entry.displayName}
                                                       </Link>
+                                                      <YptStatusPill
+                                                         status={entry.status}
+                                                      />
                                                       {entry.paceLabel && (
                                                          <span
                                                             className={`px-1.5 py-0.2 rounded text-[9px] font-semibold shrink-0 ${
@@ -873,15 +983,23 @@ export function ChallengeLeaderboardTab({
                            <span className="w-6 text-center">Rank</span>
                            <span>Participant</span>
                         </div>
-                        <span className="text-right">Total Hours</span>
+                        <span className="text-right">
+                           {viewMode === "today"
+                              ? "Today's Hours"
+                              : "Total Hours"}
+                        </span>
                      </div>
 
                      {/* Participant Cards */}
                      <div className="space-y-2.5">
                         {paginatedStandings.map((entry) => {
+                           const currentRank =
+                              "todayRank" in entry && viewMode === "today"
+                                 ? (entry as { todayRank: number }).todayRank
+                                 : entry.rank;
                            const entryPalette = getTeamColorPalette(
                               entry.teamColor,
-                              entry.rank
+                              currentRank
                            );
                            return (
                               <div
@@ -891,13 +1009,15 @@ export function ChallengeLeaderboardTab({
                                  {/* Rank */}
                                  <div className="w-6 text-center shrink-0">
                                     <span className="font-bold text-sm text-[#ffffff] font-sans">
-                                       {entry.rank}
+                                       {currentRank}
                                     </span>
                                  </div>
 
                                  {/* Avatar */}
                                  <Link
-                                    href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
+                                    href={getParticipantProfileUrl(
+                                       entry.participantId
+                                    )}
                                     className="h-9 w-9 rounded-full bg-[#292929] border border-[#383838] overflow-hidden flex items-center justify-center shrink-0 text-xs hover:border-[#22c55e] transition-colors"
                                  >
                                     {entry.image ? (
@@ -922,11 +1042,14 @@ export function ChallengeLeaderboardTab({
                                  <div className="min-w-0 flex-1 space-y-0.5">
                                     <div className="flex items-center gap-1.5 flex-wrap">
                                        <Link
-                                          href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
+                                          href={getParticipantProfileUrl(
+                                             entry.participantId
+                                          )}
                                           className="text-xs font-bold text-[#ffffff] hover:text-[#22c55e] hover:underline truncate max-w-[110px] xs:max-w-[140px] block"
                                        >
                                           {entry.displayName}
                                        </Link>
+                                       <YptStatusPill status={entry.status} />
                                        <span
                                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0"
                                           style={{
@@ -950,17 +1073,25 @@ export function ChallengeLeaderboardTab({
 
                                  {/* Total hours and +Today's hours */}
                                  <div className="shrink-0 text-right font-sans font-sans-tabular space-y-0.5 flex items-center gap-2">
-                                    <div>
-                                       <p className="text-xs font-bold text-[#ffffff]">
-                                          {entry.totalLoggedClock}
-                                          <span className="text-[10px] font-normal text-[#868686]">
-                                             /{entry.targetClock}
-                                          </span>
-                                       </p>
-                                       <p className="text-[11px] font-semibold text-[#4ade80]">
-                                          +{entry.todayLoggedClock}
-                                       </p>
-                                    </div>
+                                    {viewMode === "today" ? (
+                                       <div>
+                                          <p className="text-xs font-bold text-[#ffffff]">
+                                             {entry.todayLoggedClock}
+                                          </p>
+                                       </div>
+                                    ) : (
+                                       <div>
+                                          <p className="text-xs font-bold text-[#ffffff]">
+                                             {entry.totalLoggedClock}
+                                             <span className="text-[10px] font-normal text-[#868686]">
+                                                /{entry.targetClock}
+                                             </span>
+                                          </p>
+                                          <p className="text-[11px] font-semibold text-[#4ade80]">
+                                             +{entry.todayLoggedClock}
+                                          </p>
+                                       </div>
+                                    )}
                                     {isAdmin && (
                                        <div className="flex items-center gap-1 shrink-0">
                                           <button
@@ -1004,17 +1135,29 @@ export function ChallengeLeaderboardTab({
                               </th>
                               <th className="px-4 py-3">Name</th>
                               <th className="px-4 py-3">Team</th>
-                              <th className="px-4 py-3">Today&apos;s hours</th>
-                              <th className="px-4 py-3 text-right">
-                                 Total hours
+                              <th
+                                 className={`px-4 py-3 ${
+                                    viewMode === "today" ? "text-right" : ""
+                                 }`}
+                              >
+                                 Today&apos;s hours
                               </th>
+                              {viewMode !== "today" && (
+                                 <th className="px-4 py-3 text-right">
+                                    Total hours
+                                 </th>
+                              )}
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-[#222222]">
                            {paginatedStandings.map((entry) => {
+                              const currentRank =
+                                 "todayRank" in entry && viewMode === "today"
+                                    ? (entry as { todayRank: number }).todayRank
+                                    : entry.rank;
                               const entryPalette = getTeamColorPalette(
                                  entry.teamColor,
-                                 entry.rank
+                                 currentRank
                               );
 
                               return (
@@ -1028,7 +1171,7 @@ export function ChallengeLeaderboardTab({
                                     {/* Rank */}
                                     <td className="px-3 py-3 text-center">
                                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#1c1c1c] text-xs font-bold text-[#ffffff] border border-[#333333]">
-                                          {entry.rank}
+                                          {currentRank}
                                        </span>
                                     </td>
 
@@ -1036,7 +1179,9 @@ export function ChallengeLeaderboardTab({
                                     <td className="px-4 py-3 font-medium text-[#ffffff]">
                                        <div className="flex items-center gap-2.5">
                                           <Link
-                                             href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
+                                             href={getParticipantProfileUrl(
+                                                entry.participantId
+                                             )}
                                              className="h-7 w-7 rounded-full bg-[#292929] border border-[#434343] overflow-hidden flex items-center justify-center text-xs shrink-0 hover:border-[#22c55e] transition-colors"
                                           >
                                              {entry.image ? (
@@ -1057,12 +1202,19 @@ export function ChallengeLeaderboardTab({
                                              )}
                                           </Link>
                                           <div>
-                                             <Link
-                                                href={`/challenge/${challenge.id}/participant/${entry.participantId}`}
-                                                className="font-semibold text-sm text-[#ffffff] hover:text-[#22c55e] hover:underline truncate block"
-                                             >
-                                                {entry.displayName}
-                                             </Link>
+                                             <div className="flex items-center gap-1.5 flex-wrap">
+                                                <Link
+                                                   href={getParticipantProfileUrl(
+                                                      entry.participantId
+                                                   )}
+                                                   className="font-semibold text-sm text-[#ffffff] hover:text-[#22c55e] hover:underline truncate block"
+                                                >
+                                                   {entry.displayName}
+                                                </Link>
+                                                <YptStatusPill
+                                                   status={entry.status}
+                                                />
+                                             </div>
                                              {entry.username && (
                                                 <p className="text-[10px] text-[#868686]">
                                                    @{entry.username}
@@ -1092,55 +1244,91 @@ export function ChallengeLeaderboardTab({
                                     </td>
 
                                     {/* Today's Hours */}
-                                    <td className="px-4 py-3 font-sans font-sans-tabular text-xs text-[#d1d1d1]">
-                                       <span className="flex items-center gap-1.5">
-                                          <Clock className="h-3.5 w-3.5 text-[#868686]" />
-                                          <span>{entry.todayLoggedClock}</span>
-                                       </span>
-                                    </td>
-
-                                    {/* Total Hours */}
-                                    <td className="px-4 py-3 text-right font-sans font-sans-tabular text-sm font-bold text-[#ffffff]">
-                                       <div className="inline-flex items-center gap-2 justify-end">
-                                          <div className="inline-flex items-center gap-1.5">
-                                             <Clock className="h-3.5 w-3.5 text-[#22c55e]" />
-                                             <span>
-                                                {entry.totalLoggedClock}
-                                             </span>
-                                             <span className="text-xs text-[#868686] font-normal">
-                                                / {entry.targetClock}
-                                             </span>
-                                          </div>
-                                          {isAdmin && (
-                                             <div className="flex items-center gap-1.5 shrink-0">
+                                    <td
+                                       className={`px-4 py-3 font-sans font-sans-tabular ${
+                                          viewMode === "today"
+                                             ? "text-right text-sm font-bold text-[#ffffff]"
+                                             : "text-xs text-[#d1d1d1]"
+                                       }`}
+                                    >
+                                       {viewMode === "today" ? (
+                                          <div className="inline-flex items-center gap-2 justify-end">
+                                             <div className="inline-flex items-center gap-1.5">
+                                                <Clock className="h-3.5 w-3.5 text-[#868686]" />
+                                                <span>
+                                                   {entry.todayLoggedClock}
+                                                </span>
+                                             </div>
+                                             {isAdmin && (
                                                 <button
                                                    type="button"
                                                    onClick={() =>
                                                       handleOpenOverride(entry)
                                                    }
-                                                   className="px-2.5 py-1 rounded-lg bg-[#1c1c1c] hover:bg-[#2e2e2e] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                                                   className="px-2.5 py-1 rounded-lg bg-[#1c1c1c] hover:bg-[#2e2e2e] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0"
                                                    title="Admin: Edit Participant Study Hours"
                                                 >
                                                    <Clock className="h-3.5 w-3.5 text-[#3b82f6]" />
                                                    <span>Edit hr</span>
                                                 </button>
-                                                <button
-                                                   type="button"
-                                                   onClick={() =>
-                                                      handleOpenTargetOverride(
-                                                         entry
-                                                      )
-                                                   }
-                                                   className="px-2.5 py-1 rounded-lg bg-[#1c1c1c] hover:bg-[#2e2e2e] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                                                   title="Admin: Edit Weekly Target Hours"
-                                                >
-                                                   <Target className="h-3.5 w-3.5 text-[#a855f7]" />
-                                                   <span>Edit target</span>
-                                                </button>
-                                             </div>
-                                          )}
-                                       </div>
+                                             )}
+                                          </div>
+                                       ) : (
+                                          <span className="flex items-center gap-1.5">
+                                             <Clock className="h-3.5 w-3.5 text-[#868686]" />
+                                             <span>
+                                                {entry.todayLoggedClock}
+                                             </span>
+                                          </span>
+                                       )}
                                     </td>
+
+                                    {/* Total Hours */}
+                                    {viewMode !== "today" && (
+                                       <td className="px-4 py-3 text-right font-sans font-sans-tabular text-sm font-bold text-[#ffffff]">
+                                          <div className="inline-flex items-center gap-2 justify-end">
+                                             <div className="inline-flex items-center gap-1.5">
+                                                <Clock className="h-3.5 w-3.5 text-[#22c55e]" />
+                                                <span>
+                                                   {entry.totalLoggedClock}
+                                                </span>
+                                                <span className="text-xs text-[#868686] font-normal">
+                                                   / {entry.targetClock}
+                                                </span>
+                                             </div>
+                                             {isAdmin && (
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                   <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                         handleOpenOverride(
+                                                            entry
+                                                         )
+                                                      }
+                                                      className="px-2.5 py-1 rounded-lg bg-[#1c1c1c] hover:bg-[#2e2e2e] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                                                      title="Admin: Edit Participant Study Hours"
+                                                   >
+                                                      <Clock className="h-3.5 w-3.5 text-[#3b82f6]" />
+                                                      <span>Edit hr</span>
+                                                   </button>
+                                                   <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                         handleOpenTargetOverride(
+                                                            entry
+                                                         )
+                                                      }
+                                                      className="px-2.5 py-1 rounded-lg bg-[#1c1c1c] hover:bg-[#2e2e2e] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                                                      title="Admin: Edit Weekly Target Hours"
+                                                   >
+                                                      <Target className="h-3.5 w-3.5 text-[#a855f7]" />
+                                                      <span>Edit target</span>
+                                                   </button>
+                                                </div>
+                                             )}
+                                          </div>
+                                       </td>
+                                    )}
                                  </tr>
                               );
                            })}
@@ -1152,7 +1340,7 @@ export function ChallengeLeaderboardTab({
                   <DataPagination
                      currentPage={safePage}
                      totalPages={totalPages}
-                     totalItems={filteredStandings.length}
+                     totalItems={displayStandings.length}
                      pageSize={pageSize}
                      onPageChange={setCurrentPage}
                      itemLabel="scholars"

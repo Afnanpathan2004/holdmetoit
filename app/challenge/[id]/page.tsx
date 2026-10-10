@@ -15,6 +15,7 @@ import {
    ChallengeTab,
    resolveAllowedChallengeTab,
 } from "@/features/challenges/domain/challenge-tabs";
+import { resolveLeaderboardViewMode } from "@/features/leaderboard/domain/leaderboard";
 
 interface ChallengePageProps {
    params: {
@@ -23,6 +24,7 @@ interface ChallengePageProps {
    searchParams?: {
       tab?: string;
       as?: string;
+      view?: string;
    };
 }
 
@@ -64,12 +66,16 @@ export default async function ChallengePage({
          searchParams?.tab,
          isAdmin
       );
+      const initialLeaderboardViewMode = resolveLeaderboardViewMode(
+         searchParams?.view
+      );
 
       return (
          <ChallengeView
             challenge={challenge}
             initialTab={initialTab}
             isAdmin={isAdmin}
+            initialLeaderboardViewMode={initialLeaderboardViewMode}
          />
       );
    } catch (error) {

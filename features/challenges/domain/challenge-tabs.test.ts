@@ -14,15 +14,10 @@ describe("challenge-tabs domain", () => {
          expect(CHALLENGE_TABS).toEqual([
             "overview",
             "leaderboard",
-            "about",
             "manage",
             "audit",
          ]);
-         expect(PUBLIC_CHALLENGE_TABS).toEqual([
-            "overview",
-            "leaderboard",
-            "about",
-         ]);
+         expect(PUBLIC_CHALLENGE_TABS).toEqual(["overview", "leaderboard"]);
          expect(ADMIN_CHALLENGE_TABS).toEqual(["manage", "audit"]);
          expect(DEFAULT_CHALLENGE_TAB).toBe("overview");
       });
@@ -38,6 +33,7 @@ describe("challenge-tabs domain", () => {
       it("returns false for invalid strings", () => {
          expect(isChallengeTab("settings")).toBe(false);
          expect(isChallengeTab("dashboard")).toBe(false);
+         expect(isChallengeTab("about")).toBe(false);
          expect(isChallengeTab("")).toBe(false);
          expect(isChallengeTab("OVERVIEW")).toBe(false);
       });
@@ -57,7 +53,6 @@ describe("challenge-tabs domain", () => {
          expect(resolveAllowedChallengeTab("leaderboard", false)).toBe(
             "leaderboard"
          );
-         expect(resolveAllowedChallengeTab("about", false)).toBe("about");
       });
 
       it("returns the requested public tab for admins", () => {
@@ -65,7 +60,11 @@ describe("challenge-tabs domain", () => {
          expect(resolveAllowedChallengeTab("leaderboard", true)).toBe(
             "leaderboard"
          );
-         expect(resolveAllowedChallengeTab("about", true)).toBe("about");
+      });
+
+      it("gracefully redirects legacy 'about' tab to 'overview'", () => {
+         expect(resolveAllowedChallengeTab("about", false)).toBe("overview");
+         expect(resolveAllowedChallengeTab("about", true)).toBe("overview");
       });
 
       it("allows admin tabs when isAdmin is true", () => {

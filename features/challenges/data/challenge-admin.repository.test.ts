@@ -34,7 +34,7 @@ vi.mock("@/core/db", () => {
          update: vi.fn(),
          deleteMany: vi.fn(),
       },
-      dailyStudyLog: {
+      dailyStudyLogV2: {
          deleteMany: vi.fn(),
       },
       leaderboardEntry: {
@@ -204,7 +204,7 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
                   id: "p_1",
                   targetSeconds: 36000,
                   status: "NORMAL",
-                  dailyStudyLogs: [{ durationSeconds: 30000 }], // 6000s deficit
+                  dailyStudyLogsV2: [{ durationSeconds: 30000 }], // 6000s deficit
                   weeklyGoals: [{ id: "g_1", completed: true }],
                   punishmentRecord: null,
                },
@@ -563,7 +563,7 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
          });
 
          expect(result).toEqual(mockDeleted);
-         expect(prisma.dailyStudyLog.deleteMany).toHaveBeenCalled();
+         expect(prisma.dailyStudyLogV2.deleteMany).toHaveBeenCalled();
          expect(prisma.punishmentRecord.deleteMany).toHaveBeenCalled();
          expect(prisma.leaderboardEntry.deleteMany).toHaveBeenCalled();
          expect(prisma.challengeParticipant.deleteMany).toHaveBeenCalled();

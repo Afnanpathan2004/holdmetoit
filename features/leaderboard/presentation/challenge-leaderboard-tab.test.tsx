@@ -352,4 +352,98 @@ describe("ChallengeLeaderboardTab", () => {
       expect(html).toContain("rgba(153, 134, 184, 0.45)");
       expect(html).toContain("background-color:#9986b8");
    });
+
+   it("renders Today's LB toggle button and ranks scholars by todayLoggedSeconds when initialViewMode is 'today'", () => {
+      const multiScholarChallenge: ChallengeScoreboardViewModel = {
+         ...mockChallenge,
+         standings: [
+            {
+               ...mockChallenge.standings[0]!,
+               participantId: "part-1",
+               displayName: "Overall Leader",
+               totalLoggedSeconds: 50_000,
+               totalLoggedClock: "13:53:20",
+               todayLoggedSeconds: 3_600,
+               todayLoggedClock: "01:00:00",
+               rank: 1,
+            },
+            {
+               ...mockChallenge.standings[0]!,
+               participantId: "part-2",
+               displayName: "Today Champion",
+               totalLoggedSeconds: 20_000,
+               totalLoggedClock: "05:33:20",
+               todayLoggedSeconds: 14_400,
+               todayLoggedClock: "04:00:00",
+               rank: 2,
+            },
+         ],
+      };
+
+      const html = renderToStaticMarkup(
+         createElement(ChallengeLeaderboardTab, {
+            challenge: multiScholarChallenge,
+            initialViewMode: "today",
+         })
+      );
+
+      // Segmented switcher contains all 3 views
+      expect(html).toContain("Today&#x27;s LB");
+      expect(html).toContain("Overall Rank");
+      expect(html).toContain("View by Team");
+
+      // Mobile header reflects Today's Hours
+      expect(html).toContain("Today&#x27;s Hours");
+
+      // Today's LB does NOT render Total hours table column or target hours fraction
+      expect(html).not.toContain(">Total hours<");
+      expect(html).not.toContain("/ 35:00:00");
+
+      // In Today's LB view, "Today Champion" with 4h today is ranked above "Overall Leader" with 1h today
+      const indexTodayChampion = html.indexOf("Today Champion");
+      const indexOverallLeader = html.indexOf("Overall Leader");
+      expect(indexTodayChampion).toBeGreaterThan(-1);
+      expect(indexOverallLeader).toBeGreaterThan(-1);
+      expect(indexTodayChampion).toBeLessThan(indexOverallLeader);
+   });
+
+   it("preserves view mode in participant profile links when initialViewMode is 'today' and omits query when 'individual'", () => {
+      const todayChallenge: ChallengeScoreboardViewModel = {
+         ...mockChallenge,
+         standings: [
+            {
+               ...mockChallenge.standings[0]!,
+               participantId: "part-test-123",
+               displayName: "Today Scholar",
+            },
+         ],
+      };
+
+      const todayHtml = renderToStaticMarkup(
+         createElement(ChallengeLeaderboardTab, {
+            challenge: todayChallenge,
+            initialViewMode: "today",
+         })
+      );
+
+      // Links should contain ?view=today
+      expect(todayHtml).toContain(
+         `/challenge/${todayChallenge.id}/participant/part-test-123?view=today`
+      );
+
+      const defaultHtml = renderToStaticMarkup(
+         createElement(ChallengeLeaderboardTab, {
+            challenge: todayChallenge,
+            initialViewMode: "individual",
+         })
+      );
+
+      // Default (overall rank) links should NOT have ?view=
+      expect(defaultHtml).toContain(
+         `/challenge/${todayChallenge.id}/participant/part-test-123"`
+      );
+      expect(defaultHtml).not.toContain(
+         `/challenge/${todayChallenge.id}/participant/part-test-123?`
+      );
+   });
 });

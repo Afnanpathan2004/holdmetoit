@@ -24,6 +24,8 @@ model User {
 
   /// Discord snowflake (denormalized from Account.providerAccountId for queries / YPT ingest).
   discordId   String?  @unique
+  /// YPT numeric user ID
+  yptId       String?  @unique
   username    String?
   displayName String?
   role        UserRole @default(PARTICIPANT)
@@ -36,7 +38,8 @@ model User {
   sessions      Session[]
   hostedChallenges Challenge[] @relation("ChallengeHost")
   participations ChallengeParticipant[]
-  overriddenLogs DailyStudyLog[] @relation("LogOverrideAdmin")
+  overriddenLogs   DailyStudyLog[]   @relation("LogOverrideAdmin")
+  overriddenLogsV2 DailyStudyLogV2[] @relation("LogOverrideAdminV2")
   pardonsIssued  PunishmentRecord[] @relation("PardonAdmin")
   teamMemberships    TeamMember[]
   leaderboardEntries LeaderboardEntry[]
@@ -149,6 +152,7 @@ model ChallengeParticipant {
   team      Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   dailyStudyLogs   DailyStudyLog[]
+  dailyStudyLogsV2 DailyStudyLogV2[]
   punishmentRecord PunishmentRecord?
 
   @@unique([challengeId, userId])
@@ -181,6 +185,33 @@ model DailyStudyLog {
   @@unique([participantId, logDate])
   @@index([participantId])
   @@index([logDate])
+}
+
+// ---------------------------------------------------------------------------
+// Study logging V2 (YPT Bot Ingestion WIP - clone of DailyStudyLog)
+// ---------------------------------------------------------------------------
+
+model DailyStudyLogV2 {
+  id              String   @id @default(cuid())
+  participantId   String
+  logDate         DateTime @db.Date
+  durationSeconds Int      @default(0)
+  status          String?
+
+  isOverride     Boolean @default(false)
+  overrideById   String?
+  overrideReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participant  ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  overrideBy   User?                @relation("LogOverrideAdminV2", fields: [overrideById], references: [id], onDelete: SetNull)
+
+  @@unique([participantId, logDate])
+  @@index([participantId])
+  @@index([logDate])
+  @@map("study_logs_v2")
 }
 
 // ---------------------------------------------------------------------------

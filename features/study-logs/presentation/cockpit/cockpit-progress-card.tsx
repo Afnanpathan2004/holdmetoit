@@ -2,7 +2,6 @@
 
 import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
 import type { CockpitViewModel } from "@/features/study-logs/data/cockpit-data";
-import { getTeamBadgeStyle } from "@/features/challenges/domain/team-colors";
 
 export interface CockpitProgressCardProps {
    cockpit: CockpitViewModel;
@@ -39,15 +38,6 @@ export function CockpitProgressCard({
                   <span className="text-xs font-semibold uppercase tracking-wider text-[#868686]">
                      Weekly Commitment Progress
                   </span>
-                  {cockpit.teamName && cockpit.teamName !== "Unassigned" && (
-                     <span
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
-                        style={getTeamBadgeStyle(cockpit.teamColor)}
-                     >
-                        {cockpit.teamIcon && <span>{cockpit.teamIcon}</span>}
-                        <span>{cockpit.teamName}</span>
-                     </span>
-                  )}
                </div>
                <p className="text-xl font-bold text-[#ffffff] mt-0.5">
                   <span className="font-sans font-sans-tabular">

@@ -12,9 +12,13 @@ import { AdminTargetOverrideModal } from "@/features/challenges/presentation/adm
 
 interface ParticipantStatsViewProps {
    stats: ParticipantStatsViewModel;
+   viewParam?: string;
 }
 
-export function ParticipantStatsView({ stats }: ParticipantStatsViewProps) {
+export function ParticipantStatsView({
+   stats,
+   viewParam,
+}: ParticipantStatsViewProps) {
    const { profile, summary, dailyHistory, teamStats, accountability, viewer } =
       stats;
    const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
@@ -22,7 +26,11 @@ export function ParticipantStatsView({ stats }: ParticipantStatsViewProps) {
    return (
       <div className="space-y-8 max-w-6xl mx-auto pb-12">
          {/* 1. Profile Header with Breadcrumbs */}
-         <ParticipantProfileHeader profile={profile} isAdmin={viewer.isAdmin} />
+         <ParticipantProfileHeader
+            profile={profile}
+            isAdmin={viewer.isAdmin}
+            viewParam={viewParam}
+         />
 
          {/* 2. Key Metrics Summary Cards */}
          <ParticipantSummaryCards

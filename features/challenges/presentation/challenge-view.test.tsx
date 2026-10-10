@@ -174,7 +174,7 @@ describe("ChallengeView", () => {
          expect(html).not.toContain("Overview Content");
       });
 
-      it("renders About tab content when initialTab='about'", () => {
+      it("gracefully redirects initialTab='about' to Overview content", () => {
          const html = renderToStaticMarkup(
             createElement(ChallengeView, {
                challenge: mockChallenge,
@@ -182,9 +182,8 @@ describe("ChallengeView", () => {
                isAdmin: false,
             })
          );
-         expect(html).toContain("About this Challenge");
-         expect(html).toContain("Timetable (UTC)");
-         expect(html).not.toContain("Overview Content");
+         expect(html).toContain("Overview Content");
+         expect(html).not.toContain("Leaderboard Content");
       });
 
       it("clamps initialTab='manage' to overview for non-admin spectators", () => {
@@ -293,11 +292,11 @@ describe("ChallengeView", () => {
       it("deletes the tab query parameter when switching to 'overview' to keep canonical URL clean", () => {
          // Setup window location with an active tab param
          globalThis.window.location.search =
-            "?as=participant&filter=all&tab=about";
+            "?as=participant&filter=all&tab=leaderboard";
 
          const element = ChallengeView({
             challenge: mockChallenge,
-            initialTab: "about",
+            initialTab: "leaderboard",
             isAdmin: true,
          });
 
@@ -359,13 +358,13 @@ describe("ChallengeView", () => {
       it("synchronizes activeTab when initialTab prop updates via useEffect", () => {
          ChallengeView({
             challenge: mockChallenge,
-            initialTab: "about",
+            initialTab: "leaderboard",
             isAdmin: true,
          });
 
          expect(effectCallback).toBeDefined();
          effectCallback!();
-         expect(setActiveTabMock).toHaveBeenCalledWith("about");
+         expect(setActiveTabMock).toHaveBeenCalledWith("leaderboard");
       });
    });
 });
