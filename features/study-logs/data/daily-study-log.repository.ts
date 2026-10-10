@@ -28,7 +28,6 @@ export interface UpsertDailyStudyLogParams {
    participantId: string;
    logDate: string | Date;
    durationSeconds: number;
-   isLeave?: boolean;
    challengeId?: string;
    actor?: {
       id: string;
@@ -40,7 +39,6 @@ export interface UpsertDailyStudyLogParams {
 
 export async function upsertDailyStudyLog(params: UpsertDailyStudyLogParams) {
    const logDate = toUtcDateOnly(params.logDate);
-   const isLeave = Boolean(params.isLeave);
 
    let existingLog = null;
    if (params.actor && params.challengeId) {
@@ -65,12 +63,10 @@ export async function upsertDailyStudyLog(params: UpsertDailyStudyLogParams) {
          participantId: params.participantId,
          logDate,
          durationSeconds: params.durationSeconds,
-         isLeave,
          status: "Offline",
       },
       update: {
          durationSeconds: params.durationSeconds,
-         isLeave,
          isOverride: false,
          overrideById: null,
          overrideReason: null,
@@ -103,11 +99,9 @@ export async function upsertDailyStudyLog(params: UpsertDailyStudyLogParams) {
             durationClock: formatSecondsToClock(updatedLog.durationSeconds),
             logDate: dateKey,
          },
-         auditReason: isLeave
-            ? `Marked as leave (${formatSecondsToClock(updatedLog.durationSeconds)})`
-            : existingLog
-              ? `Updated study time from ${formatSecondsToClock(existingLog.durationSeconds)} to ${formatSecondsToClock(updatedLog.durationSeconds)}`
-              : `Logged ${formatSecondsToClock(updatedLog.durationSeconds)} of study time`,
+         auditReason: existingLog
+            ? `Updated study time from ${formatSecondsToClock(existingLog.durationSeconds)} to ${formatSecondsToClock(updatedLog.durationSeconds)}`
+            : `Logged ${formatSecondsToClock(updatedLog.durationSeconds)} of study time`,
       });
    }
 

@@ -92,8 +92,6 @@ function getActionBadgeStyle(action: AuditEventType): string {
          return "bg-[#9f8dc0]/15 text-[#d8cce8] border-[#9f8dc0]/30";
       case "HOURS_OVERRIDE":
          return "bg-[#529e72]/15 text-[#85ff93] border-[#529e72]/30";
-      case "TARGET_HOURS_OVERRIDE":
-         return "bg-[#a855f7]/15 text-[#d8b4fe] border-[#a855f7]/30";
       case "STUDY_LOG_ADDED":
          return "bg-[#10b981]/15 text-[#34d399] border-[#10b981]/30";
       case "CHALLENGE_KICKOFF":
@@ -189,17 +187,9 @@ export function EventAuditTab({
             ];
             if (!detailTypes.includes(log.actionType)) return false;
          } else if (selectedCategory === "ROSTER") {
-            if (
-               log.actionType !== "ROSTER_EDIT" &&
-               log.actionType !== "TARGET_HOURS_OVERRIDE"
-            )
-               return false;
+            if (log.actionType !== "ROSTER_EDIT") return false;
          } else if (selectedCategory === "HOURS") {
-            if (
-               log.actionType !== "HOURS_OVERRIDE" &&
-               log.actionType !== "TARGET_HOURS_OVERRIDE"
-            )
-               return false;
+            if (log.actionType !== "HOURS_OVERRIDE") return false;
          } else if (selectedCategory === "STUDY_LOGS") {
             if (log.actionType !== "STUDY_LOG_ADDED") return false;
          } else if (selectedCategory === "LIFECYCLE") {
@@ -400,173 +390,171 @@ export function EventAuditTab({
                <>
                   <div className="space-y-3">
                      {paginatedLogs.map((log) => {
-                        const isExpanded = expandedLogIds.has(log.id);
-                        const badgeStyle = getActionBadgeStyle(log.actionType);
-                        const actionLabel = formatAuditActionHuman(
-                           log.actionType
-                        );
-                        const relativeTime = formatRelativeTime(log.timestamp);
-                        const clockTime = formatUtcClock(log.timestamp);
+                     const isExpanded = expandedLogIds.has(log.id);
+                     const badgeStyle = getActionBadgeStyle(log.actionType);
+                     const actionLabel = formatAuditActionHuman(log.actionType);
+                     const relativeTime = formatRelativeTime(log.timestamp);
+                     const clockTime = formatUtcClock(log.timestamp);
 
-                        const hasDiff =
-                           log.previousValue !== null || log.newValue !== null;
+                     const hasDiff =
+                        log.previousValue !== null || log.newValue !== null;
 
-                        return (
-                           <div
-                              key={log.id}
-                              className="rounded-2xl border border-[#262626] bg-[#141414] hover:border-[#383838] transition-all shadow-md overflow-hidden"
-                           >
-                              <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                                 {/* Column 1 & 2: Admin + Action Info */}
-                                 <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                                    {/* Admin Avatar */}
-                                    <div className="relative shrink-0">
-                                       {log.actorImage ? (
-                                          <Image
-                                             src={log.actorImage}
-                                             alt={
-                                                log.actorDisplayName ||
-                                                log.actorUsername
-                                             }
-                                             width={40}
-                                             height={40}
-                                             className="h-10 w-10 rounded-full border border-[#383838] object-cover"
-                                          />
-                                       ) : (
-                                          <div className="h-10 w-10 rounded-full border border-[#383838] bg-[#221b2c] text-[#d8cce8] flex items-center justify-center font-bold text-sm">
-                                             {(
-                                                log.actorDisplayName ||
-                                                log.actorUsername ||
-                                                "A"
-                                             )
-                                                .slice(0, 1)
-                                                .toUpperCase()}
-                                          </div>
+                     return (
+                        <div
+                           key={log.id}
+                           className="rounded-2xl border border-[#262626] bg-[#141414] hover:border-[#383838] transition-all shadow-md overflow-hidden"
+                        >
+                           <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                              {/* Column 1 & 2: Admin + Action Info */}
+                              <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                                 {/* Admin Avatar */}
+                                 <div className="relative shrink-0">
+                                    {log.actorImage ? (
+                                       <Image
+                                          src={log.actorImage}
+                                          alt={
+                                             log.actorDisplayName ||
+                                             log.actorUsername
+                                          }
+                                          width={40}
+                                          height={40}
+                                          className="h-10 w-10 rounded-full border border-[#383838] object-cover"
+                                       />
+                                    ) : (
+                                       <div className="h-10 w-10 rounded-full border border-[#383838] bg-[#221b2c] text-[#d8cce8] flex items-center justify-center font-bold text-sm">
+                                          {(
+                                             log.actorDisplayName ||
+                                             log.actorUsername ||
+                                             "A"
+                                          )
+                                             .slice(0, 1)
+                                             .toUpperCase()}
+                                       </div>
+                                    )}
+                                 </div>
+
+                                 {/* Main Description */}
+                                 <div className="space-y-1.5 min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                       <span className="text-sm font-bold text-white truncate">
+                                          {log.actorDisplayName ||
+                                             log.actorUsername}
+                                       </span>
+                                       <span className="text-xs text-[#868686]">
+                                          @{log.actorUsername}
+                                       </span>
+
+                                       {/* Action Badge */}
+                                       <span
+                                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badgeStyle}`}
+                                       >
+                                          {actionLabel}
+                                       </span>
+
+                                       {/* Target Entity Name Pill */}
+                                       {log.targetEntityName && (
+                                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#1d1d1d] text-[#c9c9c9] border border-[#2e2e2e] truncate max-w-[200px]">
+                                             {log.targetEntityName}
+                                          </span>
                                        )}
                                     </div>
 
-                                    {/* Main Description */}
-                                    <div className="space-y-1.5 min-w-0 flex-1">
-                                       <div className="flex flex-wrap items-center gap-2">
-                                          <span className="text-sm font-bold text-white truncate">
-                                             {log.actorDisplayName ||
-                                                log.actorUsername}
-                                          </span>
-                                          <span className="text-xs text-[#868686]">
-                                             @{log.actorUsername}
-                                          </span>
-
-                                          {/* Action Badge */}
-                                          <span
-                                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badgeStyle}`}
-                                          >
-                                             {actionLabel}
-                                          </span>
-
-                                          {/* Target Entity Name Pill */}
-                                          {log.targetEntityName && (
-                                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#1d1d1d] text-[#c9c9c9] border border-[#2e2e2e] truncate max-w-[200px]">
-                                                {log.targetEntityName}
-                                             </span>
-                                          )}
-                                       </div>
-
-                                       {/* Audit Reason / Human Summary */}
-                                       <p className="text-xs text-[#d1d1d1] leading-relaxed">
-                                          {log.auditReason ||
-                                             "Administrative update executed"}
-                                       </p>
-                                    </div>
-                                 </div>
-
-                                 {/* Column 4: Time Clock & Details Trigger */}
-                                 <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#262626]">
-                                    <div className="text-right">
-                                       <span className="block text-xs font-semibold text-white font-mono">
-                                          {relativeTime}
-                                       </span>
-                                       <span className="block text-[10px] text-[#868686] font-mono">
-                                          {clockTime}
-                                       </span>
-                                    </div>
-
-                                    {hasDiff && (
-                                       <button
-                                          type="button"
-                                          onClick={() => toggleExpand(log.id)}
-                                          className="inline-flex items-center gap-1 text-[11px] text-[#e08a32] hover:text-[#f5ba73] font-medium transition-colors"
-                                       >
-                                          <span>
-                                             {isExpanded
-                                                ? "Hide Diff"
-                                                : "View Diff"}
-                                          </span>
-                                          {isExpanded ? (
-                                             <ChevronUp className="h-3 w-3" />
-                                          ) : (
-                                             <ChevronDown className="h-3 w-3" />
-                                          )}
-                                       </button>
-                                    )}
+                                    {/* Audit Reason / Human Summary */}
+                                    <p className="text-xs text-[#d1d1d1] leading-relaxed">
+                                       {log.auditReason ||
+                                          "Administrative update executed"}
+                                    </p>
                                  </div>
                               </div>
 
-                              {/* Expandable Field-Level Diff Panel */}
-                              {isExpanded && hasDiff && (
-                                 <div className="px-5 pb-5 pt-2 border-t border-[#262626] bg-[#191919] space-y-3">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                                       {/* Previous Value */}
-                                       <div className="rounded-xl border border-[#382e25] bg-[#231d18]/70 p-3 space-y-1.5">
-                                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#c87948]">
-                                             Previous State
-                                          </span>
-                                          <pre className="text-[11px] font-mono text-[#d8cfc4] overflow-x-auto whitespace-pre-wrap leading-tight bg-[#1b1713] p-2.5 rounded-lg border border-[#382e25]/60 max-h-48">
-                                             {log.previousValue !== null &&
-                                             log.previousValue !== undefined
-                                                ? JSON.stringify(
-                                                     log.previousValue,
-                                                     null,
-                                                     2
-                                                  )
-                                                : "None (Created fresh)"}
-                                          </pre>
-                                       </div>
+                              {/* Column 4: Time Clock & Details Trigger */}
+                              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#262626]">
+                                 <div className="text-right">
+                                    <span className="block text-xs font-semibold text-white font-mono">
+                                       {relativeTime}
+                                    </span>
+                                    <span className="block text-[10px] text-[#868686] font-mono">
+                                       {clockTime}
+                                    </span>
+                                 </div>
 
-                                       {/* New Value */}
-                                       <div className="rounded-xl border border-[#2a3c2c] bg-[#17271c]/70 p-3 space-y-1.5">
-                                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#529e72]">
-                                             New Updated State
-                                          </span>
-                                          <pre className="text-[11px] font-mono text-[#e5f5eb] overflow-x-auto whitespace-pre-wrap leading-tight bg-[#111f15] p-2.5 rounded-lg border border-[#2a3c2c]/60 max-h-48">
-                                             {log.newValue !== null &&
-                                             log.newValue !== undefined
-                                                ? JSON.stringify(
-                                                     log.newValue,
-                                                     null,
-                                                     2
-                                                  )
-                                                : "None (Deleted)"}
-                                          </pre>
-                                       </div>
+                                 {hasDiff && (
+                                    <button
+                                       type="button"
+                                       onClick={() => toggleExpand(log.id)}
+                                       className="inline-flex items-center gap-1 text-[11px] text-[#e08a32] hover:text-[#f5ba73] font-medium transition-colors"
+                                    >
+                                       <span>
+                                          {isExpanded
+                                             ? "Hide Diff"
+                                             : "View Diff"}
+                                       </span>
+                                       {isExpanded ? (
+                                          <ChevronUp className="h-3 w-3" />
+                                       ) : (
+                                          <ChevronDown className="h-3 w-3" />
+                                       )}
+                                    </button>
+                                 )}
+                              </div>
+                           </div>
+
+                           {/* Expandable Field-Level Diff Panel */}
+                           {isExpanded && hasDiff && (
+                              <div className="px-5 pb-5 pt-2 border-t border-[#262626] bg-[#191919] space-y-3">
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                                    {/* Previous Value */}
+                                    <div className="rounded-xl border border-[#382e25] bg-[#231d18]/70 p-3 space-y-1.5">
+                                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#c87948]">
+                                          Previous State
+                                       </span>
+                                       <pre className="text-[11px] font-mono text-[#d8cfc4] overflow-x-auto whitespace-pre-wrap leading-tight bg-[#1b1713] p-2.5 rounded-lg border border-[#382e25]/60 max-h-48">
+                                          {log.previousValue !== null &&
+                                          log.previousValue !== undefined
+                                             ? JSON.stringify(
+                                                  log.previousValue,
+                                                  null,
+                                                  2
+                                               )
+                                             : "None (Created fresh)"}
+                                       </pre>
+                                    </div>
+
+                                    {/* New Value */}
+                                    <div className="rounded-xl border border-[#2a3c2c] bg-[#17271c]/70 p-3 space-y-1.5">
+                                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#529e72]">
+                                          New Updated State
+                                       </span>
+                                       <pre className="text-[11px] font-mono text-[#e5f5eb] overflow-x-auto whitespace-pre-wrap leading-tight bg-[#111f15] p-2.5 rounded-lg border border-[#2a3c2c]/60 max-h-48">
+                                          {log.newValue !== null &&
+                                          log.newValue !== undefined
+                                             ? JSON.stringify(
+                                                  log.newValue,
+                                                  null,
+                                                  2
+                                               )
+                                             : "None (Deleted)"}
+                                       </pre>
                                     </div>
                                  </div>
-                              )}
-                           </div>
-                        );
-                     })}
-                  </div>
+                              </div>
+                           )}
+                        </div>
+                     );
+                  })}
+               </div>
 
-                  {/* Pagination Controls */}
-                  <DataPagination
-                     currentPage={safePage}
-                     totalPages={totalPages}
-                     totalItems={filteredLogs.length}
-                     pageSize={pageSize}
-                     onPageChange={setCurrentPage}
-                     itemLabel="audit logs"
-                  />
-               </>
-            )}
+               {/* Pagination Controls */}
+               <DataPagination
+                  currentPage={safePage}
+                  totalPages={totalPages}
+                  totalItems={filteredLogs.length}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  itemLabel="audit logs"
+               />
+            </>
+         )}
          </div>
       </div>
    );

@@ -8,7 +8,6 @@ import {
    type ChallengeCreationInput,
 } from "@/features/challenges/domain/challenge-lifecycle";
 import { computeEventDetailsDiff } from "@/features/challenges/domain/event-audit-diff";
-import { formatSecondsToClock } from "@/features/study-logs/domain/duration";
 import { listAllChallenges } from "./challenge.repository";
 
 export async function listAllChallengesForAdmin() {
@@ -594,72 +593,6 @@ export async function reassignParticipantTeam(params: {
       auditReason:
          params.reason?.trim() ||
          `Host reassigned ${participantName} from ${participant.team?.name ?? "Not Assigned"} to ${destinationTeam.name}`,
-   });
-
-   return updatedParticipant;
-}
-
-export interface AdminUpdateParticipantTargetParams {
-   challengeId: string;
-   participantId: string;
-   targetSeconds: number;
-   reason?: string;
-   admin: {
-      id: string;
-      username: string;
-   };
-}
-
-export async function adminUpdateParticipantTarget(
-   params: AdminUpdateParticipantTargetParams
-) {
-   const participant = await prisma.challengeParticipant.findUnique({
-      where: { id: params.participantId },
-      include: { user: true, team: true, challenge: true },
-   });
-
-   if (!participant) {
-      throw new Error("Participant not found.");
-   }
-
-   if (participant.challengeId !== params.challengeId) {
-      throw new Error("Participant does not belong to this challenge.");
-   }
-
-   const previousTargetSeconds = participant.targetSeconds;
-
-   const updatedParticipant = await prisma.challengeParticipant.update({
-      where: { id: params.participantId },
-      data: { targetSeconds: params.targetSeconds },
-      include: { user: true, team: true, challenge: true },
-   });
-
-   const participantName =
-      participant.user?.displayName ||
-      participant.user?.username ||
-      "Participant";
-
-   const effectiveReason =
-      params.reason?.trim() ||
-      `Host adjusted target hours from ${formatSecondsToClock(previousTargetSeconds)} to ${formatSecondsToClock(params.targetSeconds)}`;
-
-   await recordAuditEvent({
-      actorId: params.admin.id,
-      actorUsername: params.admin.username,
-      actionType: "TARGET_HOURS_OVERRIDE",
-      targetEntityId: participant.id,
-      targetEntityType: "PARTICIPANT",
-      targetEntityName: participantName,
-      challengeId: params.challengeId,
-      previousValue: {
-         targetSeconds: previousTargetSeconds,
-         targetClock: formatSecondsToClock(previousTargetSeconds),
-      },
-      newValue: {
-         targetSeconds: params.targetSeconds,
-         targetClock: formatSecondsToClock(params.targetSeconds),
-      },
-      auditReason: effectiveReason,
    });
 
    return updatedParticipant;

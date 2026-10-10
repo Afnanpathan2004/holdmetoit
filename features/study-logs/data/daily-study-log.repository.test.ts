@@ -59,12 +59,10 @@ describe("dailyStudyLog repository", () => {
                participantId: "part_1",
                logDate: expectedUtcDate,
                durationSeconds: 16_200,
-               isLeave: false,
                status: "Offline",
             },
             update: {
                durationSeconds: 16_200,
-               isLeave: false,
                isOverride: false,
                overrideById: null,
                overrideReason: null,
@@ -87,29 +85,10 @@ describe("dailyStudyLog repository", () => {
             .calls[0][0];
          expect(callArgs.update).toEqual({
             durationSeconds: 7_200,
-            isLeave: false,
             isOverride: false,
             overrideById: null,
             overrideReason: null,
          });
-      });
-
-      it("persists isLeave when marked as leave", async () => {
-         vi.mocked(prisma.dailyStudyLogV2.upsert).mockResolvedValue(
-            {} as never
-         );
-
-         await upsertDailyStudyLog({
-            participantId: "part_3",
-            logDate: "2026-09-08",
-            durationSeconds: 0,
-            isLeave: true,
-         });
-
-         const callArgs = vi.mocked(prisma.dailyStudyLogV2.upsert).mock
-            .calls[0][0];
-         expect(callArgs.create.isLeave).toBe(true);
-         expect(callArgs.update.isLeave).toBe(true);
       });
 
       it("records a STUDY_LOG_ADDED audit event on initial study log creation", async () => {
