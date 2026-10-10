@@ -489,6 +489,63 @@ export async function reassignParticipantTeamAction(
    }
 }
 
+const removeParticipantSchema = z.object({
+   challengeId: z.string().min(1),
+   participantId: z.string().min(1),
+   reason: z.string().min(3, "Audit reason must be at least 3 characters."),
+});
+
+export async function removeChallengeParticipantAction(
+   input: z.infer<typeof removeParticipantSchema>
+): Promise<AdminActionResult> {
+   try {
+      const admin = await requireAdminUser();
+      const parsed = removeParticipantSchema.safeParse(input);
+
+      if (!parsed.success) {
+         return {
+            ok: false,
+            code: "INVALID_INPUT",
+            message: parsed.error.issues[0]?.message ?? "Invalid removal data.",
+         };
+      }
+
+      await removeChallengeParticipant({
+         participantId: parsed.data.participantId,
+         reason: parsed.data.reason,
+         admin: {
+            id: admin.id,
+            username: admin.username,
+         },
+      });
+
+      invalidateTags([cacheTags.challengeScoreboard(parsed.data.challengeId)]);
+
+      revalidatePath(`/challenge/${parsed.data.challengeId}`);
+      revalidatePath("/challenges");
+      revalidatePath("/admin");
+      revalidatePath("/");
+
+      return { ok: true };
+   } catch (error) {
+      if (error instanceof AdminAccessError) {
+         return {
+            ok: false,
+            code: error.code,
+            message: error.message,
+         };
+      }
+
+      return {
+         ok: false,
+         code: "REMOVAL_FAILED",
+         message:
+            error instanceof Error
+               ? error.message
+               : "Failed to remove participant from challenge.",
+      };
+   }
+}
 const adminUpdateParticipantTargetSchema = z.object({
    challengeId: z.string().min(1),
    participantId: z.string().min(1),
@@ -581,64 +638,6 @@ export async function adminUpdateParticipantTargetAction(
             error instanceof Error
                ? error.message
                : "Failed to update participant target hours.",
-      };
-   }
-}
-
-const removeParticipantSchema = z.object({
-   challengeId: z.string().min(1),
-   participantId: z.string().min(1),
-   reason: z.string().min(3, "Audit reason must be at least 3 characters."),
-});
-
-export async function removeChallengeParticipantAction(
-   input: z.infer<typeof removeParticipantSchema>
-): Promise<AdminActionResult> {
-   try {
-      const admin = await requireAdminUser();
-      const parsed = removeParticipantSchema.safeParse(input);
-
-      if (!parsed.success) {
-         return {
-            ok: false,
-            code: "INVALID_INPUT",
-            message: parsed.error.issues[0]?.message ?? "Invalid removal data.",
-         };
-      }
-
-      await removeChallengeParticipant({
-         participantId: parsed.data.participantId,
-         reason: parsed.data.reason,
-         admin: {
-            id: admin.id,
-            username: admin.username,
-         },
-      });
-
-      invalidateTags([cacheTags.challengeScoreboard(parsed.data.challengeId)]);
-
-      revalidatePath(`/challenge/${parsed.data.challengeId}`);
-      revalidatePath("/challenges");
-      revalidatePath("/admin");
-      revalidatePath("/");
-
-      return { ok: true };
-   } catch (error) {
-      if (error instanceof AdminAccessError) {
-         return {
-            ok: false,
-            code: error.code,
-            message: error.message,
-         };
-      }
-
-      return {
-         ok: false,
-         code: "REMOVAL_FAILED",
-         message:
-            error instanceof Error
-               ? error.message
-               : "Failed to remove participant from challenge.",
       };
    }
 }

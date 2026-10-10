@@ -156,4 +156,30 @@ describe("ParticipantStatsPage", () => {
 
       expect(meta.title).toBe("Participant Not Found | HoldMeToIt");
    });
+
+   it("renders error state when stats fetch throws", async () => {
+      vi.mocked(getChallengeParticipantStats).mockRejectedValue(
+         new Error("P2022: column isLeave does not exist")
+      );
+
+      const pageElement = await ParticipantStatsPage({
+         params: { id: "chal_1", participantId: "part_1" },
+      });
+
+      const html = renderToStaticMarkup(pageElement);
+      expect(html).toContain("Couldn&#x27;t load participant stats");
+      expect(html).toContain("/challenge/chal_1?tab=leaderboard");
+   });
+
+   it("generates fallback metadata when stats fetch throws", async () => {
+      vi.mocked(getChallengeParticipantStats).mockRejectedValue(
+         new Error("boom")
+      );
+
+      const meta = await generateMetadata({
+         params: { id: "chal_1", participantId: "part_1" },
+      });
+
+      expect(meta.title).toBe("Participant Not Found | HoldMeToIt");
+   });
 });

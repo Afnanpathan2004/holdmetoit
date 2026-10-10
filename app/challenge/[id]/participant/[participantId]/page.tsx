@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { Metadata } from "next";
 
 import { EmptyState } from "@/components/state/empty-state";
+import { ErrorState } from "@/components/state/error-state";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/core/auth";
 import {
@@ -26,10 +27,18 @@ interface ParticipantStatsPageProps {
 export async function generateMetadata({
    params,
 }: ParticipantStatsPageProps): Promise<Metadata> {
-   const stats = await getChallengeParticipantStats(
-      params.id,
-      params.participantId
-   );
+   let stats: Awaited<ReturnType<typeof getChallengeParticipantStats>> = null;
+   try {
+      stats = await getChallengeParticipantStats(
+         params.id,
+         params.participantId
+      );
+   } catch (error) {
+      console.error(
+         "[ParticipantStats] Failed to load stats for metadata:",
+         error
+      );
+   }
 
    if (!stats) {
       return {
@@ -57,18 +66,44 @@ export default async function ParticipantStatsPage({
       searchParamAs: searchParams?.as,
    });
 
-   const stats = await getChallengeParticipantStats(
-      params.id,
-      params.participantId,
-      {
-         currentUserId: session?.user?.id,
-         isAdmin,
-      }
-   );
+   let statsFailed = false;
+   let stats: Awaited<ReturnType<typeof getChallengeParticipantStats>> = null;
+   try {
+      stats = await getChallengeParticipantStats(
+         params.id,
+         params.participantId,
+         {
+            currentUserId: session?.user?.id,
+            isAdmin,
+         }
+      );
+   } catch (error) {
+      statsFailed = true;
+      console.error(
+         "[ParticipantStats] Failed to load participant stats:",
+         error
+      );
+   }
 
    const returnLeaderboardUrl = `/challenge/${params.id}?tab=leaderboard${
       searchParams?.view ? `&view=${encodeURIComponent(searchParams.view)}` : ""
    }`;
+
+   if (statsFailed) {
+      return (
+         <div className="mx-auto max-w-2xl px-4 py-16">
+            <ErrorState
+               title="Couldn't load participant stats"
+               message="Something went wrong while fetching this participant's data. Please try again shortly."
+            />
+            <div className="mt-6 flex justify-center">
+               <Button asChild variant="secondary" className="min-h-[44px]">
+                  <Link href={returnLeaderboardUrl}>Return to Leaderboard</Link>
+               </Button>
+            </div>
+         </div>
+      );
+   }
 
    if (!stats) {
       return (

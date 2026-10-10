@@ -1,24 +1,24 @@
-﻿# HANDOFF.md — Engineering Operational Relay & Milestone Tracker
+# HANDOFF.md — Engineering Operational Relay & Milestone Tracker
 
 > **Project:** HoldMeToIt (Gamified Study Accountability & Challenge Management Platform)  
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-10 (Session 79 — Integrated dev & main: Roster removal + Target hours override, Category DnD & Leave UI)
+> **Last Updated:** 2026-10-10 (Session 79 — PR #67 regression diagnosed, `isLeave` DB migration applied, PR #67 re-landed via revert-of-revert, error surfacing + CI schema guard)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-10, branch `krish`)                                                                                                                                                                                                           |
-| :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                              |
-| `npm run test`                               | ✅ 76 files green (825/825 tests passing)                                                                                                                                                                                                     |
-| `npm run build`                              | ✅ Production build clean                                                                                                                                                                                                                     |
-| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~94%** — Dedicated public /challenges catalog with filters, participant statistics cockpit, multi-view search & team filtering, mod audit log, daily hours overrides & weekly target hours override, roster participant removal complete |
-| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                    |
-| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                |
+| Gate                                         | Result (2026-10-10, PR #67 re-land + incident fixes on `fix/reland-pr67-isleave`)                                                                                                                                          |
+| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                           |
+| `npm run test`                               | ✅ 76 files green (827/827 tests passing)                                                                                                                                                                                  |
+| `npm run build`                              | ✅ 11 routes compiled (production build clean)                                                                                                                                                                             |
+| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~93%** — Dedicated public /challenges catalog, participant statistics cockpit, multi-view search & team filtering, mod audit log, daily hours overrides, weekly target hours override & admin roster removal complete |
+| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                 |
+| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                             |
 
 ### 1.1 Live Routes
 
@@ -91,18 +91,18 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ## 3. Known Defects & Technical Debt (Prioritized)
 
-|  #  | Severity | Issue                                                                                                                                                                                                                          | Suggested Fix                                                                                                                                                                     |
-| :-: | :------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | 🔴 High  | Lock Results fails after natural expiry, so punishments are never evaluated (`assertCanLockChallenge` rejects `COMPLETED`)                                                                                                     | Allow lock/evaluate when status is `COMPLETED` and the challenge hasn't been finalized yet. That needs a persisted `finalizedAt` (or `resultsLockedAt`) column to stay idempotent |
-| D2  | 🔴 High  | Audit trail in-memory fallback needs full persistence validation                                                                                                                                                               | Add migration check and verify Prisma `audit_logs` model insertion across all environments                                                                                        |
-| D3  | 🔴 High  | Two P0 features have backend code but no UI: pardon modal, Discord summary copy (Punishment PFP download & Target override complete)                                                                                           | Rebuild them in Obsidian styling inside the Manage tab (admin pardon & Discord summary)                                                                                           |
-| D4  |  🟠 Med  | Law L6 runs on hours only: goals aren't challenge-scoped any more                                                                                                                                                              | **Product decision needed** (see §4)                                                                                                                                              |
-| D5  |  🟠 Med  | Schema drift: the `feedbacks` table and the `sort_order` columns on `categories`/`tasks` were applied with `db push` and have **no migration files**. `prisma migrate deploy` on a fresh DB would produce an incomplete schema | Generate catch-up migrations (`prisma migrate diff`) and `migrate resolve` them on existing DBs                                                                                   |
-| D6  |  🟡 Low  | `leaveDays` is collected in the enrollment modal and then discarded                                                                                                                                                            | Either persist it and feed it into the deficit/target math, or remove it from the UI                                                                                              |
-| D7  |  🟡 Low  | Manual leaderboard uses `Decimal` hours (Law L8 deviation)                                                                                                                                                                     | Migrate to integer `sessionSeconds`                                                                                                                                               |
-| D8  |  🟡 Low  | Stale `revalidatePath("/dashboard")` calls; `DISCORD_DEV_IDS` alias; `DEFAULT_FEEDBACK_CHANNEL_ID` hardcoded                                                                                                                   | Clean up                                                                                                                                                                          |
-| D9  |  🟡 Low  | "E2E J1–J6" suite (`features/e2e/quality-matrix-j1-j6.test.ts`) mocks Prisma; there's no real browser E2E                                                                                                                      | Add Playwright journeys once the D3 UIs are back                                                                                                                                  |
-| D10 |  🟡 Low  | Duplicate lockfiles (`bun.lock` + `package-lock.json`); `npm audit` reports 20 vulns (3 critical)                                                                                                                              | Pick one package manager; run `npm audit` triage                                                                                                                                  |
+|  #  | Severity | Issue                                                                                                                                                                                                                                                                                                                                                                 | Suggested Fix                                                                                                                                                                     |
+| :-: | :------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | 🔴 High  | Lock Results fails after natural expiry, so punishments are never evaluated (`assertCanLockChallenge` rejects `COMPLETED`)                                                                                                                                                                                                                                            | Allow lock/evaluate when status is `COMPLETED` and the challenge hasn't been finalized yet. That needs a persisted `finalizedAt` (or `resultsLockedAt`) column to stay idempotent |
+| D2  | 🔴 High  | Audit trail in-memory fallback needs full persistence validation                                                                                                                                                                                                                                                                                                      | Add migration check and verify Prisma `audit_logs` model insertion across all environments                                                                                        |
+| D3  | 🔴 High  | Two P0 features have backend code but no UI: pardon modal, Discord summary copy (Punishment PFP download & Target override complete)                                                                                                                                                                                                                                  | Rebuild them in Obsidian styling inside the Manage tab (admin pardon & Discord summary)                                                                                           |
+| D4  |  🟠 Med  | Law L6 runs on hours only: goals aren't challenge-scoped any more                                                                                                                                                                                                                                                                                                     | **Product decision needed** (see §4)                                                                                                                                              |
+| D5  |  🟠 Med  | Schema drift: the `feedbacks` table and the `sort_order` columns on `categories`/`tasks` were applied with `db push` and have **no migration files**. `prisma migrate deploy` on a fresh DB would produce an incomplete schema. **Partially resolved (Session 79):** `isLeave` migration (`20261010120000`) applied; CI now blocks schema changes without a migration | Generate catch-up migrations (`prisma migrate diff`) and `migrate resolve` them on existing DBs                                                                                   |
+| D6  |  🟡 Low  | `leaveDays` is collected in the enrollment modal and then discarded                                                                                                                                                                                                                                                                                                   | Either persist it and feed it into the deficit/target math, or remove it from the UI                                                                                              |
+| D7  |  🟡 Low  | Manual leaderboard uses `Decimal` hours (Law L8 deviation)                                                                                                                                                                                                                                                                                                            | Migrate to integer `sessionSeconds`                                                                                                                                               |
+| D8  |  🟡 Low  | Stale `revalidatePath("/dashboard")` calls; `DISCORD_DEV_IDS` alias; `DEFAULT_FEEDBACK_CHANNEL_ID` hardcoded                                                                                                                                                                                                                                                          | Clean up                                                                                                                                                                          |
+| D9  |  🟡 Low  | "E2E J1–J6" suite (`features/e2e/quality-matrix-j1-j6.test.ts`) mocks Prisma; there's no real browser E2E                                                                                                                                                                                                                                                             | Add Playwright journeys once the D3 UIs are back                                                                                                                                  |
+| D10 |  🟡 Low  | Duplicate lockfiles (`bun.lock` + `package-lock.json`); `npm audit` reports 20 vulns (3 critical)                                                                                                                                                                                                                                                                     | Pick one package manager; run `npm audit` triage                                                                                                                                  |
 
 ---
 
@@ -224,23 +224,15 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
    - `npm run test` ✅ (75/75 test files passing, 788/788 tests green)
    - `npm run build` ✅ (10 routes compiled successfully)
 
-### Session 78a — 2026-10-10 (afnan-jr)
+### Session 78 — 2026-10-10 (afnan-jr + krish — merged `dev` into `main`)
 
-- **Agent Role:** Admin Operations & Broadcaster Agent, Data & Identity Agent.
-- **Admin Roster Participant Removal (Delete Participant on Admin Control):**
+- **Agent Role:** Admin Operations & Broadcaster Agent, Data & Identity Agent, Participant UI Agent, Scoring & Engine Agent.
+- **Admin Roster Participant Removal (afnan-jr):**
    - **Repository (`features/challenges/data/challenge-admin.repository.ts`):** Added `removeChallengeParticipant`. Guards participant existence and blocks removal when the derived status is `COMPLETED` (allows `UPCOMING`/`ACTIVE`). Inside a transaction, deletes dependent rows explicitly in order — `dailyStudyLogV2` → `punishmentRecord` → `leaderboardEntry` (by `challengeId` + `userId`) → `teamMember` (by `userId` + `challengeId`) — then the `challengeParticipant`, and appends a `ROSTER_EDIT` audit event (previous roster state, `newValue: null`, required reason). The explicit deletes cover the `LeaderboardEntry`/`TeamMember` rows that do not cascade from `ChallengeParticipant`.
    - **Server Action (`features/challenges/api/challenge-admin.actions.ts`):** Added `removeChallengeParticipantAction` with a Zod schema (`challengeId`, `participantId`, `reason` min 3 chars), `requireAdminUser()` guard, scoreboard cache invalidation, and path revalidation.
    - **Presentation (`features/challenges/presentation/challenge-manage-tab.tsx`):** Added a destructive `UserMinus` control per roster row (hidden on `COMPLETED` challenges) and a confirmation modal requiring an audit reason, with success/error feedback. Removal is applied optimistically via local state (no `router.refresh()`), so the modal closes and only the removed row disappears instead of the whole route re-rendering.
    - **Test Suite:** Added repository tests (ordered deletes + audit, not-found, completed rejection) and action tests (success, short reason, non-admin), and extended the `challengeParticipant` Prisma mock with `delete`.
-- **Quality Gates Verified:**
-   - `npm run typecheck` ✅ (0 errors)
-   - `npm run test` ✅ (75/75 test files passing, 794/794 tests green)
-   - `npm run build` ✅ (11 routes compiled successfully)
-
-### Session 78b — 2026-10-10 (krish)
-
-- **Agent Role:** Admin Operations Agent / Participant UI Agent / Scoring & Engine Agent.
-- **Participant Target Hours Override, Full Category DnD, Accessible Submit Button & Upstream Dev Merge:**
+- **Participant Target Hours Override, Full Category DnD, Accessible Submit Button & Upstream Dev Merge (krish):**
    - **Option for Mods/Devs to Edit Weekly Goal Hours (`FEAT-DECL-04`, Issue #63):**
       - Added `"TARGET_HOURS_OVERRIDE"` to `AuditEventType` union and immutable audit logs.
       - Implemented `adminUpdateParticipantTarget` in `challenge-admin.repository.ts` and `adminUpdateParticipantTargetAction`.
@@ -254,18 +246,31 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
    - **Leave Visual Feedback & Profile Linkage (`FEAT-LOG-01`):**
       - Added `isLeave` column to `DailyStudyLog` / `DailyStudyLogV2` in Prisma schema.
       - Reflected leave badges (`🌴 On Leave`) across Home Cockpit banner, Participant Profile stats, and daily history charts.
-   - **Upstream Dev Integration:**
-      - Resolved merge conflicts with `origin/dev` across repositories, leaderboard tab buttons, and tests.
+- **Merge Integration:** Unified `dev` into `main`. The divergent `challenge-admin` repository/action/test conflicts were resolved by keeping **both** the roster-removal feature and the weekly target-hours override feature.
 - **Quality Gates Verified:**
    - `npm run typecheck` ✅ (0 errors)
-   - `npm run test` ✅ (76/76 test files passing, 819/819 tests green)
-   - `npm run build` ✅ (10 routes compiled successfully)
-
-### Session 79 — 2026-10-10 (krish)
-
-- **Agent Role:** Admin Operations Agent / Participant UI Agent / Scoring & Engine Agent.
-- **Upstream Branches Integration (`dev` + `main` into `krish`):**
-   - **Branch Reconciliation:** Reconciled divergent commits between `origin/dev` (PR #65) and `origin/main` (PR #66).
-   - **Conflict Resolution:** Cleanly unified parallel Session 78 work across `challenge-admin.repository.ts` (admin target hours override + roster participant removal), `challenge-admin.actions.ts` (both server actions), and their corresponding unit test suites.
-   - **Quality Gates Verified:** Full verification across TypeScript, Vitest, and Next.js build.
+   - `npm run test` ✅ (76/76 test files passing, 825/825 tests green)
+   - `npm run build` ✅ (11 routes compiled successfully)
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization after natural expiry & audit log persistence).
+
+### Session 79 — 2026-10-10 (afnan-jr — PR #67 regression diagnosis, DB fix & re-land)
+
+- **Agent Role:** Data & Identity Agent, Participant UI Agent.
+- **Incident Diagnosis (PR #67 → PR #68 rollback):**
+   - Root cause: `isLeave` was added to `prisma/schema.prisma` in PR #67 but never reached the database — no migration existed anywhere in history and `build` only runs `prisma generate`. The DB is push-managed (D5). Live introspection confirmed `"study_logs_v2"` was missing the column (while `"DailyStudyLog"` already had it from an earlier manual push).
+   - Result: every Prisma query selecting/including `isLeave` threw `P2022` at request time. `app/page.tsx` silently caught it into `cockpit = null`, so enrolled users saw the unenrolled ENROLL banner; the participant profile page propagated the throw to the error boundary. Logging hours, the admin Manage tab, and Lock Final Results were broken by the same drift; the leaderboard kept working because its query uses an explicit `select` without `isLeave`.
+   - Full diagnostic report: `~/.commandcode/plans/pr67-regression-diagnostic-report.md`.
+- **Database Fix (`prisma/migrations/20261010120000_add_is_leave_to_study_logs`):**
+   - Idempotent `ALTER TABLE ... ADD COLUMN IF NOT EXISTS "isLeave" BOOLEAN NOT NULL DEFAULT false` on both log tables; applied to the shared Supabase DB via `prisma db execute` and verified by re-introspection.
+   - **Runbook:** DB column first, then deploy — additive columns are safe in both directions. Never run `migrate dev` against the drifted DB (reset risk).
+- **PR #67 Re-land:** `git revert 62fd70a` (revert-of-revert). Do NOT re-land via a plain `dev` → `main` merge — `4cbcfb9` is already in main's history via `682cc90`, so a plain merge silently keeps the features reverted.
+- **Error Surfacing (Law L9):**
+   - `app/page.tsx`: removed the silent catch around `getParticipantCockpit` — errors now surface via `app/error.tsx` instead of faking the "not enrolled" state.
+   - `app/challenge/[id]/participant/[participantId]/page.tsx`: guarded `generateMetadata` + page body; renders `ErrorState` + "Return to Leaderboard" on failure.
+   - Added route-level `error.tsx` with LogRocket capture (partial ISSUES.md #10); regression tests added for both error paths.
+- **CI Guard:** `scripts/check-schema-migration.sh` + `.github/workflows/ci.yml` — fails any PR changing `prisma/schema.prisma` without a `prisma/migrations` change, and runs typecheck/test/build (repo previously had zero GitHub workflows; PR "checks" were Vercel builds only).
+- **Quality Gates Verified:**
+   - `npm run typecheck` ✅ (0 errors)
+   - `npm run test` ✅ (76 files, 827/827 tests green)
+   - `npm run build` ✅ (11 routes compiled successfully)
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization after natural expiry & audit log persistence); D5 catch-up migrations (`feedbacks`, `sort_order`) as the follow-up stretch.

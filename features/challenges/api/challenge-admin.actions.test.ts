@@ -66,8 +66,8 @@ vi.mock("@/features/challenges/data/challenge-admin.repository", () => ({
    updateAdminChallenge: vi.fn(),
    reassignParticipantTeam: vi.fn(),
    deleteAdminChallenge: vi.fn(),
-   adminUpdateParticipantTarget: vi.fn(),
    removeChallengeParticipant: vi.fn(),
+   adminUpdateParticipantTarget: vi.fn(),
 }));
 
 describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
