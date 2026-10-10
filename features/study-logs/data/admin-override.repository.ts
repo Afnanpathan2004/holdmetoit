@@ -40,7 +40,7 @@ export async function executeAdminHoursOverride(params: AdminOverrideInput) {
       throw new Error("Cannot log or edit study time for future dates.");
    }
 
-   const existingLog = await prisma.dailyStudyLog.findUnique({
+   const existingLog = await prisma.dailyStudyLogV2.findUnique({
       where: {
          participantId_logDate: {
             participantId: params.participantId,
@@ -57,7 +57,7 @@ export async function executeAdminHoursOverride(params: AdminOverrideInput) {
       },
    });
 
-   const updatedLog = await prisma.dailyStudyLog.upsert({
+   const updatedLog = await prisma.dailyStudyLogV2.upsert({
       where: {
          participantId_logDate: {
             participantId: params.participantId,
@@ -143,7 +143,7 @@ export async function executeAdminResetOverallHours(
       where: { id: params.participantId },
       include: {
          user: { select: { displayName: true, username: true } },
-         dailyStudyLogs: true,
+         dailyStudyLogsV2: true,
       },
    });
 
@@ -151,13 +151,14 @@ export async function executeAdminResetOverallHours(
       throw new Error("Participant not found.");
    }
 
-   const previousTotalSeconds = participant.dailyStudyLogs.reduce(
+   const logs = participant.dailyStudyLogsV2 ?? [];
+   const previousTotalSeconds = logs.reduce(
       (acc, log) => acc + log.durationSeconds,
       0
    );
 
-   if (participant.dailyStudyLogs.length > 0) {
-      await prisma.dailyStudyLog.updateMany({
+   if (logs.length > 0) {
+      await prisma.dailyStudyLogV2.updateMany({
          where: { participantId: params.participantId },
          data: {
             durationSeconds: 0,
@@ -168,11 +169,12 @@ export async function executeAdminResetOverallHours(
       });
    } else {
       const today = toUtcDateOnly(new Date());
-      await prisma.dailyStudyLog.create({
+      await prisma.dailyStudyLogV2.create({
          data: {
             participantId: params.participantId,
             logDate: today,
             durationSeconds: 0,
+            status: "Offline",
             isOverride: true,
             overrideById: params.admin.id,
             overrideReason: params.reason.trim(),
@@ -195,7 +197,7 @@ export async function executeAdminResetOverallHours(
       challengeId: params.challengeId,
       previousValue: {
          totalLoggedSeconds: previousTotalSeconds,
-         logsCount: participant.dailyStudyLogs.length,
+         logsCount: logs.length,
       },
       newValue: {
          totalLoggedSeconds: 0,
@@ -207,6 +209,6 @@ export async function executeAdminResetOverallHours(
    return {
       participantId: params.participantId,
       previousTotalSeconds,
-      resetCount: participant.dailyStudyLogs.length,
+      resetCount: logs.length,
    };
 }

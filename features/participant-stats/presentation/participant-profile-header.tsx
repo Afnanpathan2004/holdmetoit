@@ -13,11 +13,13 @@ import { getTeamBadgeStyle } from "@/features/challenges/domain/team-colors";
 interface ParticipantProfileHeaderProps {
    profile: ProfileHeaderType;
    isAdmin?: boolean;
+   viewParam?: string;
 }
 
 export function ParticipantProfileHeader({
    profile,
    isAdmin = false,
+   viewParam,
 }: ParticipantProfileHeaderProps) {
    const isRankOne = profile.rank === 1;
 
@@ -32,6 +34,10 @@ export function ParticipantProfileHeader({
    const paceClass =
       paceColors[profile.paceStatus] ||
       "bg-[#1c1c1c] border-[#383838] text-[#d1d1d1]";
+
+   const leaderboardUrl = `/challenge/${profile.challengeId}?tab=leaderboard${
+      viewParam ? `&view=${encodeURIComponent(viewParam)}` : ""
+   }`;
 
    return (
       <div className="space-y-4">
@@ -55,7 +61,7 @@ export function ParticipantProfileHeader({
             </Link>
             <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[#434343]" />
             <Link
-               href={`/challenge/${profile.challengeId}?tab=leaderboard`}
+               href={leaderboardUrl}
                className="hover:text-white transition-colors"
             >
                Leaderboard

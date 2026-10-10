@@ -51,7 +51,7 @@ export async function getChallengeParticipantStats(
                hostId: true,
             },
          },
-         dailyStudyLogs: {
+         dailyStudyLogsV2: {
             orderBy: { logDate: "asc" },
             select: {
                id: true,
@@ -95,10 +95,11 @@ export async function getChallengeParticipantStats(
    const totalLoggedSeconds = standing?.totalLoggedSeconds ?? 0;
 
    // 4. Calculate chronological daily timeline
+   const logs = participant.dailyStudyLogsV2 ?? [];
    const dailyHistory = calculateParticipantDailyTimeline(
       participant.challenge.startAt,
       scoreboard.totalDays,
-      participant.dailyStudyLogs,
+      logs,
       new Date()
    );
 

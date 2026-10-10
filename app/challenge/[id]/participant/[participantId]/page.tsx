@@ -19,6 +19,7 @@ interface ParticipantStatsPageProps {
    };
    searchParams?: {
       as?: string;
+      view?: string;
    };
 }
 
@@ -65,6 +66,10 @@ export default async function ParticipantStatsPage({
       }
    );
 
+   const returnLeaderboardUrl = `/challenge/${params.id}?tab=leaderboard${
+      searchParams?.view ? `&view=${encodeURIComponent(searchParams.view)}` : ""
+   }`;
+
    if (!stats) {
       return (
          <EmptyState
@@ -72,14 +77,12 @@ export default async function ParticipantStatsPage({
             description="We couldn't locate this participant in the specified challenge. The participant may not be enrolled or might belong to a different challenge."
             action={
                <Button asChild variant="secondary" className="min-h-[44px]">
-                  <Link href={`/challenge/${params.id}?tab=leaderboard`}>
-                     Return to Leaderboard
-                  </Link>
+                  <Link href={returnLeaderboardUrl}>Return to Leaderboard</Link>
                </Button>
             }
          />
       );
    }
 
-   return <ParticipantStatsView stats={stats} />;
+   return <ParticipantStatsView stats={stats} viewParam={searchParams?.view} />;
 }

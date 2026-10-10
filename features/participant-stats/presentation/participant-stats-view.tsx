@@ -8,16 +8,24 @@ import { ParticipantAccountability } from "./participant-accountability";
 
 interface ParticipantStatsViewProps {
    stats: ParticipantStatsViewModel;
+   viewParam?: string;
 }
 
-export function ParticipantStatsView({ stats }: ParticipantStatsViewProps) {
+export function ParticipantStatsView({
+   stats,
+   viewParam,
+}: ParticipantStatsViewProps) {
    const { profile, summary, dailyHistory, teamStats, accountability, viewer } =
       stats;
 
    return (
       <div className="space-y-8 max-w-6xl mx-auto pb-12">
          {/* 1. Profile Header with Breadcrumbs */}
-         <ParticipantProfileHeader profile={profile} isAdmin={viewer.isAdmin} />
+         <ParticipantProfileHeader
+            profile={profile}
+            isAdmin={viewer.isAdmin}
+            viewParam={viewParam}
+         />
 
          {/* 2. Key Metrics Summary Cards */}
          <ParticipantSummaryCards summary={summary} />

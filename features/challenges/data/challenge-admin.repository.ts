@@ -46,7 +46,7 @@ export async function findAdminChallengeDetails(challengeId: string) {
                   },
                },
                team: true,
-               dailyStudyLogs: {
+               dailyStudyLogsV2: {
                   orderBy: { logDate: "asc" },
                   include: {
                      overrideBy: {
@@ -172,7 +172,7 @@ export async function lockChallengeResults(
       include: {
          participants: {
             include: {
-               dailyStudyLogs: true,
+               dailyStudyLogsV2: true,
                punishmentRecord: true,
             },
          },
@@ -201,7 +201,8 @@ export async function lockChallengeResults(
 
       // 2. Dual-Failure Punishment Evaluation (Law L6 / FEAT-PUN-01)
       for (const participant of challenge.participants) {
-         const totalLoggedSeconds = participant.dailyStudyLogs.reduce(
+         const logs = participant.dailyStudyLogsV2 ?? [];
+         const totalLoggedSeconds = logs.reduce(
             (sum, log) => sum + log.durationSeconds,
             0
          );
@@ -612,7 +613,7 @@ export async function deleteAdminChallenge(
 
    return prisma.$transaction(async (tx) => {
       // 1. Delete daily study logs for all participants in this challenge
-      await tx.dailyStudyLog.deleteMany({
+      await tx.dailyStudyLogV2.deleteMany({
          where: {
             participant: {
                challengeId,
