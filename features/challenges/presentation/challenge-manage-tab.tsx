@@ -20,6 +20,7 @@ import {
    User as UserIcon,
    X,
    RotateCcw,
+   Target,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,10 @@ import {
    AdminHoursOverrideModal,
    type AdminHoursOverrideParticipant,
 } from "@/features/study-logs/presentation/admin-hours-override-modal";
+import {
+   AdminTargetOverrideModal,
+   type AdminTargetOverrideParticipant,
+} from "@/features/challenges/presentation/admin-target-override-modal";
 import {
    getChallengeDayOptions,
    type ChallengeDayOption,
@@ -77,6 +82,27 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
       useState<AdminHoursOverrideParticipant | null>(null);
    const [overrideInitialDay, setOverrideInitialDay] = useState<number>(1);
    const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
+
+   // Admin Target Override State (FEAT-DECL-04)
+   const [targetOverrideParticipant, setTargetOverrideParticipant] =
+      useState<AdminTargetOverrideParticipant | null>(null);
+   const [isTargetOverrideModalOpen, setIsTargetOverrideModalOpen] =
+      useState(false);
+
+   const handleOpenTargetOverride = (participant: ScoreboardStandingEntry) => {
+      setTargetOverrideParticipant({
+         participantId: participant.participantId,
+         userId: participant.userId,
+         displayName: participant.displayName,
+         username: participant.username,
+         image: participant.image,
+         teamName: participant.teamName,
+         teamColor: participant.teamColor,
+         targetSeconds: participant.targetSeconds,
+         targetClock: participant.targetClock,
+      });
+      setIsTargetOverrideModalOpen(true);
+   };
 
    // Participant Roster & Hours Management Pagination State
    const [rosterSearch, setRosterSearch] = useState("");
@@ -873,13 +899,17 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                           <span className="text-[#d1d1d1] font-mono">
                                              {participant.totalLoggedClock}
                                           </span>{" "}
-                                          logged
+                                          logged /{" "}
+                                          <span className="text-[#c084fc] font-mono font-semibold">
+                                             {participant.targetClock}
+                                          </span>{" "}
+                                          target
                                        </p>
                                     </div>
                                  </div>
 
-                                 {/* Controls: House Select & Override Button */}
-                                 <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                                 {/* Controls: House Select & Override Buttons */}
+                                 <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 flex-wrap sm:flex-nowrap">
                                     {/* Team Selector Dropdown */}
                                     <div className="relative flex-1 sm:flex-initial w-full sm:w-auto">
                                        <select
@@ -933,6 +963,20 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                                     >
                                        <Clock className="h-3.5 w-3.5 text-[#3b82f6]" />
                                        <span>Edit hr</span>
+                                    </Button>
+
+                                    {/* Edit Target Hours Button (FEAT-DECL-04) */}
+                                    <Button
+                                       type="button"
+                                       variant="outline"
+                                       onClick={() =>
+                                          handleOpenTargetOverride(participant)
+                                       }
+                                       className="h-9 px-3 rounded-xl border-[#383838] bg-[#292929] hover:bg-[#333333] text-white text-xs font-semibold gap-1.5 shrink-0"
+                                       title="Admin: Edit Weekly Target Hours"
+                                    >
+                                       <Target className="h-3.5 w-3.5 text-[#a855f7]" />
+                                       <span>Edit target</span>
                                     </Button>
 
                                     {isReassigning && (
@@ -1127,6 +1171,31 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
             totalChallengeDays={challenge.totalDays || 7}
             participant={overrideParticipant}
             initialDayNumber={overrideInitialDay}
+            onOpenTargetOverride={() => {
+               if (overrideParticipant) {
+                  const found = challenge.standings.find(
+                     (s) =>
+                        s.participantId === overrideParticipant.participantId
+                  );
+                  if (found) {
+                     handleOpenTargetOverride(found);
+                  }
+               }
+            }}
+         />
+
+         {/* Admin Target Override Modal (FEAT-DECL-04) */}
+         <AdminTargetOverrideModal
+            isOpen={isTargetOverrideModalOpen}
+            onClose={() => {
+               setIsTargetOverrideModalOpen(false);
+               setTargetOverrideParticipant(null);
+            }}
+            challengeId={challenge.id}
+            participant={targetOverrideParticipant}
+            onSuccess={() => {
+               router.refresh();
+            }}
          />
       </div>
    );

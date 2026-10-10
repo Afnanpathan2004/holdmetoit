@@ -27,6 +27,13 @@ vi.mock("next/image", () => ({
    }) => createElement("img", { src, alt, className }),
 }));
 
+vi.mock("next/navigation", () => ({
+   useRouter: () => ({
+      refresh: vi.fn(),
+      push: vi.fn(),
+   }),
+}));
+
 describe("ParticipantStatsView", () => {
    const mockStats: ParticipantStatsViewModel = {
       profile: {
@@ -55,6 +62,8 @@ describe("ParticipantStatsView", () => {
          todayLoggedSeconds: 14400,
          todayLoggedClock: "04:00:00",
          todayLoggedHuman: "4h",
+         todayIsLeave: false,
+         leavesCount: 1,
          targetSeconds: 72000,
          targetClock: "20:00:00",
          targetHuman: "20h",
@@ -89,6 +98,7 @@ describe("ParticipantStatsView", () => {
             isFuture: false,
             isPast: true,
             isOverride: false,
+            isLeave: false,
          },
          {
             dayNumber: 2,
@@ -107,6 +117,7 @@ describe("ParticipantStatsView", () => {
             isFuture: false,
             isPast: true,
             isOverride: false,
+            isLeave: true,
          },
          {
             dayNumber: 3,
@@ -125,6 +136,7 @@ describe("ParticipantStatsView", () => {
             isFuture: false,
             isPast: false,
             isOverride: true,
+            isLeave: false,
          },
       ],
       teamStats: {
@@ -187,7 +199,7 @@ describe("ParticipantStatsView", () => {
       expect(html).toContain("Target Met!");
    });
 
-   it("renders daily history table with zero days and override indicators", () => {
+   it("renders daily history table with zero days, leave badges, and override indicators", () => {
       const html = renderToStaticMarkup(
          <ParticipantStatsView stats={mockStats} />
       );
@@ -196,6 +208,8 @@ describe("ParticipantStatsView", () => {
       expect(html).toContain("Oct 1, 2026");
       expect(html).toContain("Day 2");
       expect(html).toContain("00:00:00"); // zero day preserved
+      expect(html).toContain("On Leave"); // Day 2 leave badge
+      expect(html).toContain("Marked as Leave"); // Day 2 leave note
       expect(html).toContain("Host Override"); // Day 3 override badge
    });
 

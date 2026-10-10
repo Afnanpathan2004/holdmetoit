@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/core/db";
 import {
    adminEnrollParticipant,
+   adminUpdateParticipantTarget,
    createAdminChallenge,
    deleteAdminChallenge,
    kickoffChallenge,
@@ -571,6 +572,76 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
          expect(prisma.challenge.delete).toHaveBeenCalledWith({
             where: { id: "c_1" },
          });
+      });
+   });
+
+   describe("adminUpdateParticipantTarget (Law L5 / FEAT-DECL-04)", () => {
+      it("successfully updates participant target hours and records audit log", async () => {
+         const mockParticipant = {
+            id: "p_1",
+            challengeId: "c_1",
+            userId: "u_1",
+            targetSeconds: 72000,
+            user: { displayName: "Alice", username: "alice" },
+            team: { name: "Bees" },
+         };
+         const mockUpdated = {
+            ...mockParticipant,
+            targetSeconds: 90000,
+         };
+
+         vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(
+            mockParticipant as never
+         );
+         vi.mocked(prisma.challengeParticipant.update).mockResolvedValue(
+            mockUpdated as never
+         );
+
+         const result = await adminUpdateParticipantTarget({
+            challengeId: "c_1",
+            participantId: "p_1",
+            targetSeconds: 90000,
+            reason: "Adjusted due to illness accommodation",
+            admin: { id: "admin_1", username: "HostAdmin" },
+         });
+
+         expect(result.targetSeconds).toBe(90000);
+         expect(prisma.challengeParticipant.update).toHaveBeenCalledWith({
+            where: { id: "p_1" },
+            data: { targetSeconds: 90000 },
+            include: { user: true, team: true, challenge: true },
+         });
+      });
+
+      it("rejects when participant is not found", async () => {
+         vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(
+            null
+         );
+
+         await expect(
+            adminUpdateParticipantTarget({
+               challengeId: "c_1",
+               participantId: "nonexistent",
+               targetSeconds: 90000,
+               admin: { id: "admin_1", username: "HostAdmin" },
+            })
+         ).rejects.toThrow("Participant not found.");
+      });
+
+      it("rejects when participant belongs to a different challenge", async () => {
+         vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue({
+            id: "p_1",
+            challengeId: "other_challenge",
+         } as never);
+
+         await expect(
+            adminUpdateParticipantTarget({
+               challengeId: "c_1",
+               participantId: "p_1",
+               targetSeconds: 90000,
+               admin: { id: "admin_1", username: "HostAdmin" },
+            })
+         ).rejects.toThrow("Participant does not belong to this challenge.");
       });
    });
 });

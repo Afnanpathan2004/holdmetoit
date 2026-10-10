@@ -10,10 +10,14 @@ import type { ParticipantSummaryStats } from "../domain/participant-stats.types"
 
 interface ParticipantSummaryCardsProps {
    summary: ParticipantSummaryStats;
+   isAdmin?: boolean;
+   onEditTarget?: () => void;
 }
 
 export function ParticipantSummaryCards({
    summary,
+   isAdmin = false,
+   onEditTarget,
 }: ParticipantSummaryCardsProps) {
    return (
       <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-4">
@@ -41,16 +45,36 @@ export function ParticipantSummaryCards({
                <span className="text-xs font-semibold uppercase tracking-wider">
                   Today&apos;s Hours
                </span>
-               <Calendar className="h-4 w-4 text-[#3b82f6]" />
+               {summary.todayIsLeave ? (
+                  <span className="text-[10px] text-[#fcd34d] font-bold px-2 py-0.5 rounded-full bg-[#451a03] border border-[#f59e0b]/40">
+                     🌴 Leave
+                  </span>
+               ) : (
+                  <Calendar className="h-4 w-4 text-[#3b82f6]" />
+               )}
             </div>
             <div>
-               <p className="text-2xl sm:text-3xl font-extrabold text-[#f4f3f6] font-sans font-sans-tabular">
+               <p
+                  className={`text-2xl sm:text-3xl font-extrabold font-sans font-sans-tabular ${
+                     summary.todayIsLeave ? "text-[#fcd34d]" : "text-[#f4f3f6]"
+                  }`}
+               >
                   {summary.todayLoggedClock}
                </p>
-               <p className="text-xs text-[#868686] mt-0.5">
-                  {summary.todayLoggedSeconds > 0
-                     ? `${summary.todayLoggedHuman} today`
-                     : "No study recorded today"}
+               <p className="text-xs mt-0.5">
+                  {summary.todayIsLeave ? (
+                     <span className="text-[#fcd34d] font-medium flex items-center gap-1">
+                        <span>🌴</span> Marked as Leave today
+                     </span>
+                  ) : summary.todayLoggedSeconds > 0 ? (
+                     <span className="text-[#868686]">
+                        {summary.todayLoggedHuman} today
+                     </span>
+                  ) : (
+                     <span className="text-[#868686]">
+                        No study recorded today
+                     </span>
+                  )}
                </p>
             </div>
          </div>
@@ -61,7 +85,20 @@ export function ParticipantSummaryCards({
                <span className="text-xs font-semibold uppercase tracking-wider">
                   Declared Target
                </span>
-               <Target className="h-4 w-4 text-[#a855f7]" />
+               <div className="flex items-center gap-1.5">
+                  {isAdmin && onEditTarget && (
+                     <button
+                        type="button"
+                        onClick={onEditTarget}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#242424] hover:bg-[#333333] border border-[#383838] text-[10px] font-semibold text-[#c084fc] hover:text-white transition-colors"
+                        title="Admin: Edit weekly target hours"
+                     >
+                        <Target className="h-3 w-3 text-[#a855f7]" />
+                        <span>Edit</span>
+                     </button>
+                  )}
+                  <Target className="h-4 w-4 text-[#a855f7]" />
+               </div>
             </div>
             <div>
                <p className="text-2xl sm:text-3xl font-extrabold text-[#f4f3f6] font-sans font-sans-tabular">
