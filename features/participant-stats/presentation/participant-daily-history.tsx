@@ -45,12 +45,18 @@ export function ParticipantDailyHistory({
                               </span>
                            </div>
 
-                           {day.isToday && (
+                           {day.isLeave && (
+                              <span className="px-2 py-0.5 rounded-full bg-[#451a03] border border-[#f59e0b]/40 text-[#fcd34d] text-[10px] font-semibold inline-flex items-center gap-1">
+                                 <span>🌴</span>
+                                 On Leave
+                              </span>
+                           )}
+                           {day.isToday && !day.isLeave && (
                               <span className="px-2 py-0.5 rounded-full bg-[#144520] border border-[#22c55e]/40 text-[#85ff93] text-[10px] font-semibold">
                                  Today
                               </span>
                            )}
-                           {day.isYesterday && (
+                           {day.isYesterday && !day.isLeave && (
                               <span className="px-2 py-0.5 rounded-full bg-[#1c1c1c] border border-[#383838] text-[#d1d1d1] text-[10px] font-medium">
                                  Yesterday
                               </span>
@@ -65,11 +71,19 @@ export function ParticipantDailyHistory({
                         <div className="flex items-baseline justify-between pt-1 border-t border-[#262626] text-xs">
                            <div>
                               <span className="text-[#868686]">Logged: </span>
-                              <span className="font-bold font-sans font-sans-tabular text-white">
+                              <span
+                                 className={`font-bold font-sans font-sans-tabular ${
+                                    day.isLeave
+                                       ? "text-[#fcd34d]"
+                                       : "text-white"
+                                 }`}
+                              >
                                  {day.durationClock}
                               </span>
                               <span className="text-[11px] text-[#868686] ml-1">
-                                 ({day.durationHuman})
+                                 {day.isLeave
+                                    ? "(Leave Day)"
+                                    : `(${day.durationHuman})`}
                               </span>
                            </div>
 
@@ -85,6 +99,12 @@ export function ParticipantDailyHistory({
                            <div className="pt-1 flex items-center gap-1.5 text-[10px] text-[#f59e0b]">
                               <AlertCircle className="h-3 w-3" />
                               <span>Host / Admin adjustment</span>
+                           </div>
+                        )}
+                        {day.isLeave && !day.isOverride && (
+                           <div className="pt-1 flex items-center gap-1.5 text-[10px] text-[#fcd34d]">
+                              <span>🌴</span>
+                              <span>Marked as Leave</span>
                            </div>
                         )}
                      </div>
@@ -109,9 +129,11 @@ export function ParticipantDailyHistory({
                            <tr
                               key={day.dayNumber}
                               className={`transition-colors ${
-                                 day.isToday
-                                    ? "bg-[#144520]/15 hover:bg-[#144520]/25"
-                                    : "hover:bg-[#1a1a1a]"
+                                 day.isLeave
+                                    ? "bg-[#451a03]/15 hover:bg-[#451a03]/25"
+                                    : day.isToday
+                                      ? "bg-[#144520]/15 hover:bg-[#144520]/25"
+                                      : "hover:bg-[#1a1a1a]"
                               }`}
                            >
                               <td className="py-3 px-3 font-bold text-white">
@@ -124,7 +146,12 @@ export function ParticipantDailyHistory({
                                  </span>
                               </td>
                               <td className="py-3 px-3">
-                                 {day.isToday ? (
+                                 {day.isLeave ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#451a03] border border-[#f59e0b]/40 text-[#fcd34d] text-[10px] font-semibold">
+                                       <span>🌴</span>
+                                       On Leave
+                                    </span>
+                                 ) : day.isToday ? (
                                     <span className="px-2 py-0.5 rounded-full bg-[#144520] border border-[#22c55e]/40 text-[#85ff93] text-[10px] font-semibold">
                                        Today
                                     </span>
@@ -144,12 +171,26 @@ export function ParticipantDailyHistory({
                               </td>
                               <td className="py-3 px-3 font-sans font-sans-tabular">
                                  <div className="flex items-center gap-1.5">
-                                    <Clock className="h-3.5 w-3.5 text-[#22c55e]" />
-                                    <span className="font-bold text-white text-xs">
+                                    <Clock
+                                       className={`h-3.5 w-3.5 ${
+                                          day.isLeave
+                                             ? "text-[#f59e0b]"
+                                             : "text-[#22c55e]"
+                                       }`}
+                                    />
+                                    <span
+                                       className={`font-bold text-xs ${
+                                          day.isLeave
+                                             ? "text-[#fcd34d]"
+                                             : "text-white"
+                                       }`}
+                                    >
                                        {day.durationClock}
                                     </span>
                                     <span className="text-[11px] text-[#868686]">
-                                       ({day.durationHuman})
+                                       {day.isLeave
+                                          ? "(Leave)"
+                                          : `(${day.durationHuman})`}
                                     </span>
                                  </div>
                               </td>
@@ -161,6 +202,11 @@ export function ParticipantDailyHistory({
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#451a03] border border-[#f59e0b]/40 text-[#fcd34d] text-[10px] font-semibold">
                                        <AlertCircle className="h-2.5 w-2.5" />
                                        Host Override
+                                    </span>
+                                 ) : day.isLeave ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#291705] border border-[#f59e0b]/30 text-[#fcd34d] text-[10px] font-medium">
+                                       <span>🌴</span>
+                                       Marked as Leave
                                     </span>
                                  ) : (
                                     <span className="text-[#666666] text-[11px]">

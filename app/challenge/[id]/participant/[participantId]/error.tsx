@@ -6,7 +6,7 @@ import { ErrorState } from "@/components/state/error-state";
 import { Button } from "@/components/ui/button";
 import { captureLogRocketException } from "@/core/observability/logrocket";
 
-export default function AppError({
+export default function ParticipantStatsError({
    error,
    reset,
 }: {
@@ -14,9 +14,9 @@ export default function AppError({
    reset: () => void;
 }) {
    useEffect(() => {
-      console.error("[AppError caught by root boundary]:", error);
+      console.error("[ParticipantStatsError caught by route boundary]:", error);
       captureLogRocketException(error, {
-         tags: { boundary: "app-error" },
+         tags: { boundary: "participant-stats-error" },
          extra: { digest: error.digest ?? "" },
       });
    }, [error]);
@@ -24,8 +24,8 @@ export default function AppError({
    return (
       <div className="mx-auto flex min-h-[50vh] max-w-lg flex-col items-center justify-center gap-4 px-4">
          <ErrorState
-            title="Something went wrong"
-            message="This screen hit an unexpected error. You can retry, or head back to the lounge."
+            title="Couldn't load participant stats"
+            message="This profile hit an unexpected error. You can retry, or head back to the leaderboard."
          />
          <Button
             type="button"
