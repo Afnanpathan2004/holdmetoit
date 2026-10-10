@@ -99,6 +99,7 @@ model Challenge {
   endAt            DateTime
   eventBannerUrl   String?
   punishmentPfpUrl String?
+  resultsLockedAt  DateTime?
 
   hostId String?
   host   User?   @relation("ChallengeHost", fields: [hostId], references: [id], onDelete: SetNull)

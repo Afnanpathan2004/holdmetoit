@@ -202,6 +202,7 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
             id: "c_act",
             startAt: new Date(Date.now() - 7 * 86400000),
             endAt: new Date(Date.now() + 86400000),
+            resultsLockedAt: null,
             participants: [
                {
                   id: "p_1",
@@ -218,6 +219,7 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
             id: "c_act",
             startAt: new Date(Date.now() - 7 * 86400000),
             endAt: new Date(Date.now() - 3600000),
+            resultsLockedAt: new Date(),
          } as never);
 
          const result = await lockChallengeResults("c_act", {
@@ -226,6 +228,14 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
          });
 
          expect(result.status).toBe("COMPLETED");
+         expect(prisma.challenge.update).toHaveBeenCalledWith(
+            expect.objectContaining({
+               where: { id: "c_act" },
+               data: expect.objectContaining({
+                  resultsLockedAt: expect.any(Date),
+               }),
+            })
+         );
          expect(prisma.challengeParticipant.update).toHaveBeenCalledWith({
             where: { id: "p_1" },
             data: { status: "PUNISHED" },
@@ -238,6 +248,90 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
                   hoursDeficitSeconds: 6000,
                }),
             })
+         );
+      });
+
+      it("successfully locks an expired challenge (COMPLETED status) when results are not yet locked (Fix D1)", async () => {
+         const pastEnd = new Date(Date.now() - 3600000); // Ended 1 hour ago
+         vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+            id: "c_expired",
+            title: "Sprint Battle",
+            startAt: new Date(Date.now() - 7 * 86400000),
+            endAt: pastEnd,
+            resultsLockedAt: null,
+            participants: [
+               {
+                  id: "p_expired_1",
+                  targetSeconds: 20000,
+                  status: "NORMAL",
+                  dailyStudyLogsV2: [{ durationSeconds: 25000 }], // Exceeded target
+                  punishmentRecord: null,
+               },
+            ],
+         } as never);
+
+         vi.mocked(prisma.challenge.update).mockResolvedValue({
+            id: "c_expired",
+            title: "Sprint Battle",
+            startAt: new Date(Date.now() - 7 * 86400000),
+            endAt: pastEnd,
+            resultsLockedAt: new Date(),
+         } as never);
+
+         const result = await lockChallengeResults("c_expired", {
+            id: "admin_host",
+            username: "HostAdmin",
+         });
+
+         expect(result.status).toBe("COMPLETED");
+         expect(prisma.challenge.update).toHaveBeenCalledWith({
+            where: { id: "c_expired" },
+            data: {
+               endAt: pastEnd,
+               resultsLockedAt: expect.any(Date),
+            },
+         });
+         expect(prisma.challengeParticipant.update).toHaveBeenCalledWith({
+            where: { id: "p_expired_1" },
+            data: { status: "NORMAL" },
+         });
+      });
+
+      it("rejects locking a challenge whose results are already locked", async () => {
+         vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+            id: "c_already_locked",
+            startAt: new Date(Date.now() - 7 * 86400000),
+            endAt: new Date(Date.now() - 3600000),
+            resultsLockedAt: new Date(Date.now() - 1800000),
+            participants: [],
+         } as never);
+
+         await expect(
+            lockChallengeResults("c_already_locked", {
+               id: "admin_1",
+               username: "HostAdmin",
+            })
+         ).rejects.toThrow(
+            "Challenge results are already locked and finalized."
+         );
+      });
+
+      it("rejects locking an UPCOMING challenge", async () => {
+         vi.mocked(prisma.challenge.findUnique).mockResolvedValue({
+            id: "c_upcoming",
+            startAt: new Date(Date.now() + 86400000),
+            endAt: new Date(Date.now() + 7 * 86400000),
+            resultsLockedAt: null,
+            participants: [],
+         } as never);
+
+         await expect(
+            lockChallengeResults("c_upcoming", {
+               id: "admin_1",
+               username: "HostAdmin",
+            })
+         ).rejects.toThrow(
+            "Cannot lock final results on an event that has not started yet."
          );
       });
    });

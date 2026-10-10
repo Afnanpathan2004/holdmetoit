@@ -115,6 +115,7 @@ export interface ChallengeScoreboardViewModel {
    punishmentPfpUrl: string | null;
    format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
    status: "UPCOMING" | "ACTIVE" | "COMPLETED";
+   resultsLockedAt?: string | null;
    startAt: string;
    endAt: string;
    daysRemaining: number;
@@ -137,6 +138,7 @@ export interface RawChallengePayload {
    title: string;
    format: "TEAM_VS_TEAM" | "DUOS" | "SOLOS";
    status?: "UPCOMING" | "ACTIVE" | "COMPLETED";
+   resultsLockedAt?: Date | null;
    startAt: Date;
    endAt: Date;
    eventBannerUrl: string | null;
@@ -584,6 +586,9 @@ export function buildScoreboardViewModel(
       punishmentPfpUrl: challenge.punishmentPfpUrl,
       format: challenge.format,
       status,
+      resultsLockedAt: challenge.resultsLockedAt
+         ? new Date(challenge.resultsLockedAt).toISOString()
+         : null,
       startAt: challenge.startAt.toISOString(),
       endAt: challenge.endAt.toISOString(),
       daysRemaining,
