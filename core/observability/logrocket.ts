@@ -3,6 +3,8 @@
 import LogRocket from "logrocket";
 import setupLogRocketReact from "logrocket-react";
 
+import { isLogRocketEnabled } from "./logrocket-config";
+
 const FALLBACK_LOGROCKET_APP_ID = "q9morb/holdmeintoit";
 const FALLBACK_RELEASE = "0.1.0";
 
@@ -34,6 +36,10 @@ export type LogRocketEventProps = Record<
 
 export function initLogRocket(): void {
    if (typeof window === "undefined" || initialized) {
+      return;
+   }
+
+   if (!isLogRocketEnabled()) {
       return;
    }
 

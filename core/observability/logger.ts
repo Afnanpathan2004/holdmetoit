@@ -5,6 +5,7 @@ import {
 } from "./domain/log-entry";
 import type { LogEventName } from "./domain/log-events";
 import { parseLogLevel, shouldEmit, type LogLevel } from "./domain/log-level";
+import { isLogRocketEnabled } from "./logrocket-config";
 
 /**
  * Universal diagnostics logger.
@@ -61,7 +62,7 @@ function toLogRocketProps(
 }
 
 function forwardToLogRocket(event: LogEventName, options: LogOptions): void {
-   if (typeof window === "undefined") {
+   if (typeof window === "undefined" || !isLogRocketEnabled()) {
       return;
    }
 
