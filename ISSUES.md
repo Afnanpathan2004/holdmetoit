@@ -33,13 +33,13 @@
 
 These features have working backend code but **zero UI** — deleted in commits `88779bd` and `364c7a1`:
 
-| Feature                                 | Backend                          | UI Status                             |
-| --------------------------------------- | -------------------------------- | ------------------------------------- |
-| Punishment Wall (`FEAT-PUN-02`)         | `punishment.ts` domain logic     | ❌ `punishment-wall.tsx` deleted      |
-| Punishment PFP Download (`FEAT-PUN-03`) | PFP upload to Supabase works     | ❌ No download button anywhere        |
-| Host Pardon Modal (`FEAT-PUN-04`)       | `adminPardonAction` exists       | ❌ `admin-goals-pardons.tsx` deleted  |
-| Discord Summary Copy (`FEAT-DISC-01`)   | `generateDiscordSummary()` works | ❌ `discord-summary-card.tsx` deleted |
-| Host Goal/Target Edit (`FEAT-DECL-04`)  | `updateParticipantTargetSeconds` | ❌ No callers                         |
+| Feature                                 | Backend                              | UI Status                                                           |
+| --------------------------------------- | ------------------------------------ | ------------------------------------------------------------------- |
+| Punishment Wall (`FEAT-PUN-02`)         | `punishment.ts` domain logic         | ❌ `punishment-wall.tsx` deleted                                    |
+| Punishment PFP Download (`FEAT-PUN-03`) | PFP upload to Supabase works         | ❌ No download button anywhere                                      |
+| Host Pardon Modal (`FEAT-PUN-04`)       | `adminPardonAction` exists           | ❌ `admin-goals-pardons.tsx` deleted                                |
+| Discord Summary Copy (`FEAT-DISC-01`)   | `generateDiscordSummary()` works     | ❌ `discord-summary-card.tsx` deleted                               |
+| Host Goal/Target Edit (`FEAT-DECL-04`)  | `adminUpdateParticipantTargetAction` | ✅ Wired to `AdminTargetOverrideModal` (Manage, Leaderboard, Stats) |
 
 ---
 
