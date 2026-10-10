@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { ParticipantStatsViewModel } from "../domain/participant-stats.types";
 import { ParticipantProfileHeader } from "./participant-profile-header";
 import { ParticipantSummaryCards } from "./participant-summary-cards";
@@ -5,6 +8,7 @@ import { ParticipantProgressChart } from "./participant-progress-chart";
 import { ParticipantDailyHistory } from "./participant-daily-history";
 import { ParticipantTeamStats } from "./participant-team-stats";
 import { ParticipantAccountability } from "./participant-accountability";
+import { AdminTargetOverrideModal } from "@/features/challenges/presentation/admin-target-override-modal";
 
 interface ParticipantStatsViewProps {
    stats: ParticipantStatsViewModel;
@@ -17,6 +21,7 @@ export function ParticipantStatsView({
 }: ParticipantStatsViewProps) {
    const { profile, summary, dailyHistory, teamStats, accountability, viewer } =
       stats;
+   const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
 
    return (
       <div className="space-y-8 max-w-6xl mx-auto pb-12">
@@ -28,7 +33,11 @@ export function ParticipantStatsView({
          />
 
          {/* 2. Key Metrics Summary Cards */}
-         <ParticipantSummaryCards summary={summary} />
+         <ParticipantSummaryCards
+            summary={summary}
+            isAdmin={viewer.isAdmin}
+            onEditTarget={() => setIsTargetModalOpen(true)}
+         />
 
          {/* 3. Progress Visualization Chart */}
          <ParticipantProgressChart dailyHistory={dailyHistory} />
@@ -41,6 +50,26 @@ export function ParticipantStatsView({
 
          {/* 6. Complete Chronological Daily Study History */}
          <ParticipantDailyHistory dailyHistory={dailyHistory} />
+
+         {/* 7. Admin Target Override Modal (FEAT-DECL-04) */}
+         {viewer.isAdmin && isTargetModalOpen && (
+            <AdminTargetOverrideModal
+               isOpen={isTargetModalOpen}
+               onClose={() => setIsTargetModalOpen(false)}
+               challengeId={profile.challengeId}
+               participant={{
+                  participantId: profile.participantId,
+                  userId: profile.userId,
+                  displayName: profile.displayName,
+                  username: profile.username,
+                  image: profile.image,
+                  teamName: profile.teamName,
+                  teamColor: profile.teamColor,
+                  targetSeconds: summary.targetSeconds,
+                  targetClock: summary.targetClock,
+               }}
+            />
+         )}
       </div>
    );
 }
