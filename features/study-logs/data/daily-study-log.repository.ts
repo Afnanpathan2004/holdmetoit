@@ -42,7 +42,7 @@ export async function upsertDailyStudyLog(params: UpsertDailyStudyLogParams) {
 
    let existingLog = null;
    if (params.actor && params.challengeId) {
-      existingLog = await prisma.dailyStudyLog.findUnique({
+      existingLog = await prisma.dailyStudyLogV2.findUnique({
          where: {
             participantId_logDate: {
                participantId: params.participantId,
@@ -52,7 +52,7 @@ export async function upsertDailyStudyLog(params: UpsertDailyStudyLogParams) {
       });
    }
 
-   const updatedLog = await prisma.dailyStudyLog.upsert({
+   const updatedLog = await prisma.dailyStudyLogV2.upsert({
       where: {
          participantId_logDate: {
             participantId: params.participantId,
@@ -63,6 +63,7 @@ export async function upsertDailyStudyLog(params: UpsertDailyStudyLogParams) {
          participantId: params.participantId,
          logDate,
          durationSeconds: params.durationSeconds,
+         status: "Offline",
       },
       update: {
          durationSeconds: params.durationSeconds,
@@ -113,7 +114,7 @@ export async function findDailyLog(
 ) {
    const normalized = toUtcDateOnly(logDate);
 
-   return prisma.dailyStudyLog.findUnique({
+   return prisma.dailyStudyLogV2.findUnique({
       where: {
          participantId_logDate: {
             participantId,

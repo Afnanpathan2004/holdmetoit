@@ -13,16 +13,20 @@ import { ChallengeLeaderboardTab } from "@/features/leaderboard/presentation/cha
 import { ChallengeManageTab } from "./challenge-manage-tab";
 import { EventAuditTab } from "@/features/audit/presentation/event-audit-tab";
 
+import type { LeaderboardViewMode } from "@/features/leaderboard/domain/leaderboard";
+
 interface ChallengeViewProps {
    challenge: ChallengeScoreboardViewModel;
    initialTab?: ChallengeTab | string;
    isAdmin?: boolean;
+   initialLeaderboardViewMode?: LeaderboardViewMode;
 }
 
 export function ChallengeView({
    challenge,
    initialTab = DEFAULT_CHALLENGE_TAB,
    isAdmin = false,
+   initialLeaderboardViewMode = "individual",
 }: ChallengeViewProps) {
    const [activeTab, setActiveTab] = useState<ChallengeTab>(() =>
       resolveAllowedChallengeTab(initialTab, isAdmin)
@@ -42,6 +46,9 @@ export function ChallengeView({
             url.searchParams.delete("tab");
          } else {
             url.searchParams.set("tab", allowedTab);
+         }
+         if (allowedTab !== "leaderboard") {
+            url.searchParams.delete("view");
          }
          window.history.replaceState(
             null,
@@ -128,6 +135,7 @@ export function ChallengeView({
                <ChallengeLeaderboardTab
                   challenge={challenge}
                   isAdmin={isAdmin}
+                  initialViewMode={initialLeaderboardViewMode}
                />
             </div>
          )}

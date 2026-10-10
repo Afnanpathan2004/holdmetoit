@@ -80,6 +80,7 @@ export interface ScoreboardStandingEntry {
    goalsTotalCount: number;
    paceStatus: ParticipantPaceStatus;
    paceLabel: string;
+   status?: string | null;
    deficitSeconds: number;
    dailyLogs?: Record<string, number>;
 }
@@ -164,6 +165,7 @@ export interface RawChallengePayload {
       dailyStudyLogs: Array<{
          durationSeconds: number;
          logDate?: Date | string;
+         status?: string | null;
       }>;
       punishmentRecord?: {
          isPunished: boolean;
@@ -373,6 +375,10 @@ export function buildScoreboardViewModel(
       });
       const todayLoggedSeconds = todayLog?.durationSeconds ?? 0;
       const todayLoggedClock = formatSecondsToClock(todayLoggedSeconds);
+      const liveStatus =
+         todayLog?.status ??
+         p.dailyStudyLogs[p.dailyStudyLogs.length - 1]?.status ??
+         null;
       const goalsCompletedCount = 0;
       const goalsTotalCount = 0;
       const deficitSeconds = Math.max(0, p.targetSeconds - totalLoggedSeconds);
@@ -448,6 +454,7 @@ export function buildScoreboardViewModel(
          goalsTotalCount,
          paceStatus,
          paceLabel,
+         status: liveStatus,
          deficitSeconds,
          dailyLogs,
       };
@@ -619,10 +626,11 @@ async function getCachedChallengeScoreboardPayload(challengeId: string) {
                            image: true,
                         },
                      },
-                     dailyStudyLogs: {
+                     dailyStudyLogsV2: {
                         select: {
                            durationSeconds: true,
                            logDate: true,
+                           status: true,
                         },
                      },
                      punishmentRecord: {
@@ -646,11 +654,21 @@ async function getCachedChallengeScoreboardPayload(challengeId: string) {
    );
 
    const challenge = await read();
-   return challenge
-      ? normalizeScoreboardPayload(
-           challenge as unknown as SerializedChallengePayload
-        )
-      : null;
+   if (!challenge) {
+      return null;
+   }
+
+   const mappedChallenge = {
+      ...challenge,
+      participants: challenge.participants.map((participant) => ({
+         ...participant,
+         dailyStudyLogs: participant.dailyStudyLogsV2,
+      })),
+   };
+
+   return normalizeScoreboardPayload(
+      mappedChallenge as unknown as SerializedChallengePayload
+   );
 }
 
 export async function getChallengeScoreboard(

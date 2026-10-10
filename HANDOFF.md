@@ -3,18 +3,17 @@
 > **Project:** HoldMeToIt (Gamified Study Accountability & Challenge Management Platform)  
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
-> **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-10 (Session 74 — ISSUES.md audit tracker & synced dev branch with dynamic colors and tab URL sync)  
+> **Last Updated:** 2026-10-10 (Session 76 — Leaderboard view mode URL sync & profile navigation preservation)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-09, branch `dev`)                                                                                                                                                                                                                                     |
+| Gate                                         | Result (2026-10-10, branch `dev`)                                                                                                                                                                                                                                     |
 | :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                                      |
-| `npm run test`                               | ✅ 75 files green (772/772 tests passing)                                                                                                                                                                                                                             |
+| `npm run test`                               | ✅ 75 files green (775/775 tests passing)                                                                                                                                                                                                                             |
 | `npm run build`                              | ✅ 10 routes compiled (9 app routes + `_not-found`)                                                                                                                                                                                                                   |
 | Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~89%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                                            |
@@ -224,22 +223,6 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ### Session 72 — 2026-10-09 (krish)
 
-- **Agent Role:** Participant UI & Scoring / Engine Agent.
-- **Side-by-Side "View by Team" Responsive Grid Layout:**
-   - **Side-by-Side Teams Layout (`challenge-leaderboard-tab.tsx`):**
-      - Upgraded the "View by Team" section from a stacked vertical list to a responsive 2-column grid (`grid grid-cols-1 lg:grid-cols-2 gap-6 items-start`) whenever multiple teams exist.
-      - On desktop / laptop viewports (`lg: 1024px+`), competing houses are presented side-by-side, utilizing horizontal screen real estate effectively.
-      - Preserved full responsiveness: mobile viewports (< 1024px, 360px+) gracefully render in a single column without horizontal overflow or clipped text.
-      - Applied `items-start` so competing houses with different roster sizes keep their natural card height without empty stretched bottom areas.
-      - Added dynamic column adjustment: when filtered to a single house via dropdown, the card cleanly takes full width (`grid-cols-1`).
-      - Fine-tuned intra-card scholar rows and summary headers: flex-wrap badges, compact progress bars (`w-20 sm:w-28`), and responsive width caps.
-      - Added `initialViewMode` prop support (`"individual"` | `"team"`) for deep linking and robust SSR unit testing.
-   - **Test Suite Updates (`challenge-leaderboard-tab.test.tsx`):**
-      - Added unit tests verifying side-by-side grid rendering (`lg:grid-cols-2`) when multiple teams exist in team view mode, and single column fallback when only one team exists.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 715/715 green) · `npm run build` ✅ (10 routes compiled successfully).
-
-### Session 72 — 2026-10-09 (krish)
-
 - **Agent Role:** Admin Operations & Broadcaster Agent / Data & Identity Agent.
 - **Overall Time Reset to 0 & Zero-Hour Override Unblock (`Law L5` / `FEAT-LOG-04`):**
    - **Problem Resolved:** Moderators and developers were unable to update study time to 0 (`00:00:00`) because:
@@ -286,11 +269,97 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - 12 unit tests in `challenge-view.test.tsx` (100% green).
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (74 files, 758/758 green) · `npm run build` ✅ (10 routes compiled successfully).
 
-### Session 74 — 2026-10-10 (krish)
+### Session 74a — 2026-10-10 (krish)
 
 - **Agent Role:** Data & Identity Agent / Admin Operations Agent.
 - **Codebase Audit & Upstream Dev Sync:**
-   - Authored comprehensive project audit and known issues tracker in [`ISSUES.md`](file:///d:/Projects/HoldMeToIt-Git/ISSUES.md) cataloging 32 prioritized findings across critical, medium, low, and QoL improvements.
+   - Authored comprehensive project audit and known issues tracker in [`ISSUES.md`](file:///home/afnan/Projects/holdmetoit/ISSUES.md) cataloging 32 prioritized findings across critical, medium, low, and QoL improvements.
    - Synchronized upstream `dev` branch changes (dynamic team color badge styling and tab URL synchronization) with overall time reset and zero-hour unblock logic.
 - **Quality Gates:** `npx tsc --noEmit` ✅ · `npm run test` ✅.
+
+### Session 74b — 2026-10-10 (afnan)
+
+- **Agent Role:** Participant UI Agent, Scoring & Engine Agent, Data & Identity Agent.
+- **Yeolpumta (YPT) Study Logs V2 Integration & "Today's LB" View Mode:**
+   - **Database & Prisma Schema Layer (`prisma/schema.prisma`):**
+      - Added `User.yptId String? @unique` for reverse-engineered YPT identity binding without schema friction.
+      - Cloned `study_logs_v2` (`DailyStudyLogV2` model) with foreign keys and unique composite key `[participantId, logDate]` plus live `status String?` field.
+      - Applied non-destructive database migration on PostgreSQL/Supabase and executed `npx prisma generate` cleanly without data loss.
+   - **Leaderboard Data Fetcher (`features/leaderboard/data/leaderboard-data.ts`):**
+      - Switched `dailyStudyLogs` queries to read from `dailyStudyLogsV2` (including `status: true`).
+      - Populated `ScoreboardStandingEntry.status` from latest log entry for live user activity.
+   - **Curved YPT Status Badge (`challenge-leaderboard-tab.tsx`):**
+      - Rendered status indicator capsule (`YptStatusPill`) matching team badge curved pill radius (`rounded-full`).
+      - Strictly 2 text options: `"Studying"` (emerald tint `#132717`, border `#225028`, text `#86efac`) and `"Offline"` (slate tint `#1a1a1a`, border `#2e2e2e`, text `#a3a3a3`).
+      - Emojis stripped per design directive.
+   - **Dedicated "Today's LB" View Mode:**
+      - Added pure domain ranking function `rankByTodaySeconds<T>()` in `features/leaderboard/domain/leaderboard.ts` adhering to **Law L7** (pure TypeScript domain function, zero ORM/React imports).
+      - Ranks participants by `todayLoggedSeconds` descending, with secondary tie-breaker using `totalLoggedSeconds`.
+      - Segmented switcher upgraded with 3 options: **`Overall Rank`** (Trophy), **`Today's LB`** (Clock, emerald accent), and **`View by Team`** (Users).
+      - In **`Today's LB`** view:
+         - Displays dynamic `todayRank` for mobile and desktop views.
+         - Highlights `todayLoggedClock` as primary metric in emerald text (`text-[#4ade80]`), with cumulative hours as secondary.
+         - Highlights table header with active indicator.
+   - **V2 Alignment Across Edit Menus, Results Lock & Cockpit Data:**
+      - **Admin Hours Override (`admin-override.repository.ts`):** Migrated `executeAdminHoursOverride` to query and upsert `prisma.dailyStudyLogV2` with `isOverride = true`, admin audit ID, and override reason. Host overrides now instantly update the V2 leaderboard and participant profile stats.
+      - **Challenge Finalization & Dual-Failure Lock (`challenge-admin.repository.ts`):** Updated `lockChallengeResults` to evaluate participant punishment totals using `dailyStudyLogsV2` (with safe V1 fallback).
+      - **Cascading Challenge Deletion (`challenge-admin.repository.ts`):** Updated `deleteChallenge` transaction to delete `dailyStudyLogV2` records alongside V1 records, preventing orphan logs.
+      - **Home Cockpit Sync (`participant.repository.ts` & `cockpit-data.ts`):** Included `dailyStudyLogsV2` in `findParticipantForUser` and updated `cockpit-data.ts` to prioritize V2 study logs for total hours, today's study time, and catch-up deficit calculations.
+   - **Unit Tests:**
+      - Added 5 unit tests for `rankByTodaySeconds` in `features/leaderboard/domain/leaderboard.test.ts`.
+      - Added interaction/render tests for `initialViewMode: "today"` in `challenge-leaderboard-tab.test.tsx`.
+      - Updated Journey J5 in `quality-matrix-j1-j6.test.ts`, `challenge-admin.repository.test.ts`, and `participant.repository.test.ts`.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (75 files, 770/770 green).
+
+### Session 75 — 2026-10-10 (afnan)
+
+- **Agent Role:** Data & Identity Agent, Participant UI Agent, Scoring & Engine Agent.
+- **Complete Removal of Legacy Daily Study Logs (V1) from Application Codebase:**
+   - **Schema & Database Safety:**
+      - Preserved PostgreSQL `daily_study_logs` table intact with all historic rows (zero data loss, zero destructive DB operations).
+      - Retained `DailyStudyLog` model definition in `prisma/schema.prisma` per explicit user instruction.
+   - **Application Codebase Migration to V2 (`DailyStudyLogV2`):**
+      - **Study Logs Repository (`features/study-logs/data/daily-study-log.repository.ts`):** `upsertDailyStudyLog` and `findDailyLog` migrated exclusively to `prisma.dailyStudyLogV2` with default `status: "Offline"`.
+      - **Participant Repository (`features/challenges/data/participant.repository.ts`):** Removed `dailyStudyLogs` from `include` queries; only `dailyStudyLogsV2` is requested from Prisma.
+      - **Admin Challenge Repository (`features/challenges/data/challenge-admin.repository.ts`):**
+         - `findAdminChallengeDetails`: Query now includes `dailyStudyLogsV2` with `overrideBy`.
+         - `lockChallengeResults`: Dual-failure calculation evaluates participant totals purely from `dailyStudyLogsV2`.
+         - `deleteChallenge`: Purged explicit transaction calls to legacy V1 study logs.
+      - **Home Cockpit & Participant Stats (`cockpit-data.ts`, `participant-stats.repository.ts`):** Simplified log resolution to directly consume `participant.dailyStudyLogsV2 ?? []`.
+   - **Test Suite Updates:**
+      - Updated `daily-study-log.repository.test.ts`, `challenge-admin.repository.test.ts`, `participant.repository.test.ts`, `participant-stats.repository.test.ts`, and `quality-matrix-j1-j6.test.ts` to mock and assert `dailyStudyLogV2`.
+   - **UI Polish:**
+      - Removed team name and icon badge pill from `CockpitProgressCard` (`cockpit-progress-card.tsx`), keeping the Weekly Commitment Progress header minimal and focused on individual hours vs target commitments.
+- **Quality Gates Verified:**
+   - `npm run typecheck` ✅ (0 errors)
+   - `npm run test` ✅ (75/75 test files passing, 770/770 tests green)
+   - `npm run build` ✅ (10 routes compiled successfully)
+
+### Session 76 — 2026-10-10 (afnan)
+
+- **Agent Role:** Participant UI Agent, Scoring & Engine Agent.
+- **Leaderboard View Mode URL Sync & Participant Profile Navigation Context Preservation:**
+   - **Problem:** When viewing "Today's LB" (`viewMode = "today"`), clicking on any scholar's profile and returning back (via browser Back or profile breadcrumbs) reset the view to the default "Overall Rank" leaderboard because the view mode was stored only in component state.
+   - **Pure Domain Resolution (`features/leaderboard/domain/leaderboard.ts`):**
+      - Exported `LeaderboardViewMode` type (`"individual" | "today" | "team"`).
+      - Added pure domain helper `resolveLeaderboardViewMode(value?: string | null): LeaderboardViewMode` adhering to **Law L7** (pure TypeScript, zero UI or framework dependencies). Defaults safely to `"individual"`.
+      - Added 5 unit tests in `features/leaderboard/domain/leaderboard.test.ts`.
+   - **Server Page Query Parameter Handling (`app/challenge/[id]/page.tsx`):**
+      - Accepted optional `view?: string` in `searchParams`.
+      - Sanitized initial view mode using `resolveLeaderboardViewMode(searchParams?.view)` and forwarded `initialLeaderboardViewMode` to `<ChallengeView>`.
+   - **Client Presentation State & History Synchronization (`challenge-leaderboard-tab.tsx` & `challenge-view.tsx`):**
+      - On view mode switch, `handleViewModeChange` updates component state, resets pagination to page 1, and updates browser URL query string via `window.history.replaceState` (setting `?view=today` or `?view=team`, while cleanly deleting `view` when `"individual"` for canonical cleanliness).
+      - Listens to `popstate` events to restore view mode seamlessly on browser back/forward navigation.
+      - Cleans up `view` parameter when switching away from the Leaderboard tab.
+      - Added `getParticipantProfileUrl(participantId: string)` helper which automatically appends `?view=${viewMode}` when `viewMode !== "individual"`.
+      - Updated all participant profile navigation links across podium cards, team view members, desktop table rows, and mobile cards to use `getParticipantProfileUrl`.
+   - **Profile Breadcrumb & Empty State Context (`participant-profile-header.tsx`, `participant-stats-view.tsx`, `page.tsx`):**
+      - Forwarded `viewParam` from profile `searchParams.view` down through `ParticipantStatsView` to `ParticipantProfileHeader`.
+      - Updated the "Leaderboard" breadcrumb link and Empty State "Return to Leaderboard" button to navigate to `/challenge/[id]?tab=leaderboard&view=${viewParam}` when `viewParam` is present, restoring the exact previous view.
+   - **Unit Tests:**
+      - Added test in `challenge-leaderboard-tab.test.tsx` verifying profile links preserve `?view=today` in "today" mode and omit `?view` in "individual" mode.
+- **Quality Gates Verified:**
+   - `npm run typecheck` ✅ (0 errors)
+   - `npm run test` ✅ (75/75 test files passing, 775/775 tests green)
+   - `npm run build` ✅ (10 routes compiled successfully)
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
