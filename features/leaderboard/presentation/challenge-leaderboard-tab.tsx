@@ -65,6 +65,7 @@ export function ChallengeLeaderboardTab({
          teamName: entry.teamName,
          teamColor: entry.teamColor,
          dailyLogs: entry.dailyLogs,
+         totalLoggedSeconds: entry.totalLoggedSeconds,
       });
       setIsOverrideModalOpen(true);
    };

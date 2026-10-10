@@ -38,6 +38,7 @@ export interface AdminHoursOverrideParticipant {
    teamName?: string;
    teamColor?: string | null;
    dailyLogs?: Record<string, number>; // dateKey (YYYY-MM-DD) -> durationSeconds
+   totalLoggedSeconds?: number;
 }
 
 export interface AdminHoursOverrideModalProps {
@@ -63,6 +64,9 @@ export function AdminHoursOverrideModal({
 }: AdminHoursOverrideModalProps) {
    const router = useRouter();
    const [isPending, startTransition] = useTransition();
+   const [overrideScope, setOverrideScope] = useState<"daily" | "overall">(
+      "daily"
+   );
 
    const effectiveStartDate = useMemo(() => {
       if (!challengeStartDate) return new Date().toISOString().slice(0, 10);
@@ -191,6 +195,7 @@ export function AdminHoursOverrideModal({
          }
          setReason("");
          setFeedback(null);
+         setOverrideScope("daily");
       }
    }, [
       isOpen,
@@ -201,6 +206,18 @@ export function AdminHoursOverrideModal({
       effectiveStartDate,
    ]);
 
+   const totalOverallLoggedSeconds = useMemo(() => {
+      if (typeof participant?.totalLoggedSeconds === "number") {
+         return participant.totalLoggedSeconds;
+      }
+      if (participant?.dailyLogs) {
+         return Object.values(participant.dailyLogs).reduce(
+            (acc, sec) => acc + (sec || 0),
+            0
+         );
+      }
+      return 0;
+   }, [participant?.totalLoggedSeconds, participant?.dailyLogs]);
    if (!isOpen || !participant) return null;
 
    const currentDayExistingSeconds = getExistingSecondsForDate(
@@ -225,6 +242,9 @@ export function AdminHoursOverrideModal({
       setHours("0");
       setMinutes("0");
       setSeconds("0");
+      if (!reason.trim()) {
+         setReason("Set study hours to 00:00:00 by moderator");
+      }
    };
 
    const handleSubmit = (e: React.FormEvent) => {
@@ -260,13 +280,21 @@ export function AdminHoursOverrideModal({
          return;
       }
 
-      if (!reason || reason.trim().length < 3) {
+      const durationSeconds = h * 3600 + m * 60 + s;
+      const isZeroTime = durationSeconds === 0;
+
+      if (!isZeroTime && (!reason || reason.trim().length < 3)) {
          setFeedback({
             type: "error",
             message: "Mandatory audit reason must be at least 3 characters.",
          });
          return;
       }
+
+      const effectiveReason =
+         reason.trim().length >= 3
+            ? reason.trim()
+            : "Set study hours to 00:00:00 by moderator";
 
       startTransition(async () => {
          try {
@@ -279,7 +307,7 @@ export function AdminHoursOverrideModal({
                hours: h,
                minutes: m,
                seconds: s,
-               reason: reason.trim(),
+               reason: effectiveReason,
             });
 
             if (result.ok) {
@@ -290,7 +318,7 @@ export function AdminHoursOverrideModal({
                   hours: h,
                   minutes: m,
                   seconds: s,
-                  reason: reason.trim(),
+                  reason: effectiveReason,
                });
                setFeedback({
                   type: "success",
@@ -320,6 +348,64 @@ export function AdminHoursOverrideModal({
                type: "error",
                message:
                   "An unexpected error occurred while saving the override.",
+            });
+         }
+      });
+   };
+
+   const handleResetOverall = (e: React.FormEvent) => {
+      e.preventDefault();
+      setFeedback(null);
+
+      const effectiveReason =
+         reason.trim().length >= 3
+            ? reason.trim()
+            : "Reset overall study hours to 00:00:00 by moderator";
+
+      startTransition(async () => {
+         try {
+            const { adminResetParticipantOverallHoursAction } =
+               await import("@/features/study-logs/api/admin-override.actions");
+            const result = await adminResetParticipantOverallHoursAction({
+               challengeId,
+               participantId: participant.participantId,
+               reason: effectiveReason,
+            });
+
+            if (result.ok) {
+               trackLogRocketEvent("AdminOverallHoursResetExecuted", {
+                  challengeId,
+                  participantId: participant.participantId,
+                  reason: effectiveReason,
+               });
+               setFeedback({
+                  type: "success",
+                  message: `Successfully reset overall study hours to 00:00:00 for ${participant.displayName}.`,
+               });
+               router.refresh();
+               onSuccess?.();
+               setTimeout(() => {
+                  onClose();
+               }, 600);
+            } else {
+               setFeedback({
+                  type: "error",
+                  message:
+                     result.message || "Failed to reset overall study hours.",
+               });
+            }
+         } catch (error) {
+            captureLogRocketException(error, {
+               tags: { action: "admin-reset-overall-hours" },
+               extra: {
+                  challengeId,
+                  participantId: participant.participantId,
+               },
+            });
+            setFeedback({
+               type: "error",
+               message:
+                  "An unexpected error occurred while resetting overall hours.",
             });
          }
       });
@@ -385,227 +471,408 @@ export function AdminHoursOverrideModal({
                )}
             </div>
 
-            {/* 7-Day Week Selector (Full Week D1..D7) */}
-            <div className="space-y-2">
-               <div className="flex items-center justify-between text-xs font-semibold text-[#868686]">
-                  <span>Select Challenge Day (Full Week D1–D7)</span>
-                  <span className="text-[#d1d1d1] font-sans-tabular">
-                     {selectedDayOption.dateKey}
-                  </span>
-               </div>
-
-               <div className="grid grid-cols-7 gap-1 w-full">
-                  {dayOptions.map((opt) => {
-                     const isSelected = selectedDayNumber === opt.dayNumber;
-                     const loggedSec = getExistingSecondsForDate(opt.dateKey);
-                     const hasHours = loggedSec > 0;
-                     const isFuture = opt.isFuture;
-
-                     return (
-                        <button
-                           key={opt.dayNumber}
-                           type="button"
-                           disabled={isFuture}
-                           onClick={() => handleSelectDay(opt.dayNumber)}
-                           className={`w-full min-w-0 py-2 px-1 rounded-xl text-center flex flex-col items-center justify-center transition-all ${
-                              isSelected
-                                 ? "bg-white text-black font-bold shadow-md ring-2 ring-white/20"
-                                 : isFuture
-                                   ? "bg-[#1c1c1c]/40 text-[#545454] cursor-not-allowed border border-transparent opacity-50"
-                                   : "bg-[#1c1c1c] text-[#d1d1d1] hover:bg-[#292929] hover:text-white border border-[#2e2e2e]"
-                           }`}
-                           title={
-                              isFuture
-                                 ? `Day ${opt.dayNumber} (${opt.dateKey}) - Future date (cannot log or edit yet)`
-                                 : `${opt.label} (${opt.dateKey}) - ${formatSecondsToClock(loggedSec)} logged`
-                           }
-                        >
-                           <span className="text-[10px] uppercase tracking-wider opacity-75 leading-none">
-                              {opt.weekday}
-                           </span>
-                           <span className="text-xs font-semibold mt-1 leading-none">
-                              D{opt.dayNumber}
-                           </span>
-                           <span
-                              className={`text-[9px] mt-1 font-mono leading-none ${
-                                 isSelected
-                                    ? "text-black font-semibold"
-                                    : isFuture
-                                      ? "text-[#404040]"
-                                      : hasHours
-                                        ? "text-[#4ade80]"
-                                        : "text-[#666666]"
-                              }`}
-                           >
-                              {isFuture
-                                 ? "Locked"
-                                 : hasHours
-                                   ? `${Math.floor(loggedSec / 3600)}h`
-                                   : "-"}
-                           </span>
-                        </button>
-                     );
-                  })}
-               </div>
-
-               <div className="flex items-center justify-between text-[11px] text-[#868686] px-1 pt-0.5">
-                  <span>
-                     Currently Logged on {selectedDayOption.shortLabel}:
-                  </span>
-                  <span className="font-mono font-semibold text-white">
-                     {formatSecondsToClock(currentDayExistingSeconds)}
-                  </span>
-               </div>
+            {/* Scope Selector: Single Day vs Overall Reset */}
+            <div className="flex rounded-2xl bg-[#1c1c1c] border border-[#2e2e2e] p-1 gap-1">
+               <button
+                  type="button"
+                  onClick={() => {
+                     setOverrideScope("daily");
+                     setFeedback(null);
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                     overrideScope === "daily"
+                        ? "bg-[#292929] text-white shadow-sm border border-[#383838]"
+                        : "text-[#868686] hover:text-white"
+                  }`}
+               >
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Single Day (D1–D7)</span>
+               </button>
+               <button
+                  type="button"
+                  onClick={() => {
+                     setOverrideScope("overall");
+                     setFeedback(null);
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                     overrideScope === "overall"
+                        ? "bg-[#ef4444]/20 text-[#f87171] shadow-sm border border-[#ef4444]/40 font-bold"
+                        : "text-[#868686] hover:text-[#f87171]"
+                  }`}
+               >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span>Overall Time (Reset to 0)</span>
+               </button>
             </div>
 
-            {/* Future date lock warning */}
-            {selectedDayOption.isFuture && (
-               <div className="flex items-center gap-2.5 p-3 rounded-xl text-xs font-medium bg-[#450a0a]/40 border border-[#ef4444]/40 text-[#f87171]">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>
-                     Future date ({selectedDayOption.dateKey}): moderators
-                     cannot add or edit study hours for future dates.
-                  </span>
-               </div>
-            )}
-
-            {/* Input Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-               {/* Time Inputs */}
-               <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-[#a3a3a3]">
-                     New Study Duration (HH:MM:SS)
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
-                     <div>
-                        <span className="block text-[11px] text-[#868686] mb-1">
-                           Hours (0–24)
+            {overrideScope === "overall" ? (
+               /* OVERALL RESET VIEW */
+               <form onSubmit={handleResetOverall} className="space-y-5">
+                  <div className="p-4 rounded-2xl bg-[#1c1c1c] border border-[#2e2e2e] space-y-3">
+                     <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-[#868686]">
+                           Current Overall Logged:
                         </span>
-                        <Input
-                           type="number"
-                           min="0"
-                           max="24"
-                           placeholder="0"
-                           value={hours}
-                           disabled={isPending || selectedDayOption.isFuture}
-                           onChange={(e) => setHours(e.target.value)}
-                           className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base disabled:opacity-40"
-                        />
+                        <span className="font-mono text-sm font-bold text-white">
+                           {formatSecondsToClock(totalOverallLoggedSeconds)}
+                        </span>
                      </div>
-                     <div>
-                        <span className="block text-[11px] text-[#868686] mb-1">
-                           Minutes (0–59)
+                     <div className="flex items-center justify-between pt-2 border-t border-[#292929]">
+                        <span className="text-xs font-semibold text-[#f87171]">
+                           New Overall Logged:
                         </span>
-                        <Input
-                           type="number"
-                           min="0"
-                           max="59"
-                           placeholder="0"
-                           value={minutes}
-                           disabled={isPending || selectedDayOption.isFuture}
-                           onChange={(e) => setMinutes(e.target.value)}
-                           className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base disabled:opacity-40"
-                        />
-                     </div>
-                     <div>
-                        <span className="block text-[11px] text-[#868686] mb-1">
-                           Seconds (0–59)
+                        <span className="font-mono text-sm font-bold text-[#4ade80]">
+                           00:00:00
                         </span>
-                        <Input
-                           type="number"
-                           min="0"
-                           max="59"
-                           placeholder="0"
-                           value={seconds}
-                           disabled={isPending || selectedDayOption.isFuture}
-                           onChange={(e) => setSeconds(e.target.value)}
-                           className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base disabled:opacity-40"
-                        />
                      </div>
                   </div>
 
-                  {/* Quick Clear Action */}
-                  <div className="flex items-center pt-1">
-                     <button
-                        type="button"
-                        onClick={handleClearTime}
-                        disabled={isPending || selectedDayOption.isFuture}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-[#ef4444] hover:text-[#f87171] border border-[#383838] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  <div className="p-3.5 rounded-xl bg-[#292929]/50 border border-[#383838] text-xs text-[#d1d1d1] space-y-1">
+                     <p className="font-semibold text-white flex items-center gap-1.5">
+                        <AlertTriangle className="h-4 w-4 text-[#eab308] shrink-0" />
+                        Overall Reset Confirmation
+                     </p>
+                     <p className="text-[11px] text-[#868686] leading-relaxed">
+                        This will reset all daily study logs for this
+                        participant across the entire challenge to 00:00:00.
+                        Team cumulative scores, deficit calculations, and
+                        leaderboard standings will update immediately.
+                     </p>
+                  </div>
+
+                  {/* Audit Reason */}
+                  <div className="space-y-1.5">
+                     <label className="block text-xs font-semibold text-[#a3a3a3]">
+                        Audit Reason{" "}
+                        <span className="text-[#868686] font-normal">
+                           (Optional, defaults to moderator reset)
+                        </span>
+                     </label>
+                     <Input
+                        type="text"
+                        placeholder="e.g. Timer glitch reset, cheating investigation, offline reset"
+                        value={reason}
+                        disabled={isPending}
+                        onChange={(e) => setReason(e.target.value)}
+                        className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-xs px-3.5 disabled:opacity-40"
+                     />
+                     <p className="text-[11px] text-[#868686] flex items-center gap-1.5 pt-0.5">
+                        <ShieldAlert className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
+                        <span>
+                           Permanent audit log: recorded with your moderator ID
+                           and reason.
+                        </span>
+                     </p>
+                  </div>
+
+                  {/* Feedback banner */}
+                  {feedback && (
+                     <div
+                        className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-medium border ${
+                           feedback.type === "success"
+                              ? "bg-[#144520]/40 border-[#22c55e]/40 text-[#4ade80]"
+                              : "bg-[#450a0a]/40 border-[#ef4444]/40 text-[#f87171]"
+                        }`}
                      >
-                        <RotateCcw className="h-3 w-3" />
-                        Clear Time
-                     </button>
+                        {feedback.type === "success" ? (
+                           <Check className="h-4 w-4 shrink-0" />
+                        ) : (
+                           <AlertTriangle className="h-4 w-4 shrink-0" />
+                        )}
+                        <span>{feedback.message}</span>
+                     </div>
+                  )}
+
+                  {/* Modal Actions */}
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                     <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onClose}
+                        disabled={isPending}
+                        className="h-10 px-5 rounded-xl border-[#383838] bg-[#1c1c1c] text-white hover:bg-[#292929] text-xs font-semibold"
+                     >
+                        Cancel
+                     </Button>
+                     <Button
+                        type="submit"
+                        disabled={isPending}
+                        className="h-10 px-5 rounded-xl bg-[#ef4444] text-white hover:bg-[#dc2626] text-xs font-bold gap-2 shadow-sm disabled:opacity-50"
+                     >
+                        {isPending && (
+                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        )}
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Reset Overall Time to 0
+                     </Button>
                   </div>
-               </div>
+               </form>
+            ) : (
+               /* SINGLE DAY VIEW */
+               <>
+                  {/* 7-Day Week Selector (Full Week D1..D7) */}
+                  <div className="space-y-2">
+                     <div className="flex items-center justify-between text-xs font-semibold text-[#868686]">
+                        <span>Select Challenge Day (Full Week D1–D7)</span>
+                        <span className="text-[#d1d1d1] font-sans-tabular">
+                           {selectedDayOption.dateKey}
+                        </span>
+                     </div>
 
-               {/* Mandatory Audit Reason */}
-               <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-[#a3a3a3]">
-                     Mandatory Reason for Override{" "}
-                     <span className="text-red-400">*</span>
-                  </label>
-                  <Input
-                     type="text"
-                     placeholder="e.g. Timer sync glitch, approved offline study, host correction"
-                     value={reason}
-                     disabled={isPending || selectedDayOption.isFuture}
-                     onChange={(e) => setReason(e.target.value)}
-                     className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-xs px-3.5 disabled:opacity-40"
-                  />
-                  <p className="text-[11px] text-[#868686] flex items-center gap-1.5 pt-0.5">
-                     <ShieldAlert className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
-                     <span>
-                        Permanent audit log: recorded with your moderator ID and
-                        reason.
-                     </span>
-                  </p>
-               </div>
+                     <div className="grid grid-cols-7 gap-1 w-full">
+                        {dayOptions.map((opt) => {
+                           const isSelected =
+                              selectedDayNumber === opt.dayNumber;
+                           const loggedSec = getExistingSecondsForDate(
+                              opt.dateKey
+                           );
+                           const hasHours = loggedSec > 0;
+                           const isFuture = opt.isFuture;
 
-               {/* Feedback banner */}
-               {feedback && (
-                  <div
-                     className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-medium border ${
-                        feedback.type === "success"
-                           ? "bg-[#144520]/40 border-[#22c55e]/40 text-[#4ade80]"
-                           : "bg-[#450a0a]/40 border-[#ef4444]/40 text-[#f87171]"
-                     }`}
-                  >
-                     {feedback.type === "success" ? (
-                        <Check className="h-4 w-4 shrink-0" />
-                     ) : (
+                           return (
+                              <button
+                                 key={opt.dayNumber}
+                                 type="button"
+                                 disabled={isFuture}
+                                 onClick={() => handleSelectDay(opt.dayNumber)}
+                                 className={`w-full min-w-0 py-2 px-1 rounded-xl text-center flex flex-col items-center justify-center transition-all ${
+                                    isSelected
+                                       ? "bg-white text-black font-bold shadow-md ring-2 ring-white/20"
+                                       : isFuture
+                                         ? "bg-[#1c1c1c]/40 text-[#545454] cursor-not-allowed border border-transparent opacity-50"
+                                         : "bg-[#1c1c1c] text-[#d1d1d1] hover:bg-[#292929] hover:text-white border border-[#2e2e2e]"
+                                 }`}
+                                 title={
+                                    isFuture
+                                       ? `Day ${opt.dayNumber} (${opt.dateKey}) - Future date (cannot log or edit yet)`
+                                       : `${opt.label} (${opt.dateKey}) - ${formatSecondsToClock(loggedSec)} logged`
+                                 }
+                              >
+                                 <span className="text-[10px] uppercase tracking-wider opacity-75 leading-none">
+                                    {opt.weekday}
+                                 </span>
+                                 <span className="text-xs font-semibold mt-1 leading-none">
+                                    D{opt.dayNumber}
+                                 </span>
+                                 <span
+                                    className={`text-[9px] mt-1 font-mono leading-none ${
+                                       isSelected
+                                          ? "text-black font-semibold"
+                                          : isFuture
+                                            ? "text-[#404040]"
+                                            : hasHours
+                                              ? "text-[#4ade80]"
+                                              : "text-[#666666]"
+                                    }`}
+                                 >
+                                    {isFuture
+                                       ? "Locked"
+                                       : hasHours
+                                         ? `${Math.floor(loggedSec / 3600)}h`
+                                         : "-"}
+                                 </span>
+                              </button>
+                           );
+                        })}
+                     </div>
+
+                     <div className="flex items-center justify-between text-[11px] text-[#868686] px-1 pt-0.5">
+                        <span>
+                           Currently Logged on {selectedDayOption.shortLabel}:
+                        </span>
+                        <span className="font-mono font-semibold text-white">
+                           {formatSecondsToClock(currentDayExistingSeconds)}
+                        </span>
+                     </div>
+                  </div>
+
+                  {/* Future date lock warning */}
+                  {selectedDayOption.isFuture && (
+                     <div className="flex items-center gap-2.5 p-3 rounded-xl text-xs font-medium bg-[#450a0a]/40 border border-[#ef4444]/40 text-[#f87171]">
                         <AlertTriangle className="h-4 w-4 shrink-0" />
-                     )}
-                     <span>{feedback.message}</span>
-                  </div>
-               )}
+                        <span>
+                           Future date ({selectedDayOption.dateKey}): moderators
+                           cannot add or edit study hours for future dates.
+                        </span>
+                     </div>
+                  )}
 
-               {/* Modal Actions */}
-               <div className="flex items-center justify-end gap-3 pt-2">
-                  <Button
-                     type="button"
-                     variant="outline"
-                     onClick={onClose}
-                     disabled={isPending}
-                     className="h-10 px-5 rounded-xl border-[#383838] bg-[#1c1c1c] text-white hover:bg-[#292929] text-xs font-semibold"
-                  >
-                     Cancel
-                  </Button>
-                  <Button
-                     type="submit"
-                     disabled={
-                        isPending ||
-                        selectedDayOption.isFuture ||
-                        reason.trim().length < 3
-                     }
-                     className="h-10 px-5 rounded-xl bg-white text-black hover:bg-[#e0e0e0] text-xs font-bold gap-2 shadow-sm disabled:opacity-50"
-                  >
-                     {isPending && (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {/* Input Form */}
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                     {/* Time Inputs */}
+                     <div className="space-y-2">
+                        <label className="block text-xs font-semibold text-[#a3a3a3]">
+                           New Study Duration (HH:MM:SS)
+                        </label>
+                        <div className="grid grid-cols-3 gap-3">
+                           <div>
+                              <span className="block text-[11px] text-[#868686] mb-1">
+                                 Hours (0–24)
+                              </span>
+                              <Input
+                                 type="number"
+                                 min="0"
+                                 max="24"
+                                 placeholder="0"
+                                 value={hours}
+                                 disabled={
+                                    isPending || selectedDayOption.isFuture
+                                 }
+                                 onChange={(e) => setHours(e.target.value)}
+                                 className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base disabled:opacity-40"
+                              />
+                           </div>
+                           <div>
+                              <span className="block text-[11px] text-[#868686] mb-1">
+                                 Minutes (0–59)
+                              </span>
+                              <Input
+                                 type="number"
+                                 min="0"
+                                 max="59"
+                                 placeholder="0"
+                                 value={minutes}
+                                 disabled={
+                                    isPending || selectedDayOption.isFuture
+                                 }
+                                 onChange={(e) => setMinutes(e.target.value)}
+                                 className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base disabled:opacity-40"
+                              />
+                           </div>
+                           <div>
+                              <span className="block text-[11px] text-[#868686] mb-1">
+                                 Seconds (0–59)
+                              </span>
+                              <Input
+                                 type="number"
+                                 min="0"
+                                 max="59"
+                                 placeholder="0"
+                                 value={seconds}
+                                 disabled={
+                                    isPending || selectedDayOption.isFuture
+                                 }
+                                 onChange={(e) => setSeconds(e.target.value)}
+                                 className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-center font-mono text-base disabled:opacity-40"
+                              />
+                           </div>
+                        </div>
+
+                        {/* Quick Clear Action */}
+                        <div className="flex items-center pt-1">
+                           <button
+                              type="button"
+                              onClick={handleClearTime}
+                              disabled={isPending || selectedDayOption.isFuture}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#222222] hover:bg-[#2e2e2e] text-[#ef4444] hover:text-[#f87171] border border-[#383838] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                           >
+                              <RotateCcw className="h-3 w-3" />
+                              Clear Time
+                           </button>
+                        </div>
+                     </div>
+
+                     {/* Mandatory Audit Reason */}
+                     {(() => {
+                        const isFormZeroTime =
+                           parseInt(hours || "0", 10) === 0 &&
+                           parseInt(minutes || "0", 10) === 0 &&
+                           parseInt(seconds || "0", 10) === 0;
+
+                        return (
+                           <div className="space-y-1.5">
+                              <label className="block text-xs font-semibold text-[#a3a3a3]">
+                                 Mandatory Reason for Override{" "}
+                                 {isFormZeroTime ? (
+                                    <span className="text-[#868686] font-normal">
+                                       (Optional if clearing to 0)
+                                    </span>
+                                 ) : (
+                                    <span className="text-red-400">*</span>
+                                 )}
+                              </label>
+                              <Input
+                                 type="text"
+                                 placeholder={
+                                    isFormZeroTime
+                                       ? "Optional: defaults to 'Set study hours to 00:00:00 by moderator'"
+                                       : "e.g. Timer sync glitch, approved offline study, host correction"
+                                 }
+                                 value={reason}
+                                 disabled={
+                                    isPending || selectedDayOption.isFuture
+                                 }
+                                 onChange={(e) => setReason(e.target.value)}
+                                 className="h-11 rounded-xl bg-[#222222] border-[#383838] focus:border-white text-white text-xs px-3.5 disabled:opacity-40"
+                              />
+                              <p className="text-[11px] text-[#868686] flex items-center gap-1.5 pt-0.5">
+                                 <ShieldAlert className="h-3.5 w-3.5 text-[#3b82f6] shrink-0" />
+                                 <span>
+                                    Permanent audit log: recorded with your
+                                    moderator ID and reason.
+                                 </span>
+                              </p>
+                           </div>
+                        );
+                     })()}
+
+                     {/* Feedback banner */}
+                     {feedback && (
+                        <div
+                           className={`flex items-center gap-2.5 p-3 rounded-xl text-xs font-medium border ${
+                              feedback.type === "success"
+                                 ? "bg-[#144520]/40 border-[#22c55e]/40 text-[#4ade80]"
+                                 : "bg-[#450a0a]/40 border-[#ef4444]/40 text-[#f87171]"
+                           }`}
+                        >
+                           {feedback.type === "success" ? (
+                              <Check className="h-4 w-4 shrink-0" />
+                           ) : (
+                              <AlertTriangle className="h-4 w-4 shrink-0" />
+                           )}
+                           <span>{feedback.message}</span>
+                        </div>
                      )}
-                     Save Override
-                  </Button>
-               </div>
-            </form>
+
+                     {/* Modal Actions */}
+                     <div className="flex items-center justify-end gap-3 pt-2">
+                        <Button
+                           type="button"
+                           variant="outline"
+                           onClick={onClose}
+                           disabled={isPending}
+                           className="h-10 px-5 rounded-xl border-[#383838] bg-[#1c1c1c] text-white hover:bg-[#292929] text-xs font-semibold"
+                        >
+                           Cancel
+                        </Button>
+                        {(() => {
+                           const isFormZeroTime =
+                              parseInt(hours || "0", 10) === 0 &&
+                              parseInt(minutes || "0", 10) === 0 &&
+                              parseInt(seconds || "0", 10) === 0;
+
+                           return (
+                              <Button
+                                 type="submit"
+                                 disabled={
+                                    isPending ||
+                                    selectedDayOption.isFuture ||
+                                    (!isFormZeroTime &&
+                                       reason.trim().length < 3)
+                                 }
+                                 className="h-10 px-5 rounded-xl bg-white text-black hover:bg-[#e0e0e0] text-xs font-bold gap-2 shadow-sm disabled:opacity-50"
+                              >
+                                 {isPending && (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                 )}
+                                 Save Override
+                              </Button>
+                           );
+                        })()}
+                     </div>
+                  </form>
+               </>
+            )}
          </div>
       </div>
    );
