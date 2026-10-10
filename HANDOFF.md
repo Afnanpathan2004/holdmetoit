@@ -3,7 +3,7 @@
 > **Project:** HoldMeToIt (Gamified Study Accountability & Challenge Management Platform)  
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
-> **Last Updated:** 2026-10-10 (Session 77 — Overview Punishment PFP Disclosure & About Tab Merge)  
+> **Last Updated:** 2026-10-10 (Session 78 — Admin Roster Participant Removal)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
@@ -13,8 +13,8 @@
 | Gate                                         | Result (2026-10-10, branch `afnan-jr`)                                                                                                                                                                                                                                |
 | :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                                      |
-| `npm run test`                               | ✅ 75 files green (788/788 tests passing)                                                                                                                                                                                                                             |
-| `npm run build`                              | ✅ 10 routes compiled (9 app routes + `_not-found`)                                                                                                                                                                                                                   |
+| `npm run test`                               | ✅ 75 files green (794/794 tests passing)                                                                                                                                                                                                                             |
+| `npm run build`                              | ✅ 11 routes compiled (production build clean)                                                                                                                                                                                                                        |
 | Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~91%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                                            |
 | Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                                        |
@@ -75,15 +75,16 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ### 2.1 Shipped Beyond the Original P0 Spec
 
-| Capability                                            | Location                                                     | Notes                                                                                               |
-| :---------------------------------------------------- | :----------------------------------------------------------- | :-------------------------------------------------------------------------------------------------- |
-| Categorized Daily/Weekly to-do board with drag & drop | `features/tasks/`, `cockpit-tasks-section.tsx`               | Offline-first IndexedDB (`holdmetoit_db`), debounced background sync, guest→user migration on login |
-| Global Participant Preview Mode                       | `features/auth/presentation/auth-nav.tsx`, `preview-mode.ts` | 1-click header toggle for mods/devs to view all pages as regular participants globally              |
-| Feedback & bug reporting                              | `features/feedback/`, `app/api/feedback/route.ts`            | Floating trigger button, `FB-XX` codes, Discord bot embeds, LogRocket session link                  |
-| LogRocket observability                               | `core/observability/`                                        | Session replay, `error.tsx` / `global-error.tsx` boundaries                                         |
-| Manual weekly slot leaderboard                        | `features/leaderboard/*manual*`, `/challenge/[id]/manual`    | ⚠️ Stores `sessionHours` as `Decimal(6,2)`, which violates **Law L8** (integer seconds)             |
-| Dynamic cockpit banner (7 variants) & hero banner     | `cockpit-banner.ts`, `challenge-hero-banner.tsx`             | Matches the Figma                                                                                   |
-| `DEV` role                                            | `auth-roles.ts`, `discord-guild.service.ts`                  | Grants full admin plus developer access                                                             |
+| Capability                                            | Location                                                     | Notes                                                                                                                                                 |
+| :---------------------------------------------------- | :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Categorized Daily/Weekly to-do board with drag & drop | `features/tasks/`, `cockpit-tasks-section.tsx`               | Offline-first IndexedDB (`holdmetoit_db`), debounced background sync, guest→user migration on login                                                   |
+| Global Participant Preview Mode                       | `features/auth/presentation/auth-nav.tsx`, `preview-mode.ts` | 1-click header toggle for mods/devs to view all pages as regular participants globally                                                                |
+| Feedback & bug reporting                              | `features/feedback/`, `app/api/feedback/route.ts`            | Floating trigger button, `FB-XX` codes, Discord bot embeds, LogRocket session link                                                                    |
+| LogRocket observability                               | `core/observability/`                                        | Session replay, `error.tsx` / `global-error.tsx` boundaries                                                                                           |
+| Manual weekly slot leaderboard                        | `features/leaderboard/*manual*`, `/challenge/[id]/manual`    | ⚠️ Stores `sessionHours` as `Decimal(6,2)`, which violates **Law L8** (integer seconds)                                                               |
+| Dynamic cockpit banner (7 variants) & hero banner     | `cockpit-banner.ts`, `challenge-hero-banner.tsx`             | Matches the Figma                                                                                                                                     |
+| `DEV` role                                            | `auth-roles.ts`, `discord-guild.service.ts`                  | Grants full admin plus developer access                                                                                                               |
+| Admin roster participant removal                      | `challenge-manage-tab.tsx`, `challenge-admin.repository.ts`  | Host removes a participant (`UPCOMING`/`ACTIVE` only) with a mandatory audit reason; purges logs, punishment, leaderboard entry, and team-member rows |
 
 ---
 
@@ -259,4 +260,17 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
    - `npm run typecheck` ✅ (0 errors)
    - `npm run test` ✅ (75/75 test files passing, 788/788 tests green)
    - `npm run build` ✅ (10 routes compiled successfully)
+
+### Session 78 — 2026-10-10 (afnan-jr)
+
+- **Agent Role:** Admin Operations & Broadcaster Agent, Data & Identity Agent.
+- **Admin Roster Participant Removal (Delete Participant on Admin Control):**
+   - **Repository (`features/challenges/data/challenge-admin.repository.ts`):** Added `removeChallengeParticipant`. Guards participant existence and blocks removal when the derived status is `COMPLETED` (allows `UPCOMING`/`ACTIVE`). Inside a transaction, deletes dependent rows explicitly in order — `dailyStudyLogV2` → `punishmentRecord` → `leaderboardEntry` (by `challengeId` + `userId`) → `teamMember` (by `userId` + `challengeId`) — then the `challengeParticipant`, and appends a `ROSTER_EDIT` audit event (previous roster state, `newValue: null`, required reason). The explicit deletes cover the `LeaderboardEntry`/`TeamMember` rows that do not cascade from `ChallengeParticipant`.
+   - **Server Action (`features/challenges/api/challenge-admin.actions.ts`):** Added `removeChallengeParticipantAction` with a Zod schema (`challengeId`, `participantId`, `reason` min 3 chars), `requireAdminUser()` guard, scoreboard cache invalidation, and path revalidation.
+   - **Presentation (`features/challenges/presentation/challenge-manage-tab.tsx`):** Added a destructive `UserMinus` control per roster row (hidden on `COMPLETED` challenges) and a confirmation modal requiring an audit reason, with success/error feedback. Removal is applied optimistically via local state (no `router.refresh()`), so the modal closes and only the removed row disappears instead of the whole route re-rendering.
+   - **Test Suite:** Added repository tests (ordered deletes + audit, not-found, completed rejection) and action tests (success, short reason, non-admin), and extended the `challengeParticipant` Prisma mock with `delete`.
+- **Quality Gates Verified:**
+   - `npm run typecheck` ✅ (0 errors)
+   - `npm run test` ✅ (75/75 test files passing, 794/794 tests green)
+   - `npm run build` ✅ (11 routes compiled successfully)
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).
