@@ -18,6 +18,7 @@ import {
    Search,
    Trash2,
    User as UserIcon,
+   UserMinus,
    X,
    RotateCcw,
    Target,
@@ -35,6 +36,7 @@ import {
    kickoffChallengeAction,
    lockChallengeResultsAction,
    reassignParticipantTeamAction,
+   removeChallengeParticipantAction,
    updateChallengeAction,
 } from "@/features/challenges/api/challenge-admin.actions";
 import { discardChallengeImageUploadAction } from "@/features/challenges/api/punishment-pfp.actions";
@@ -76,6 +78,10 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
    const [isDeleting, setIsDeleting] = useState(false);
    const [showDeleteModal, setShowDeleteModal] = useState(false);
    const [reassigningId, setReassigningId] = useState<string | null>(null);
+   const [removeTarget, setRemoveTarget] =
+      useState<ScoreboardStandingEntry | null>(null);
+   const [removeReason, setRemoveReason] = useState("");
+   const [isRemoving, setIsRemoving] = useState(false);
 
    // Admin Hours Override State
    const [overrideParticipant, setOverrideParticipant] =
@@ -120,7 +126,15 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
       return map;
    });
 
-   const filteredRoster = challenge.standings.filter((p) => {
+   const [removedParticipantIds, setRemovedParticipantIds] = useState<
+      Set<string>
+   >(() => new Set());
+
+   const visibleStandings = challenge.standings.filter(
+      (p) => !removedParticipantIds.has(p.participantId)
+   );
+
+   const filteredRoster = visibleStandings.filter((p) => {
       const q = rosterSearch.toLowerCase().trim();
       if (q) {
          const matches =
@@ -226,7 +240,8 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
    const [imageInputVersion, setImageInputVersion] = useState(0);
    const [isSaving, setIsSaving] = useState(false);
    const isUploading = isBannerUploading || isPfpUploading;
-   const isBusy = isPending || isSaving || isUploading || isDeleting;
+   const isBusy =
+      isPending || isSaving || isUploading || isDeleting || isRemoving;
 
    useEffect(() => {
       setSavedImages({
@@ -430,6 +445,45 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
             message: "Participant moved to new house successfully.",
          });
          router.refresh();
+      } else {
+         setFeedback({ type: "error", message: res.message });
+      }
+   };
+
+   const handleRemoveParticipant = async () => {
+      if (!removeTarget) return;
+
+      if (removeReason.trim().length < 3) {
+         setFeedback({
+            type: "error",
+            message: "Please provide an audit reason of at least 3 characters.",
+         });
+         return;
+      }
+
+      setIsRemoving(true);
+      setFeedback(null);
+
+      const res = await removeChallengeParticipantAction({
+         challengeId: challenge.id,
+         participantId: removeTarget.participantId,
+         reason: removeReason.trim(),
+      });
+
+      setIsRemoving(false);
+
+      if (res.ok) {
+         setRemovedParticipantIds((prev) => {
+            const next = new Set(prev);
+            next.add(removeTarget.participantId);
+            return next;
+         });
+         setFeedback({
+            type: "success",
+            message: `${removeTarget.displayName} has been removed from the challenge.`,
+         });
+         setRemoveTarget(null);
+         setRemoveReason("");
       } else {
          setFeedback({ type: "error", message: res.message });
       }
@@ -754,7 +808,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                   </div>
 
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#1c1c1c] border border-[#292929] text-[#868686] self-start sm:self-auto">
-                     {filteredRoster.length} of {challenge.standings.length}{" "}
+                     {filteredRoster.length} of {visibleStandings.length}{" "}
                      scholars
                   </span>
                </div>
@@ -799,7 +853,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                            className="h-8 w-full rounded-xl border border-[#383838] bg-[#242424] px-3 pr-8 text-xs text-[#ffffff] focus:border-[#ffffff]/60 focus:outline-none appearance-none cursor-pointer"
                         >
                            <option value="ALL">
-                              All Houses ({challenge.standings.length})
+                              All Houses ({visibleStandings.length})
                            </option>
                            {teams.map((t) => (
                               <option
@@ -833,7 +887,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                   </div>
                )}
 
-               {challenge.standings.length === 0 ? (
+               {visibleStandings.length === 0 ? (
                   <div className="rounded-2xl border border-[#262626] bg-[#1c1c1c] p-6 text-center text-xs text-[#868686]">
                      No scholars have enrolled in this challenge yet.
                   </div>
@@ -981,6 +1035,21 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
 
                                     {isReassigning && (
                                        <Loader2 className="h-4 w-4 animate-spin text-[#868686]" />
+                                    )}
+
+                                    {challenge.status !== "COMPLETED" && (
+                                       <button
+                                          type="button"
+                                          onClick={() => {
+                                             setRemoveTarget(participant);
+                                             setRemoveReason("");
+                                          }}
+                                          disabled={isBusy}
+                                          className="h-9 w-9 rounded-xl border border-transparent hover:border-[#383838] hover:bg-[#292929] text-[#868686] hover:text-[#ef4444] flex items-center justify-center transition-colors shrink-0 disabled:opacity-50"
+                                          title="Remove participant from challenge"
+                                       >
+                                          <UserMinus className="h-4 w-4" />
+                                       </button>
                                     )}
                                  </div>
                               </div>
@@ -1156,6 +1225,74 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         )}
                         Yes, Delete Event
+                     </Button>
+                  </div>
+               </div>
+            </div>
+         )}
+
+         {/* Remove Participant Confirmation Modal */}
+         {removeTarget && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+               <div className="bg-[#141414] border border-[#262626] rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-6 shadow-2xl">
+                  <div className="flex items-center gap-3 text-red-400">
+                     <div className="h-10 w-10 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
+                        <UserMinus className="h-5 w-5" />
+                     </div>
+                     <h3 className="text-base font-bold text-white">
+                        Remove Participant?
+                     </h3>
+                  </div>
+
+                  <p className="text-xs leading-relaxed text-[#a3a3a3]">
+                     You are about to remove{" "}
+                     <strong className="text-white">
+                        {removeTarget.displayName}
+                     </strong>{" "}
+                     from{" "}
+                     <strong className="text-white">
+                        &quot;{challenge.title}&quot;
+                     </strong>
+                     . Their study logs, punishment record, and standings entry
+                     will be permanently deleted. This action cannot be undone.
+                  </p>
+
+                  <div className="space-y-1.5">
+                     <label className="text-xs font-semibold text-[#a3a3a3]">
+                        Audit Reason <span className="text-red-400">*</span>
+                     </label>
+                     <Input
+                        value={removeReason}
+                        onChange={(e) => setRemoveReason(e.target.value)}
+                        placeholder="e.g. Duplicate enrollment, rule violation..."
+                        className="h-11 rounded-2xl bg-[#292929] border-[#383838] focus:border-[#545454] text-white px-4 text-xs"
+                     />
+                  </div>
+
+                  <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
+                     <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                           setRemoveTarget(null);
+                           setRemoveReason("");
+                        }}
+                        disabled={isRemoving}
+                        className="h-11 px-5 w-full sm:w-auto rounded-2xl border-[#383838] bg-[#1c1c1c] text-white hover:bg-[#292929] text-xs font-semibold"
+                     >
+                        Cancel
+                     </Button>
+
+                     <Button
+                        type="button"
+                        onClick={handleRemoveParticipant}
+                        disabled={isRemoving}
+                        className="h-11 px-5 w-full sm:w-auto rounded-2xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold gap-2"
+                     >
+                        {isRemoving && (
+                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        )}
+                        Yes, Remove Participant
                      </Button>
                   </div>
                </div>
