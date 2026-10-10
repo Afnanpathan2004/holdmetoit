@@ -236,6 +236,72 @@ describe("ChallengeLeaderboardTab", () => {
       expect(html).toContain("Next");
    });
 
+   it("renders search input, team filter dropdown, and View by Team mode toggle", () => {
+      const html = renderToStaticMarkup(
+         createElement(ChallengeLeaderboardTab, {
+            challenge: mockChallenge,
+         })
+      );
+
+      // Search input
+      expect(html).toContain("Search scholar by name, @handle...");
+      // View mode toggle buttons
+      expect(html).toContain("Overall Rank");
+      expect(html).toContain("View by Team");
+      // Team filter dropdown
+      expect(html).toContain("All Teams");
+      expect(html).toContain("Serpents");
+      expect(html).toContain("Raven");
+      // Pace filter dropdown
+      expect(html).toContain("All Pace Statuses");
+      expect(html).toContain("On Track / Ahead");
+      expect(html).toContain("Catch-Up / Behind");
+   });
+
+   it("renders teams side-by-side in a responsive grid when initialViewMode is 'team'", () => {
+      const html = renderToStaticMarkup(
+         createElement(ChallengeLeaderboardTab, {
+            challenge: mockChallenge,
+            initialViewMode: "team",
+         })
+      );
+
+      // Verify side-by-side grid classes are present
+      expect(html).toContain(
+         "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"
+      );
+
+      // Both teams are rendered
+      expect(html).toContain("Serpents");
+      expect(html).toContain("Raven");
+
+      // Serpents has participant Afnan (#1 in team, #1 overall)
+      expect(html).toContain("#1");
+      expect(html).toContain("Afnan");
+      expect(html).toContain("Leading House");
+
+      // Raven has empty message since no scholars enrolled yet in mockChallenge
+      expect(html).toContain("No scholars in Raven match the active filters.");
+   });
+
+   it("renders full width single column when only one team exists in View by Team mode", () => {
+      const singleTeamChallenge: ChallengeScoreboardViewModel = {
+         ...mockChallenge,
+         teams: [mockChallenge.teams[0]!],
+      };
+
+      const html = renderToStaticMarkup(
+         createElement(ChallengeLeaderboardTab, {
+            challenge: singleTeamChallenge,
+            initialViewMode: "team",
+         })
+      );
+
+      // Should NOT have lg:grid-cols-2 when there is only 1 team
+      expect(html).not.toContain("lg:grid-cols-2");
+      expect(html).toContain("Serpents");
+   });
+
    it("renders dynamic team colors for head-to-head cards and pill badges", () => {
       const customChallenge: ChallengeScoreboardViewModel = {
          ...mockChallenge,

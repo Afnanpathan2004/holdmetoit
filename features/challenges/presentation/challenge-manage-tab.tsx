@@ -18,6 +18,8 @@ import {
    Search,
    Trash2,
    User as UserIcon,
+   X,
+   RotateCcw,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -78,18 +80,61 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
 
    // Participant Roster & Hours Management Pagination State
    const [rosterSearch, setRosterSearch] = useState("");
+   const [rosterTeamFilter, setRosterTeamFilter] = useState("ALL");
    const [rosterPage, setRosterPage] = useState(1);
    const rosterPageSize = 8;
 
+   const [participantTeamMap, setParticipantTeamMap] = useState<
+      Record<string, string>
+   >(() => {
+      const map: Record<string, string> = {};
+      challenge.standings.forEach((p) => {
+         map[p.participantId] = p.teamId || "no-assigned";
+      });
+      return map;
+   });
+
    const filteredRoster = challenge.standings.filter((p) => {
       const q = rosterSearch.toLowerCase().trim();
-      if (!q) return true;
-      return (
-         p.displayName.toLowerCase().includes(q) ||
-         (p.username && p.username.toLowerCase().includes(q)) ||
-         p.teamName.toLowerCase().includes(q)
-      );
+      if (q) {
+         const matches =
+            p.displayName.toLowerCase().includes(q) ||
+            (p.username && p.username.toLowerCase().includes(q)) ||
+            p.teamName.toLowerCase().includes(q);
+         if (!matches) return false;
+      }
+
+      if (rosterTeamFilter !== "ALL") {
+         const currentTeamId =
+            participantTeamMap[p.participantId] || p.teamId || "no-assigned";
+         if (rosterTeamFilter === "UNASSIGNED") {
+            if (currentTeamId !== "no-assigned" && currentTeamId !== "") {
+               return false;
+            }
+         } else {
+            const matchedTeam = challenge.teams.find(
+               (t) => t.id === rosterTeamFilter
+            );
+            if (
+               currentTeamId !== rosterTeamFilter &&
+               (!matchedTeam || p.teamName !== matchedTeam.name)
+            ) {
+               return false;
+            }
+         }
+      }
+
+      return true;
    });
+
+   const hasActiveRosterFilters =
+      rosterSearch.trim() !== "" || rosterTeamFilter !== "ALL";
+
+   const handleResetRosterFilters = () => {
+      setRosterSearch("");
+      setRosterTeamFilter("ALL");
+      setRosterPage(1);
+   };
 
    const totalRosterPages = Math.ceil(filteredRoster.length / rosterPageSize);
    const safeRosterPage = Math.min(
@@ -120,6 +165,7 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
          teamName: participant.teamName,
          teamColor: participant.teamColor,
          dailyLogs: participant.dailyLogs,
+         totalLoggedSeconds: participant.totalLoggedSeconds,
       });
       setOverrideInitialDay(dayNum);
       setIsOverrideModalOpen(true);
@@ -174,16 +220,6 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
          mascotUrl: t.mascotUrl || "",
       }))
    );
-
-   const [participantTeamMap, setParticipantTeamMap] = useState<
-      Record<string, string>
-   >(() => {
-      const map: Record<string, string> = {};
-      for (const s of challenge.standings) {
-         map[s.participantId] = s.teamId;
-      }
-      return map;
-   });
 
    const handleReset = () => {
       if (isBusy) return;
@@ -691,30 +727,104 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                      </p>
                   </div>
 
-                  {challenge.standings.length > 0 && (
-                     <div className="relative w-full sm:w-56 shrink-0">
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#1c1c1c] border border-[#292929] text-[#868686] self-start sm:self-auto">
+                     {filteredRoster.length} of {challenge.standings.length}{" "}
+                     scholars
+                  </span>
+               </div>
+
+               {challenge.standings.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+                     {/* Search bar */}
+                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#868686]" />
                         <Input
                            type="text"
-                           placeholder="Search roster..."
+                           placeholder="Search roster by name, @handle, team..."
                            value={rosterSearch}
                            onChange={(e) => {
                               setRosterSearch(e.target.value);
                               setRosterPage(1);
                            }}
-                           className="h-8 pl-8 pr-3 bg-[#242424] border-[#383838] text-[#ffffff] placeholder-[#868686] text-xs rounded-xl"
+                           className="h-8 pl-8 pr-7 bg-[#242424] border-[#383838] text-[#ffffff] placeholder-[#868686] text-xs rounded-xl"
                         />
+                        {rosterSearch && (
+                           <button
+                              type="button"
+                              onClick={() => {
+                                 setRosterSearch("");
+                                 setRosterPage(1);
+                              }}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#868686] hover:text-white p-0.5"
+                           >
+                              <X className="h-3 w-3" />
+                           </button>
+                        )}
                      </div>
-                  )}
-               </div>
+
+                     {/* Team Filter Dropdown (View by Team) */}
+                     <div className="relative w-full sm:w-56 shrink-0">
+                        <select
+                           value={rosterTeamFilter}
+                           onChange={(e) => {
+                              setRosterTeamFilter(e.target.value);
+                              setRosterPage(1);
+                           }}
+                           className="h-8 w-full rounded-xl border border-[#383838] bg-[#242424] px-3 pr-8 text-xs text-[#ffffff] focus:border-[#ffffff]/60 focus:outline-none appearance-none cursor-pointer"
+                        >
+                           <option value="ALL">
+                              All Houses ({challenge.standings.length})
+                           </option>
+                           {teams.map((t) => (
+                              <option
+                                 key={t.id || t.name}
+                                 value={t.id || t.name}
+                              >
+                                 {t.iconEmoji ? `${t.iconEmoji} ` : ""}
+                                 {t.name}
+                              </option>
+                           ))}
+                           <option value="UNASSIGNED">
+                              Unassigned Scholars
+                           </option>
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#868686] pointer-events-none" />
+                     </div>
+
+                     {hasActiveRosterFilters && (
+                        <Button
+                           type="button"
+                           variant="outline"
+                           size="sm"
+                           onClick={handleResetRosterFilters}
+                           className="h-8 px-2.5 text-xs rounded-xl border-[#383838] bg-[#1c1c1c] hover:bg-[#292929] text-[#d1d1d1] shrink-0"
+                           title="Clear roster filters"
+                        >
+                           <RotateCcw className="h-3 w-3 mr-1" />
+                           Reset
+                        </Button>
+                     )}
+                  </div>
+               )}
 
                {challenge.standings.length === 0 ? (
                   <div className="rounded-2xl border border-[#262626] bg-[#1c1c1c] p-6 text-center text-xs text-[#868686]">
                      No scholars have enrolled in this challenge yet.
                   </div>
                ) : filteredRoster.length === 0 ? (
-                  <div className="rounded-2xl border border-[#262626] bg-[#1c1c1c] p-6 text-center text-xs text-[#868686]">
-                     No scholars match your roster search.
+                  <div className="rounded-2xl border border-[#262626] bg-[#1c1c1c] p-6 text-center space-y-2">
+                     <p className="text-xs text-[#868686]">
+                        No scholars match your roster search or team filter.
+                     </p>
+                     <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetRosterFilters}
+                        className="h-7 px-3 text-[11px] rounded-lg border-[#383838] bg-[#242424] hover:bg-[#333333] text-white"
+                     >
+                        Reset filters
+                     </Button>
                   </div>
                ) : (
                   <div className="space-y-3 rounded-2xl border border-[#262626] bg-[#1a1a1a] p-3 sm:p-4">

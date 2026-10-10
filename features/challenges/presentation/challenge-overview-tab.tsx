@@ -10,8 +10,13 @@ import {
    Shield,
    Award,
    Clock,
+   Search,
+   ChevronDown,
+   X,
+   RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DataPagination } from "@/components/ui/data-pagination";
 import {
    AdminHoursOverrideModal,
@@ -32,6 +37,8 @@ export function ChallengeOverviewTab({
    challenge,
    isAdmin = false,
 }: ChallengeOverviewTabProps) {
+   const [searchQuery, setSearchQuery] = useState("");
+   const [selectedTeamId, setSelectedTeamId] = useState("ALL");
    const [participantPage, setParticipantPage] = useState(1);
    const participantPageSize = 8;
    const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
@@ -48,19 +55,47 @@ export function ChallengeOverviewTab({
          teamName: entry.teamName,
          teamColor: entry.teamColor,
          dailyLogs: entry.dailyLogs,
+         totalLoggedSeconds: entry.totalLoggedSeconds,
       });
       setIsOverrideModalOpen(true);
    };
    const { standings, teams } = challenge;
 
-   const totalParticipantPages = Math.ceil(
-      standings.length / participantPageSize
-   );
+   const filteredParticipants = standings.filter((p) => {
+      const q = searchQuery.toLowerCase().trim();
+      if (q) {
+         const matches =
+            p.displayName.toLowerCase().includes(q) ||
+            (p.username && p.username.toLowerCase().includes(q)) ||
+            p.teamName.toLowerCase().includes(q);
+         if (!matches) return false;
+      }
+
+      if (selectedTeamId !== "ALL") {
+         if (p.teamId !== selectedTeamId && p.teamName !== selectedTeamId) {
+            return false;
+         }
+      }
+
+      return true;
+   });
+
+   const hasActiveFilters =
+      searchQuery.trim() !== "" || selectedTeamId !== "ALL";
+
+   const handleResetFilters = () => {
+      setSearchQuery("");
+      setSelectedTeamId("ALL");
+      setParticipantPage(1);
+   };
+
+   const totalParticipantPages =
+      Math.ceil(filteredParticipants.length / participantPageSize) || 1;
    const safeParticipantPage = Math.min(
       Math.max(1, participantPage),
       Math.max(1, totalParticipantPages)
    );
-   const displayedParticipants = standings.slice(
+   const displayedParticipants = filteredParticipants.slice(
       (safeParticipantPage - 1) * participantPageSize,
       safeParticipantPage * participantPageSize
    );
@@ -161,21 +196,104 @@ export function ChallengeOverviewTab({
 
          {/* 2. Right Column: Participants List (Challenge/Default 64:1806) */}
          <div className="lg:col-span-5">
-            <div className="rounded-3xl border border-[#262626] bg-[#141414] p-6 shadow-lg space-y-4">
-               <div className="flex items-center justify-between">
+            <div className="rounded-3xl border border-[#262626] bg-[#141414] p-5 sm:p-6 shadow-lg space-y-4">
+               <div className="flex items-center justify-between pb-2 border-b border-[#262626]">
                   <h3 className="text-lg font-bold text-[#ffffff] flex items-center gap-2">
                      <Users className="h-4 w-4 text-[#868686]" />
                      Participants
                   </h3>
-                  <span className="text-xs font-semibold text-[#868686]">
-                     {standings.length} Enrolled
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#1c1c1c] border border-[#292929] text-[#868686]">
+                     {filteredParticipants.length} of {standings.length}
                   </span>
                </div>
+
+               {/* Search & Team Filter (View by Team) */}
+               {standings.length > 0 && (
+                  <div className="space-y-2">
+                     <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#868686]" />
+                        <Input
+                           type="text"
+                           placeholder="Search participants..."
+                           value={searchQuery}
+                           onChange={(e) => {
+                              setSearchQuery(e.target.value);
+                              setParticipantPage(1);
+                           }}
+                           className="h-8 pl-8 pr-7 bg-[#1c1c1c] border-[#333333] text-white text-xs placeholder:text-[#868686] rounded-xl"
+                        />
+                        {searchQuery && (
+                           <button
+                              type="button"
+                              onClick={() => {
+                                 setSearchQuery("");
+                                 setParticipantPage(1);
+                              }}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-[#868686] hover:text-white p-0.5"
+                           >
+                              <X className="h-3 w-3" />
+                           </button>
+                        )}
+                     </div>
+
+                     {teams.length > 0 && (
+                        <div className="relative">
+                           <select
+                              value={selectedTeamId}
+                              onChange={(e) => {
+                                 setSelectedTeamId(e.target.value);
+                                 setParticipantPage(1);
+                              }}
+                              className="h-8 w-full rounded-xl border border-[#333333] bg-[#1c1c1c] px-3 pr-8 text-xs text-[#ffffff] focus:border-[#ffffff]/60 focus:outline-none appearance-none cursor-pointer"
+                           >
+                              <option value="ALL">
+                                 All Teams ({standings.length})
+                              </option>
+                              {teams.map((t) => (
+                                 <option key={t.id} value={t.id}>
+                                    {t.iconEmoji ? `${t.iconEmoji} ` : ""}
+                                    {t.name} ({t.companionCount})
+                                 </option>
+                              ))}
+                           </select>
+                           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#868686] pointer-events-none" />
+                        </div>
+                     )}
+
+                     {hasActiveFilters && (
+                        <div className="flex items-center justify-between text-[11px] text-[#868686] pt-0.5">
+                           <span>Filtering active</span>
+                           <button
+                              type="button"
+                              onClick={handleResetFilters}
+                              className="hover:text-white underline underline-offset-2"
+                           >
+                              Clear filters
+                           </button>
+                        </div>
+                     )}
+                  </div>
+               )}
 
                {standings.length === 0 ? (
                   <p className="text-xs text-[#868686] text-center py-6 border border-dashed border-[#292929] rounded-xl">
                      No participants enrolled yet.
                   </p>
+               ) : filteredParticipants.length === 0 ? (
+                  <div className="text-center py-6 border border-dashed border-[#292929] rounded-xl space-y-2">
+                     <p className="text-xs text-[#868686]">
+                        No participants match your search or team filter.
+                     </p>
+                     <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetFilters}
+                        className="h-7 px-3 text-[11px] rounded-lg border-[#383838] bg-[#242424] hover:bg-[#333333] text-white"
+                     >
+                        Reset filters
+                     </Button>
+                  </div>
                ) : (
                   <div className="space-y-2.5">
                      {displayedParticipants.map((p) => {
@@ -260,7 +378,7 @@ export function ChallengeOverviewTab({
                <DataPagination
                   currentPage={safeParticipantPage}
                   totalPages={totalParticipantPages}
-                  totalItems={standings.length}
+                  totalItems={filteredParticipants.length}
                   pageSize={participantPageSize}
                   onPageChange={setParticipantPage}
                   itemLabel="participants"
