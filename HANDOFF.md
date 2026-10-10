@@ -4,17 +4,17 @@
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-10 (Session 80 — structured event logging + failure diagnostics; unified server/client logger, severity filtering, env-driven LogRocket app id)  
+> **Last Updated:** 2026-10-10 (Session 81 — consolidated dependabot migration: Vitest 5 + Tailwind CSS 4 on `afnan-jr`)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-10, PR #67 re-land + incident fixes on `fix/reland-pr67-isleave`)                                                                                                                                          |
+| Gate                                         | Result (2026-10-10, Session 81 — dependency consolidation on `afnan-jr`)                                                                                                                                                   |
 | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                           |
-| `npm run test`                               | ✅ 78 files green (all tests passing)                                                                                                                                                                                      |
+| `npm run test`                               | ✅ 79 files green (844/844 tests passing)                                                                                                                                                                                  |
 | `npm run build`                              | ✅ 11 routes compiled (production build clean)                                                                                                                                                                             |
 | Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~93%** — Dedicated public /challenges catalog, participant statistics cockpit, multi-view search & team filtering, mod audit log, daily hours overrides, weekly target hours override & admin roster removal complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                 |
@@ -149,35 +149,7 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ### Sessions 1–75 (Summarized)
 
-- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours prevention, cross-day task moving/rescheduling with validation, participant study log audit trail integration (`STUDY_LOG_ADDED`), dedicated public challenges catalog (`/challenges`) with role-gated admin controls, multi-view pagination guards (`DataPagination`), challenge-specific participant statistics profiles (`/challenge/[id]/participant/[participantId]`), multi-view search & team filtering with "View by Team" mode, dynamic team color palettes with WCAG AA contrast calculation (`team-colors.ts`), overall time reset to 0 (`executeAdminResetOverallHours`), and challenge tab reload URL sync (`challenge-tabs.ts`). Also: full migration of daily study logs from legacy V1 to `DailyStudyLogV2` (cockpit/participant-stats log resolution simplified).
-
-### Session 76 — 2026-10-10 (afnan)
-
-- **Agent Role:** Participant UI Agent, Scoring & Engine Agent.
-- **Leaderboard View Mode URL Sync & Participant Profile Navigation Context Preservation:**
-   - **Problem:** When viewing "Today's LB" (`viewMode = "today"`), clicking on any scholar's profile and returning back (via browser Back or profile breadcrumbs) reset the view to the default "Overall Rank" leaderboard because the view mode was stored only in component state.
-   - **Pure Domain Resolution (`features/leaderboard/domain/leaderboard.ts`):**
-      - Exported `LeaderboardViewMode` type (`"individual" | "today" | "team"`).
-      - Added pure domain helper `resolveLeaderboardViewMode(value?: string | null): LeaderboardViewMode` adhering to **Law L7** (pure TypeScript, zero UI or framework dependencies). Defaults safely to `"individual"`.
-      - Added 5 unit tests in `features/leaderboard/domain/leaderboard.test.ts`.
-   - **Server Page Query Parameter Handling (`app/challenge/[id]/page.tsx`):**
-      - Accepted optional `view?: string` in `searchParams`.
-      - Sanitized initial view mode using `resolveLeaderboardViewMode(searchParams?.view)` and forwarded `initialLeaderboardViewMode` to `<ChallengeView>`.
-   - **Client Presentation State & History Synchronization (`challenge-leaderboard-tab.tsx` & `challenge-view.tsx`):**
-      - On view mode switch, `handleViewModeChange` updates component state, resets pagination to page 1, and updates browser URL query string via `window.history.replaceState` (setting `?view=today` or `?view=team`, while cleanly deleting `view` when `"individual"` for canonical cleanliness).
-      - Listens to `popstate` events to restore view mode seamlessly on browser back/forward navigation.
-      - Cleans up `view` parameter when switching away from the Leaderboard tab.
-      - Added `getParticipantProfileUrl(participantId: string)` helper which automatically appends `?view=${viewMode}` when `viewMode !== "individual"`.
-      - Updated all participant profile navigation links across podium cards, team view members, desktop table rows, and mobile cards to use `getParticipantProfileUrl`.
-   - **Profile Breadcrumb & Empty State Context (`participant-profile-header.tsx`, `participant-stats-view.tsx`, `page.tsx`):**
-      - Forwarded `viewParam` from profile `searchParams.view` down through `ParticipantStatsView` to `ParticipantProfileHeader`.
-      - Updated the "Leaderboard" breadcrumb link and Empty State "Return to Leaderboard" button to navigate to `/challenge/[id]?tab=leaderboard&view=${viewParam}` when `viewParam` is present, restoring the exact previous view.
-   - **Unit Tests:**
-      - Added test in `challenge-leaderboard-tab.test.tsx` verifying profile links preserve `?view=today` in "today" mode and omit `?view` in "individual" mode.
-- **Quality Gates Verified:**
-   - `npm run typecheck` ✅ (0 errors)
-   - `npm run test` ✅ (75/75 test files passing, 775/775 tests green)
-   - `npm run build` ✅ (10 routes compiled successfully)
+- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours prevention, cross-day task moving/rescheduling with validation, participant study log audit trail integration (`STUDY_LOG_ADDED`), dedicated public challenges catalog (`/challenges`) with role-gated admin controls, multi-view pagination guards (`DataPagination`), challenge-specific participant statistics profiles (`/challenge/[id]/participant/[participantId]`), multi-view search & team filtering with "View by Team" mode, dynamic team color palettes with WCAG AA contrast calculation (`team-colors.ts`), overall time reset to 0 (`executeAdminResetOverallHours`), and challenge tab reload URL sync (`challenge-tabs.ts`). Also: full migration of daily study logs from legacy V1 to `DailyStudyLogV2` (cockpit/participant-stats log resolution simplified). Also (Session 76, afnan): leaderboard view-mode URL sync (`?view=individual|today|team`) with `popstate` restoration and participant-profile breadcrumb/empty-state context preservation.
 
 ### Session 77 — 2026-10-10 (afnan-jr)
 
@@ -268,6 +240,29 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
    - `npm run typecheck` ✅ (0 errors)
    - `npm run test` ✅ (78 files, 841/841 tests green)
    - `npm run build` ✅ (11 routes compiled successfully)
+- **NEXT STEP:** Fix D1 + D2 (challenge finalization after natural expiry & audit log persistence); D5 catch-up migrations (`feedbacks`, `sort_order`) as the follow-up stretch.
+
+### Session 81 — 2026-10-10 (afnan-jr — consolidated dependabot dependency migration)
+
+- **Agent Role:** Cross-cutting / dependency & toolchain maintenance.
+- **Scope:** Folded five open dependabot PRs (#71–#75) into one branch (`afnan-jr`) instead of merging them individually, then performed the required migrations and fixed the resulting breakages.
+   - #71 `source-map-js` 1.2.1 → 1.2.2 (transitive) — folded via lockfile.
+   - #72 `brace-expansion` → 1.1.21 / 2.1.7 / 5.0.12 (GHSA DoS) — forced with `npm update` (plain `npm install` kept the vulnerable pins).
+   - #73 `vitest` 3.2.7 → **5.0.3** (+ drops `tinypool`); #74 (vitest 4.1.11) dropped as the superseded major.
+   - #75 `tailwindcss` 3.4.19 → **4.3.3** (+ drops `postcss-selector-parser`, `chokidar`/`braces`).
+- **Toolchain migration:**
+   - `vitest.config.ts`: replaced the deprecated `esbuild: { jsx: "automatic" }` (ignored by Vitest 5's Vite 8 / Rolldown) with `oxc: { jsx: { runtime: "automatic" } }`; normalized `test.exclude` to globs (`**/node_modules/**`, `**/.next/**`, `**/prototype/**`).
+   - Tailwind v4: `postcss.config.mjs` now loads `@tailwindcss/postcss`; `app/globals.css` uses `@import "tailwindcss"; @config "../tailwind.config.ts";` (compat bridge keeps the JS design config + `tailwindcss-animate`); `tailwind.config.ts` `darkMode` normalized `["class"]` → `"class"` (v4 type) and `content` extended with `./core` + `./lib` (ISSUES #13).
+   - **Node floor:** Vitest 5 requires Node `^22.12.0`; CI `node-version` bumped `20` → `22`, `engines.node: ">=22.12.0"` added, `packageManager: "npm@12.2.0"`.
+   - Single lockfile: `bun.lock` deleted (ISSUES #11/D10); `package-lock.json` regenerated and verified with `npm ci`.
+- **Verification (all gates green):**
+   - `npm run typecheck` ✅ (0 errors)
+   - `npm run test` ✅ (79 files, 844/844 tests green — no test-source changes required; the v5 mocker kept all `vi.mock` patterns working)
+   - `npm run build` ✅ (11 routes compiled)
+   - Built + dev CSS bundles inspected: `animate-in` / `--tw-enter-opacity` / `zoom-in-95` (tailwindcss-animate), `rounded-3xl`, `hsl(var(--border))`, and font vars all emitted; `/challenges` dev render returns HTTP 200.
+   - `npm audit`: 20 → 8 advisories (ISSUES #5 resolved; remaining are Next 14 / `eslint-config-next` majors, out of scope).
+- **Known warning (non-blocking):** Vite warns that `vitest.config.ts` uses ESM syntax while loaded as CommonJS — future Vite majors default to the native config loader, so rename to `vitest.config.mts` (or add `"type": "module"`) when that lands.
+- **NEXT STEP:** Unchanged — Fix D1 + D2 (challenge finalization after natural expiry & audit log persistence); then D5 catch-up migrations (`feedbacks`, `sort_order`).
 
 ### Session 81 — 2026-10-11 (krish — Fix D1: Challenge Lock Results After Natural Expiry)
 
