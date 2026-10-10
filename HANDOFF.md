@@ -14,7 +14,7 @@
 | Gate                                         | Result (2026-10-10, branch `krish`)                                                                                                                                                                  |
 | :------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                     |
-| `npm run test`                               | ✅ 76 files green (803+/803+ tests passing)                                                                                                                                                          |
+| `npm run test`                               | ✅ 76 files green (819/819 tests passing)                                                                                                                                                            |
 | `npm run build`                              | ✅ 10 routes compiled (9 app routes + `_not-found`)                                                                                                                                                  |
 | Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~93%** — Dedicated public /challenges catalog, participant statistics cockpit, multi-view search & team filtering, mod audit log, daily hours overrides & weekly target hours override complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                           |
@@ -244,6 +244,6 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Resolved merge conflicts with `origin/dev` across repositories, leaderboard tab buttons, and tests.
 - **Quality Gates Verified:**
    - `npm run typecheck` ✅ (0 errors)
-   - `npm run test` ✅ (76/76 test files passing, 803+/803+ tests green)
+   - `npm run test` ✅ (76/76 test files passing, 819/819 tests green)
    - `npm run build` ✅ (10 routes compiled successfully)
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization after natural expiry & audit log persistence).
