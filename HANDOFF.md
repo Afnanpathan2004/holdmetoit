@@ -4,7 +4,7 @@
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-10 (Session 79 — PR #67 regression diagnosed, `isLeave` DB migration applied, PR #67 re-landed via revert-of-revert, error surfacing + CI schema guard)  
+> **Last Updated:** 2026-10-10 (Session 80 — structured event logging + failure diagnostics; unified server/client logger, severity filtering, env-driven LogRocket app id)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
@@ -14,7 +14,7 @@
 | Gate                                         | Result (2026-10-10, PR #67 re-land + incident fixes on `fix/reland-pr67-isleave`)                                                                                                                                          |
 | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                           |
-| `npm run test`                               | ✅ 76 files green (833/833 tests passing)                                                                                                                                                                                  |
+| `npm run test`                               | ✅ 78 files green (all tests passing)                                                                                                                                                                                      |
 | `npm run build`                              | ✅ 11 routes compiled (production build clean)                                                                                                                                                                             |
 | Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~93%** — Dedicated public /challenges catalog, participant statistics cockpit, multi-view search & team filtering, mod audit log, daily hours overrides, weekly target hours override & admin roster removal complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                 |
@@ -76,16 +76,17 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ### 2.1 Shipped Beyond the Original P0 Spec
 
-| Capability                                            | Location                                                     | Notes                                                                                                                                                 |
-| :---------------------------------------------------- | :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Categorized Daily/Weekly to-do board with drag & drop | `features/tasks/`, `cockpit-tasks-section.tsx`               | Offline-first IndexedDB (`holdmetoit_db`), debounced background sync, guest→user migration on login                                                   |
-| Global Participant Preview Mode                       | `features/auth/presentation/auth-nav.tsx`, `preview-mode.ts` | 1-click header toggle for mods/devs to view all pages as regular participants globally                                                                |
-| Feedback & bug reporting                              | `features/feedback/`, `app/api/feedback/route.ts`            | Floating trigger button, `FB-XX` codes, Discord bot embeds, LogRocket session link                                                                    |
-| LogRocket observability                               | `core/observability/`                                        | Session replay, `error.tsx` / `global-error.tsx` boundaries                                                                                           |
-| Manual weekly slot leaderboard                        | `features/leaderboard/*manual*`, `/challenge/[id]/manual`    | ⚠️ Stores `sessionHours` as `Decimal(6,2)`, which violates **Law L8** (integer seconds)                                                               |
-| Dynamic cockpit banner (7 variants) & hero banner     | `cockpit-banner.ts`, `challenge-hero-banner.tsx`             | Matches the Figma                                                                                                                                     |
-| `DEV` role                                            | `auth-roles.ts`, `discord-guild.service.ts`                  | Grants full admin plus developer access                                                                                                               |
-| Admin roster participant removal                      | `challenge-manage-tab.tsx`, `challenge-admin.repository.ts`  | Host removes a participant (`UPCOMING`/`ACTIVE` only) with a mandatory audit reason; purges logs, punishment, leaderboard entry, and team-member rows |
+| Capability                                            | Location                                                     | Notes                                                                                                                                                                                              |
+| :---------------------------------------------------- | :----------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Categorized Daily/Weekly to-do board with drag & drop | `features/tasks/`, `cockpit-tasks-section.tsx`               | Offline-first IndexedDB (`holdmetoit_db`), debounced background sync, guest→user migration on login                                                                                                |
+| Global Participant Preview Mode                       | `features/auth/presentation/auth-nav.tsx`, `preview-mode.ts` | 1-click header toggle for mods/devs to view all pages as regular participants globally                                                                                                             |
+| Feedback & bug reporting                              | `features/feedback/`, `app/api/feedback/route.ts`            | Floating trigger button, `FB-XX` codes, Discord bot embeds, LogRocket session link                                                                                                                 |
+| LogRocket observability                               | `core/observability/`                                        | Session replay, `error.tsx` / `global-error.tsx` boundaries                                                                                                                                        |
+| Structured diagnostics logging                        | `core/observability/logger.ts`, `core/observability/domain/` | Unified server/client logger (pure `domain/` model + Vitest), `LOG_LEVEL` filtering, one-line JSON on the server; instrumented across all server actions, routes, auth events and error boundaries |
+| Manual weekly slot leaderboard                        | `features/leaderboard/*manual*`, `/challenge/[id]/manual`    | ⚠️ Stores `sessionHours` as `Decimal(6,2)`, which violates **Law L8** (integer seconds)                                                                                                            |
+| Dynamic cockpit banner (7 variants) & hero banner     | `cockpit-banner.ts`, `challenge-hero-banner.tsx`             | Matches the Figma                                                                                                                                                                                  |
+| `DEV` role                                            | `auth-roles.ts`, `discord-guild.service.ts`                  | Grants full admin plus developer access                                                                                                                                                            |
+| Admin roster participant removal                      | `challenge-manage-tab.tsx`, `challenge-admin.repository.ts`  | Host removes a participant (`UPCOMING`/`ACTIVE` only) with a mandatory audit reason; purges logs, punishment, leaderboard entry, and team-member rows                                              |
 
 ---
 
@@ -146,33 +147,9 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ## 7. Session Changelog (Last 3–5 Sessions)
 
-### Sessions 1–73 (Summarized)
+### Sessions 1–75 (Summarized)
 
-- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours prevention, cross-day task moving/rescheduling with validation, participant study log audit trail integration (`STUDY_LOG_ADDED`), dedicated public challenges catalog (`/challenges`) with role-gated admin controls, multi-view pagination guards (`DataPagination`), challenge-specific participant statistics profiles (`/challenge/[id]/participant/[participantId]`), multi-view search & team filtering with "View by Team" mode, dynamic team color palettes with WCAG AA contrast calculation (`team-colors.ts`), overall time reset to 0 (`executeAdminResetOverallHours`), and challenge tab reload URL sync (`challenge-tabs.ts`).
-
-#### Session 75 — 2026-10-10 (afnan)
-
-- **Agent Role:** Data & Identity Agent, Participant UI Agent, Scoring & Engine Agent.
-- **Complete Removal of Legacy Daily Study Logs (V1) from Application Codebase:**
-   - **Schema & Database Safety:**
-      - Preserved PostgreSQL `daily_study_logs` table intact with all historic rows (zero data loss, zero destructive DB operations).
-      - Retained `DailyStudyLog` model definition in `prisma/schema.prisma` per explicit user instruction.
-   - **Application Codebase Migration to V2 (`DailyStudyLogV2`):**
-      - **Study Logs Repository (`features/study-logs/data/daily-study-log.repository.ts`):** `upsertDailyStudyLog` and `findDailyLog` migrated exclusively to `prisma.dailyStudyLogV2` with default `status: "Offline"`.
-      - **Participant Repository (`features/challenges/data/participant.repository.ts`):** Removed `dailyStudyLogs` from `include` queries; only `dailyStudyLogsV2` is requested from Prisma.
-      - **Admin Challenge Repository (`features/challenges/data/challenge-admin.repository.ts`):**
-         - `findAdminChallengeDetails`: Query now includes `dailyStudyLogsV2` with `overrideBy`.
-         - `lockChallengeResults`: Dual-failure calculation evaluates participant totals purely from `dailyStudyLogsV2`.
-         - `deleteChallenge`: Purged explicit transaction calls to legacy V1 study logs.
-      - **Home Cockpit & Participant Stats (`cockpit-data.ts`, `participant-stats.repository.ts`):** Simplified log resolution to directly consume `participant.dailyStudyLogsV2 ?? []`.
-   - **Test Suite Updates:**
-      - Updated `daily-study-log.repository.test.ts`, `challenge-admin.repository.test.ts`, `participant.repository.test.ts`, `participant-stats.repository.test.ts`, and `quality-matrix-j1-j6.test.ts` to mock and assert `dailyStudyLogV2`.
-   - **UI Polish:**
-      - Removed team name and icon badge pill from `CockpitProgressCard` (`cockpit-progress-card.tsx`), keeping the Weekly Commitment Progress header minimal and focused on individual hours vs target commitments.
-- **Quality Gates Verified:**
-   - `npm run typecheck` ✅ (0 errors)
-   - `npm run test` ✅ (75/75 test files passing, 770/770 tests green)
-   - `npm run build` ✅ (10 routes compiled successfully)
+- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours prevention, cross-day task moving/rescheduling with validation, participant study log audit trail integration (`STUDY_LOG_ADDED`), dedicated public challenges catalog (`/challenges`) with role-gated admin controls, multi-view pagination guards (`DataPagination`), challenge-specific participant statistics profiles (`/challenge/[id]/participant/[participantId]`), multi-view search & team filtering with "View by Team" mode, dynamic team color palettes with WCAG AA contrast calculation (`team-colors.ts`), overall time reset to 0 (`executeAdminResetOverallHours`), and challenge tab reload URL sync (`challenge-tabs.ts`). Also: full migration of daily study logs from legacy V1 to `DailyStudyLogV2` (cockpit/participant-stats log resolution simplified).
 
 ### Session 76 — 2026-10-10 (afnan)
 
@@ -274,10 +251,28 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
    - `npm run build` ✅ (11 routes compiled successfully)
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization after natural expiry & audit log persistence); D5 catch-up migrations (`feedbacks`, `sort_order`) as the follow-up stretch.
 
-### Session 80 — 2026-10-11 (krish — Fix D1: Challenge Lock Results After Natural Expiry)
+### Session 80 — 2026-10-10 (afnan-jr — structured event logging & failure diagnostics)
+
+- **Agent Role:** Observability / cross-cutting infrastructure.
+- **Unified severity-filtered logger (`core/observability/`):**
+   - Pure domain model (Law L7, zero framework imports, Vitest-covered): `domain/log-level.ts` (`LogLevel`, `parseLogLevel`, `shouldEmit`), `domain/log-entry.ts` (`buildLogEntry`, `serializeError`, `formatLogEntry`), `domain/log-events.ts` (typed `LogEventName` catalog).
+   - `logger.ts` facade — `logEvent`, `logDebug/Info/Warn/Error`, `createLogger(scope)`. Server emits one-line JSON (captured by serverless logs); client logs to console and **dynamically** imports LogRocket to forward events (`track`) and errors (`captureException`, preserving `tags`). Every entry point is fail-safe (never throws).
+   - Thresholds: server `LOG_LEVEL` (default `info` in prod / `debug` otherwise); client `NEXT_PUBLIC_LOG_LEVEL` (default `warn` in prod / `debug` otherwise). `error` always emits.
+- **Full event-surface instrumentation:**
+   - All 24 server actions in `features/*/api/*.actions.ts`: success → `info` event, unexpected failures → `error` (serialized stack + context), expected control-flow errors (auth / access / not-found / conflict) → `debug`.
+   - `app/api/tasks/sync` and `app/api/feedback` route handlers; Auth.js `events.signIn` (`auth.discord_signin`, `auth.user_synced`) and the previously swallowed role-sync `.catch` (`auth.role_sync_failed`, resolves ISSUES #7); the three error boundaries and three server pages now emit `app.error`.
+- **Console exodus (ISSUES #16):** every app-runtime `console.*` (storage, audit repo, image cleanup, task-sync repo, client IndexedDB helper, boundaries, pages, routes) now routes through the logger; only the logger transport and `prisma/seed.ts` still call `console`. Removed the dead `captureLogRocketException` import in `cockpit-tasks-section.tsx`.
+- **Env (ISSUES #17/#18):** `NEXT_PUBLIC_LOGROCKET_APP_ID` + `NEXT_PUBLIC_APP_RELEASE` now env-drive LogRocket (safe fallbacks); documented `LOG_LEVEL`, `NEXT_PUBLIC_LOG_LEVEL`, `NEXT_PUBLIC_LOGROCKET_APP_ID`, `NEXT_PUBLIC_APP_RELEASE` in `.env.example`. No new dependencies (stack stays LogRocket-only); no DB table or migration.
+- **Tests:** added 14 unit tests (`core/observability/domain/*.test.ts`); updated 5 existing assertions that spied on old `console.*` output to assert on structured logger output.
+- **Quality Gates Verified:**
+   - `npm run typecheck` ✅ (0 errors)
+   - `npm run test` ✅ (78 files, 841/841 tests green)
+   - `npm run build` ✅ (11 routes compiled successfully)
+
+### Session 81 — 2026-10-11 (krish — Fix D1: Challenge Lock Results After Natural Expiry)
 
 - **Agent Role:** Data & Identity Agent, Scoring & Engine Agent, Admin Operations & Broadcaster Agent.
-- **Problem & Root Cause (D1, ISSUES.md #1):**
+- **Problem & Root Cause (D1, ISSUES.md #1, Issue #77):**
    - Challenge lifecycle status is derived dynamically via `calculateChallengeStatus(startAt, endAt)`. When a challenge naturally expired (`currentTime >= endTime`), its derived status immediately transitioned to `COMPLETED`.
    - `assertCanLockChallenge("COMPLETED")` threw `ChallengeStateError("Challenge results are already locked and finalized.")`, and the Manage tab button `Lock Final Results` was guarded by `challenge.status === "ACTIVE"`.
    - Result: if the host did not manually click "Lock Final Results" _before_ the timer expired, the challenge could never be locked, punishments were never evaluated, and Law L6 was broken for naturally ended events.
@@ -300,6 +295,6 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Added repository tests in `challenge-admin.repository.test.ts` asserting post-expiry lock evaluation, `resultsLockedAt` persistence, and idempotency protection.
 - **Quality Gates Verified:**
    - `npm run typecheck` ✅ (0 errors)
-   - `npm run test` ✅ (76 files, 833/833 tests green)
+   - `npm run test` ✅ (78 files, 847/847 tests green)
    - `npm run build` ✅ (11 routes compiled, 0 errors)
 - **NEXT STEP:** Restore deleted P0 UIs (host pardon modal, 1-click Discord summary copy, Punishment Wall).
