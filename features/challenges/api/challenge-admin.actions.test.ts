@@ -9,6 +9,7 @@ import {
    kickoffChallengeAction,
    lockChallengeResultsAction,
    reassignParticipantTeamAction,
+   removeChallengeParticipantAction,
    updateChallengeAction,
 } from "@/features/challenges/api/challenge-admin.actions";
 import * as requireAdminModule from "@/features/auth/api/require-admin";
@@ -64,6 +65,7 @@ vi.mock("@/features/challenges/data/challenge-admin.repository", () => ({
    updateAdminChallenge: vi.fn(),
    reassignParticipantTeam: vi.fn(),
    deleteAdminChallenge: vi.fn(),
+   removeChallengeParticipant: vi.fn(),
 }));
 
 describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
@@ -177,6 +179,66 @@ describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
             teamId: "t_1",
             targetSeconds: 126000,
             reason: "Manual assignment",
+         });
+
+         expect(result.ok).toBe(false);
+         if (!result.ok) {
+            expect(result.code).toBe("FORBIDDEN_NOT_ADMIN");
+         }
+      });
+   });
+
+   describe("removeChallengeParticipantAction", () => {
+      it("removes a participant when called by an admin", async () => {
+         vi.mocked(
+            challengeAdminRepo.removeChallengeParticipant
+         ).mockResolvedValue({
+            participantId: "p_1",
+            removedName: "Afnan",
+         } as never);
+
+         const result = await removeChallengeParticipantAction({
+            challengeId: "c_1",
+            participantId: "p_1",
+            reason: "Duplicate enrollment",
+         });
+
+         expect(result).toEqual({ ok: true });
+         expect(
+            challengeAdminRepo.removeChallengeParticipant
+         ).toHaveBeenCalledWith({
+            participantId: "p_1",
+            reason: "Duplicate enrollment",
+            admin: { id: "admin_1", username: "HostAdmin" },
+         });
+         expect(revalidatePath).toHaveBeenCalledWith("/challenge/c_1");
+      });
+
+      it("rejects when reason is too short", async () => {
+         const result = await removeChallengeParticipantAction({
+            challengeId: "c_1",
+            participantId: "p_1",
+            reason: "ab",
+         });
+
+         expect(result.ok).toBe(false);
+         if (!result.ok) {
+            expect(result.code).toBe("INVALID_INPUT");
+         }
+         expect(
+            challengeAdminRepo.removeChallengeParticipant
+         ).not.toHaveBeenCalled();
+      });
+
+      it("rejects non-admin caller with FORBIDDEN_NOT_ADMIN", async () => {
+         vi.mocked(requireAdminModule.requireAdminUser).mockRejectedValue(
+            new requireAdminModule.AdminAccessError()
+         );
+
+         const result = await removeChallengeParticipantAction({
+            challengeId: "c_1",
+            participantId: "p_1",
+            reason: "Host cleanup",
          });
 
          expect(result.ok).toBe(false);

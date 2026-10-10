@@ -14,6 +14,8 @@ import {
    ChevronDown,
    X,
    RotateCcw,
+   Calendar,
+   Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,19 +106,53 @@ export function ChallengeOverviewTab({
 
    return (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-         {/* 1. Left Column: Welcome, How it Works, Rules (Tabs Content 142:1282) */}
+         {/* 1. Left Column: Welcome, About & Timetable, How it Works, Punishment PFP Disclosure */}
          <div className="lg:col-span-7 space-y-6">
-            {/* Welcome Card */}
+            {/* Welcome & About Card */}
             <div className="rounded-3xl border border-[#262626] bg-[#141414] p-6 sm:p-7 shadow-lg space-y-4">
-               <h2 className="text-2xl font-extrabold text-[#ffffff] tracking-tight">
-                  Welcome to the {challenge.title}!
-               </h2>
-               <p className="text-sm leading-relaxed text-[#d1d1d1]">
-                  Rally your team! The {challenge.title} is live. It&apos;s time
-                  to declare your goals, commit to daily study sessions, solve
-                  your deficits with the catch-up model, and compete for
-                  victory.
-               </p>
+               <div className="space-y-2">
+                  <h2 className="text-2xl font-extrabold text-[#ffffff] tracking-tight">
+                     Welcome to the {challenge.title}!
+                  </h2>
+                  <p className="text-sm leading-relaxed text-[#d1d1d1]">
+                     {challenge.title} is an automated study battle governed by
+                     the HoldMeToIt dual-failure accountability system. All
+                     scholars declare their individual target hours and weekly
+                     milestone intentions before kickoff, commit to daily study
+                     sessions, solve their deficits with the catch-up model, and
+                     compete for victory.
+                  </p>
+               </div>
+
+               {/* Timetable (UTC) - Merged from About tab */}
+               <div className="space-y-2.5 pt-1">
+                  <h4 className="text-xs uppercase font-bold tracking-wider text-[#868686] flex items-center gap-1.5">
+                     <Calendar className="h-3.5 w-3.5 text-[#868686]" />
+                     <span>Timetable (UTC)</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                     <div className="rounded-xl bg-[#1c1c1c] p-3 border border-[#292929]">
+                        <p className="text-[#868686] text-[11px]">
+                           Kickoff Date
+                        </p>
+                        <p className="font-sans font-medium text-[#ffffff] mt-1">
+                           {new Date(challenge.startAt)
+                              .toUTCString()
+                              .replace("GMT", "UTC")}
+                        </p>
+                     </div>
+                     <div className="rounded-xl bg-[#1c1c1c] p-3 border border-[#292929]">
+                        <p className="text-[#868686] text-[11px]">
+                           Conclusion Date
+                        </p>
+                        <p className="font-sans font-medium text-[#ffffff] mt-1">
+                           {new Date(challenge.endAt)
+                              .toUTCString()
+                              .replace("GMT", "UTC")}
+                        </p>
+                     </div>
+                  </div>
+               </div>
 
                <hr className="border-[#262626]" />
 
@@ -182,14 +218,78 @@ export function ChallengeOverviewTab({
                <div className="space-y-2">
                   <h3 className="text-lg font-bold text-[#ffffff] flex items-center gap-2">
                      <Award className="h-5 w-5 text-[#22c55e]" />
-                     Prizes & Accountability
+                     Prizes & Rewards
                   </h3>
                   <p className="text-xs text-[#d1d1d1] leading-relaxed">
                      The winning house earns special shiny Discord roles and
                      custom highlight badges for top contributors. Scholars who
-                     face dual-failure are held accountable on the Forfeits Wall
-                     with downloadable shame avatars.
+                     maintain commitments preserve their standard avatar honor.
                   </p>
+               </div>
+            </div>
+
+            {/* 2. Forfeit Avatar & Punishment Disclosure Card (FEAT-PUN-02 / FEAT-PUN-03) */}
+            <div className="rounded-3xl border border-[#262626] bg-[#141414] p-6 sm:p-7 shadow-lg space-y-4">
+               <div>
+                  <h3 className="text-lg font-bold text-[#ffffff]">
+                     Forfeit Avatar & Accountability
+                  </h3>
+               </div>
+
+               <div className="p-4 rounded-2xl bg-[#181818] border border-[#262626] flex flex-col sm:flex-row items-center gap-4">
+                  {challenge.punishmentPfpUrl ? (
+                     <>
+                        <div className="relative h-24 w-24 sm:h-28 sm:w-28 shrink-0 rounded-2xl overflow-hidden border-2 border-[#ef4444]/40 shadow-md bg-[#1c1c1c] group">
+                           <Image
+                              src={challenge.punishmentPfpUrl}
+                              alt="Challenge Forfeit Avatar"
+                              fill
+                              className="object-cover transition-transform duration-300 group-hover:scale-105"
+                              unoptimized
+                           />
+                        </div>
+                        <div className="space-y-2.5 text-center sm:text-left min-w-0 flex-1">
+                           <div className="space-y-1">
+                              <p className="text-xs font-semibold text-[#ffffff]">
+                                 Assigned Forfeit Picture
+                              </p>
+                              <p className="text-xs text-[#d1d1d1] leading-relaxed">
+                                 Scholars who fail either their declared target
+                                 hours or incomplete weekly milestone goals must
+                                 equip this Discord avatar for 7 days
+                                 post-event.
+                              </p>
+                           </div>
+                           <div>
+                              <a
+                                 href={challenge.punishmentPfpUrl}
+                                 download="forfeit-avatar.png"
+                                 target="_blank"
+                                 rel="noreferrer"
+                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#383838] bg-[#242424] hover:bg-[#333333] text-white hover:text-white transition-colors"
+                              >
+                                 <Download className="h-3.5 w-3.5 text-[#ff5757]" />
+                                 <span>Download Forfeit PFP</span>
+                              </a>
+                           </div>
+                        </div>
+                     </>
+                  ) : (
+                     <div className="flex items-center gap-3 py-2 text-center sm:text-left">
+                        <div className="h-12 w-12 rounded-xl bg-[#1c1c1c] border border-[#292929] flex items-center justify-center shrink-0">
+                           <Shield className="h-6 w-6 text-[#868686]" />
+                        </div>
+                        <div>
+                           <p className="text-xs font-semibold text-[#ffffff]">
+                              No Custom Forfeit Avatar Set
+                           </p>
+                           <p className="text-xs text-[#868686]">
+                              Accountability rules still apply. Hosts can upload
+                              an avatar via the Challenge Manage tab.
+                           </p>
+                        </div>
+                     </div>
+                  )}
                </div>
             </div>
          </div>

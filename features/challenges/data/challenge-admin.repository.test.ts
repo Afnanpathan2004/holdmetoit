@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { prisma } from "@/core/db";
+import * as auditRepo from "@/features/audit/data/audit-log.repository";
 import {
    adminEnrollParticipant,
    createAdminChallenge,
@@ -9,6 +10,7 @@ import {
    listAllChallengesForAdmin,
    lockChallengeResults,
    reassignParticipantTeam,
+   removeChallengeParticipant,
    updateAdminChallenge,
 } from "./challenge-admin.repository";
 
@@ -31,6 +33,7 @@ vi.mock("@/core/db", () => {
          findUnique: vi.fn(),
          create: vi.fn(),
          update: vi.fn(),
+         delete: vi.fn(),
          deleteMany: vi.fn(),
       },
       dailyStudyLogV2: {
@@ -571,6 +574,109 @@ describe("challenge admin repository (FEAT-CHAL-01, FEAT-CHAL-02, FEAT-CHAL-05)"
          expect(prisma.challenge.delete).toHaveBeenCalledWith({
             where: { id: "c_1" },
          });
+      });
+   });
+
+   describe("removeChallengeParticipant", () => {
+      it("removes participant and all dependent rows, then records audit (Law L5)", async () => {
+         vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue({
+            id: "p_1",
+            userId: "u_1",
+            challengeId: "c_1",
+            teamId: "t_1",
+            targetSeconds: 126000,
+            status: "NORMAL",
+            user: { id: "u_1", displayName: "Afnan", username: "afnan" },
+            team: { id: "t_1", name: "Bees" },
+            challenge: {
+               id: "c_1",
+               title: "Battle",
+               startAt: new Date(Date.now() + 86400000),
+               endAt: new Date(Date.now() + 7 * 86400000),
+            },
+         } as never);
+         vi.mocked(prisma.challengeParticipant.delete).mockResolvedValue({
+            id: "p_1",
+         } as never);
+
+         const result = await removeChallengeParticipant({
+            participantId: "p_1",
+            reason: "Duplicate enrollment",
+            admin: { id: "admin_1", username: "HostAdmin" },
+         });
+
+         expect(result).toEqual({
+            participantId: "p_1",
+            removedName: "Afnan",
+         });
+         expect(prisma.dailyStudyLogV2.deleteMany).toHaveBeenCalledWith({
+            where: { participantId: "p_1" },
+         });
+         expect(prisma.punishmentRecord.deleteMany).toHaveBeenCalledWith({
+            where: { participantId: "p_1" },
+         });
+         expect(prisma.leaderboardEntry.deleteMany).toHaveBeenCalledWith({
+            where: { challengeId: "c_1", userId: "u_1" },
+         });
+         expect(prisma.teamMember.deleteMany).toHaveBeenCalledWith({
+            where: { userId: "u_1", team: { challengeId: "c_1" } },
+         });
+         expect(prisma.challengeParticipant.delete).toHaveBeenCalledWith({
+            where: { id: "p_1" },
+         });
+         expect(auditRepo.recordAuditEvent).toHaveBeenCalledWith(
+            expect.objectContaining({
+               actionType: "ROSTER_EDIT",
+               targetEntityType: "PARTICIPANT",
+               challengeId: "c_1",
+               auditReason: "Duplicate enrollment",
+               newValue: null,
+            })
+         );
+      });
+
+      it("rejects when the participant does not exist", async () => {
+         vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue(
+            null
+         );
+
+         await expect(
+            removeChallengeParticipant({
+               participantId: "missing",
+               reason: "Host cleanup",
+               admin: { id: "admin_1", username: "HostAdmin" },
+            })
+         ).rejects.toThrow("Participant not found.");
+      });
+
+      it("rejects when the challenge is COMPLETED", async () => {
+         vi.mocked(prisma.challengeParticipant.findUnique).mockResolvedValue({
+            id: "p_1",
+            userId: "u_1",
+            challengeId: "c_1",
+            teamId: "t_1",
+            targetSeconds: 126000,
+            status: "NORMAL",
+            user: { id: "u_1", displayName: "Afnan", username: "afnan" },
+            team: { id: "t_1", name: "Bees" },
+            challenge: {
+               id: "c_1",
+               title: "Battle",
+               startAt: new Date(Date.now() - 14 * 86400000),
+               endAt: new Date(Date.now() - 7 * 86400000),
+            },
+         } as never);
+
+         await expect(
+            removeChallengeParticipant({
+               participantId: "p_1",
+               reason: "Too late",
+               admin: { id: "admin_1", username: "HostAdmin" },
+            })
+         ).rejects.toThrow(
+            "Cannot remove a participant from a completed challenge."
+         );
+         expect(prisma.challengeParticipant.delete).not.toHaveBeenCalled();
       });
    });
 });

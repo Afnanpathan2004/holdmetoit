@@ -598,6 +598,87 @@ export async function reassignParticipantTeam(params: {
    return updatedParticipant;
 }
 
+export async function removeChallengeParticipant(params: {
+   participantId: string;
+   reason: string;
+   admin: { id: string; username: string };
+}) {
+   const participant = await prisma.challengeParticipant.findUnique({
+      where: { id: params.participantId },
+      include: {
+         user: { select: { id: true, displayName: true, username: true } },
+         team: { select: { id: true, name: true } },
+         challenge: {
+            select: { id: true, title: true, startAt: true, endAt: true },
+         },
+      },
+   });
+
+   if (!participant) {
+      throw new Error("Participant not found.");
+   }
+
+   if (calculateChallengeStatus(participant.challenge) === "COMPLETED") {
+      throw new Error(
+         "Cannot remove a participant from a completed challenge."
+      );
+   }
+
+   const participantName =
+      participant.user?.displayName ||
+      participant.user?.username ||
+      "Participant";
+
+   return prisma.$transaction(async (tx) => {
+      await tx.dailyStudyLogV2.deleteMany({
+         where: { participantId: params.participantId },
+      });
+
+      await tx.punishmentRecord.deleteMany({
+         where: { participantId: params.participantId },
+      });
+
+      await tx.leaderboardEntry.deleteMany({
+         where: {
+            challengeId: participant.challengeId,
+            userId: participant.userId,
+         },
+      });
+
+      await tx.teamMember.deleteMany({
+         where: {
+            userId: participant.userId,
+            team: { challengeId: participant.challengeId },
+         },
+      });
+
+      await recordAuditEvent({
+         actorId: params.admin.id,
+         actorUsername: params.admin.username,
+         actionType: "ROSTER_EDIT",
+         targetEntityId: participant.id,
+         targetEntityType: "PARTICIPANT",
+         targetEntityName: participantName,
+         challengeId: participant.challengeId,
+         previousValue: {
+            userId: participant.userId,
+            teamId: participant.teamId,
+            teamName: participant.team?.name ?? "Not Assigned",
+            targetSeconds: participant.targetSeconds,
+            status: participant.status,
+         },
+         newValue: null,
+         auditReason: params.reason.trim(),
+      });
+
+      await tx.challengeParticipant.delete({
+         where: { id: params.participantId },
+      });
+
+      return { participantId: participant.id, removedName: participantName };
+   });
+}
+
 export async function deleteAdminChallenge(
    challengeId: string,
    actor: { id: string; username: string }
