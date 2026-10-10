@@ -22,6 +22,7 @@ export interface RawStudyLogEntry {
    logDate: Date | string;
    durationSeconds: number;
    isOverride?: boolean;
+   isLeave?: boolean;
 }
 
 function formatUtcDateKey(dateInput: Date | string): string {
@@ -66,7 +67,7 @@ export function calculateParticipantDailyTimeline(
    // Group logs by dateKey in case of multiple logs
    const logsByDate = new Map<
       string,
-      { durationSeconds: number; isOverride: boolean }
+      { durationSeconds: number; isOverride: boolean; isLeave: boolean }
    >();
 
    for (const log of logs) {
@@ -75,10 +76,12 @@ export function calculateParticipantDailyTimeline(
       const existing = logsByDate.get(dateKey) || {
          durationSeconds: 0,
          isOverride: false,
+         isLeave: false,
       };
       logsByDate.set(dateKey, {
          durationSeconds: existing.durationSeconds + (log.durationSeconds || 0),
          isOverride: existing.isOverride || Boolean(log.isOverride),
+         isLeave: existing.isLeave || Boolean(log.isLeave),
       });
    }
 
@@ -89,6 +92,7 @@ export function calculateParticipantDailyTimeline(
       const log = logsByDate.get(day.dateKey) || {
          durationSeconds: 0,
          isOverride: false,
+         isLeave: false,
       };
       const durationSeconds = log.durationSeconds;
       cumulativeSeconds += durationSeconds;
@@ -110,6 +114,7 @@ export function calculateParticipantDailyTimeline(
          isFuture: day.isFuture,
          isPast: day.isPast,
          isOverride: log.isOverride,
+         isLeave: log.isLeave,
       });
    }
 
@@ -127,6 +132,8 @@ export function calculateParticipantSummaryStats(params: {
    totalParticipants: number;
    paceStatus: ParticipantPaceStatus;
    paceLabel: string;
+   todayIsLeave?: boolean;
+   leavesCount?: number;
 }): ParticipantSummaryStats {
    const {
       totalLoggedSeconds,
@@ -136,6 +143,8 @@ export function calculateParticipantSummaryStats(params: {
       totalParticipants,
       paceStatus,
       paceLabel,
+      todayIsLeave = false,
+      leavesCount = 0,
    } = params;
 
    const completionPercentage =
@@ -169,6 +178,8 @@ export function calculateParticipantSummaryStats(params: {
       excessHuman: formatSecondsToHuman(excessSeconds),
       paceStatus,
       paceLabel,
+      todayIsLeave,
+      leavesCount,
    };
 }
 
