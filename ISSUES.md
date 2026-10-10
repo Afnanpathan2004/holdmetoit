@@ -83,7 +83,7 @@ If a user has no active challenge and no upcoming challenge, the cockpit falls b
 
 ---
 
-### 7. Fire-and-Forget DB Write in Auth Session Callback
+### 7. ✅ Resolved (Session 80) — Fire-and-Forget DB Write in Auth Session Callback
 
 `core/auth/index.ts` L64-L69:
 
@@ -94,6 +94,8 @@ prisma.user
 ```
 
 This silently swallows all errors. If the DB write fails, the session says `DEV` but the database still says `PARTICIPANT`. On next page load without cache, role could revert. Use `await` or log the error.
+
+**Resolved:** the `.catch` now reports the failure through the structured logger as `auth.role_sync_failed` with the user id.
 
 ---
 
@@ -189,7 +191,7 @@ The schema has two competing representations of team membership:
 
 ## 🟡 Low Priority — Quality of Life & Hardening
 
-### 16. `console.warn`/`console.error` in Production Code
+### 16. ✅ Resolved (Session 80) — `console.warn`/`console.error` in Production Code
 
 | File                          | Line | Statement                                                      |
 | ----------------------------- | ---- | -------------------------------------------------------------- |
@@ -199,9 +201,11 @@ The schema has two competing representations of team membership:
 
 **Fix:** Replace with `captureLogRocketException` or a proper server-side logger. Console statements in prod create noise in serverless logs.
 
+**Resolved:** all app-runtime `console.*` now route through the unified structured logger (`core/observability/logger.ts`), which emits severity-filtered JSON on the server and forwards to LogRocket on the client. Only the logger transport itself and `prisma/seed.ts` still call `console` directly.
+
 ---
 
-### 17. Hardcoded LogRocket App ID
+### 17. ✅ Resolved (Session 80) — Hardcoded LogRocket App ID
 
 `core/observability/logrocket.ts` L6:
 
@@ -211,11 +215,15 @@ export const LOGROCKET_APP_ID = "q9morb/holdmeintoit";
 
 This should be an env variable (`NEXT_PUBLIC_LOGROCKET_APP_ID`) and listed in `.env.example`. If the LogRocket project changes, you'd need a code deploy to update it.
 
+**Resolved:** the app id now reads `process.env.NEXT_PUBLIC_LOGROCKET_APP_ID` with the previous literal as a safe fallback; the release label is likewise env-driven (`NEXT_PUBLIC_APP_RELEASE`).
+
 ---
 
-### 18. Missing `NEXT_PUBLIC_LOGROCKET_APP_ID` in `.env.example`
+### 18. ✅ Resolved (Session 80) — Missing `NEXT_PUBLIC_LOGROCKET_APP_ID` in `.env.example`
 
 `.env.example` documents all Discord/Supabase env vars but is missing the LogRocket app ID and the `AUTH_URL` variable that's needed for production deploys.
+
+**Resolved:** `.env.example` now documents `LOG_LEVEL`, `NEXT_PUBLIC_LOG_LEVEL`, `NEXT_PUBLIC_LOGROCKET_APP_ID`, and `NEXT_PUBLIC_APP_RELEASE`. (`AUTH_URL` is present already.)
 
 ---
 

@@ -780,10 +780,11 @@ describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
          expect(
             storage.deleteManagedChallengeImage
          ).toHaveBeenCalledExactlyOnceWith(OLD_PFP);
-         expect(log).toHaveBeenCalledWith(
-            "[challenge-images] Cleanup skipped:",
-            error
+         expect(log).toHaveBeenCalledTimes(1);
+         expect(String(log.mock.calls[0]?.[0])).toContain(
+            "storage.cleanup_skipped"
          );
+         expect(String(log.mock.calls[0]?.[0])).toContain(error.message);
          expect(revalidatePath).toHaveBeenCalledWith("/challenge/c_1");
       });
 
@@ -927,10 +928,11 @@ describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
          expect(
             storage.deleteManagedChallengeImage
          ).toHaveBeenCalledExactlyOnceWith(OLD_PFP);
-         expect(log).toHaveBeenCalledWith(
-            "[challenge-images] Cleanup skipped:",
-            error
+         expect(log).toHaveBeenCalledTimes(1);
+         expect(String(log.mock.calls[0]?.[0])).toContain(
+            "storage.cleanup_skipped"
          );
+         expect(String(log.mock.calls[0]?.[0])).toContain(error.message);
          expect(revalidatePath).toHaveBeenCalledWith("/challenges");
       });
 
