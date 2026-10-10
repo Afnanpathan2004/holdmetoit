@@ -53,7 +53,7 @@ The `feedbacks` table, `categories`, `tasks`, and related `sort_order` columns w
 
 ---
 
-### 5. npm Audit: Active Security Vulnerabilities
+### 5. ✅ Resolved (Session 81) — npm Audit: Security Vulnerabilities
 
 `npm audit` reports **multiple high-severity** CVEs:
 
@@ -63,7 +63,7 @@ The `feedbacks` table, `categories`, `tasks`, and related `sort_order` columns w
 | `braces` (via tailwindcss/chokidar)  | 🔴 High     | Stack exhaustion via nested patterns (GHSA-vfj7-8cjw-p6xm)                |
 | `@vitest/mocker`                     | 🟠 Moderate | Path traversal / arbitrary file read (GHSA-82fw-gwwq-j7x9)                |
 
-**Fix:** `npm audit fix` for `brace-expansion`. The `braces`/`tailwindcss` and `vitest` fixes require major version bumps (Tailwind v4, Vitest v5) — evaluate breaking changes first. At minimum, pin `brace-expansion` to a fixed version.
+**Resolved (Session 81):** `brace-expansion` re-resolved to the patched `1.1.21` / `2.1.7` / `5.0.12`; `braces` (via `chokidar`) removed by the Tailwind v4 migration; `@vitest/mocker` patched by the Vitest v5 bump. `npm audit` dropped from 20 → 8 advisories. The remaining 8 are **out of scope** here — they require Next.js 16 / `eslint-config-next` 16 majors (Next RSC/Image DoS + cache-poisoning advisories, `glob` CLI injection via `@next/eslint-plugin-next`, and the `postcss` copy nested inside Next 14).
 
 ---
 
@@ -137,11 +137,11 @@ Law L9 requires **Loading, Empty, and Error** states for every view. The root `e
 
 ---
 
-### 11. Duplicate Lockfiles (D10)
+### 11. ✅ Resolved (Session 81) — Duplicate Lockfiles (D10)
 
 Both `bun.lock` and `package-lock.json` exist. This creates install-time ambiguity and potential version drift between `bun install` and `npm install`.
 
-**Fix:** Pick one package manager and delete the other lockfile. Add the chosen one to `package.json` `"packageManager"` field.
+**Resolved (Session 81):** npm is the canonical manager (CI runs `npm ci`). `bun.lock` was deleted and `"packageManager": "npm@12.2.0"` added to `package.json`.
 
 ---
 
@@ -158,11 +158,11 @@ Several foreign key columns lack database indexes, causing **sequential scans** 
 
 ---
 
-### 13. Tailwind Content Purge Missing `core/` and `lib/`
+### 13. ✅ Resolved (Session 81) — Tailwind Content Purge Missing `core/` and `lib/`
 
 `tailwind.config.ts` scans `./app/`, `./components/`, and `./features/` but **not** `./core/` or `./lib/`. Files like `core/observability/logrocket-provider.tsx` that use Tailwind classes will have them purged in production builds.
 
-**Fix:** Add `"./core/**/*.{ts,tsx}"` and `"./lib/**/*.{ts,tsx}"` to the `content` array.
+**Resolved (Session 81):** both `"./core/**/*.{ts,tsx}"` and `"./lib/**/*.{ts,tsx}"` were added to the `tailwind.config.ts` `content` array during the Tailwind v4 migration.
 
 ---
 
@@ -336,17 +336,19 @@ Add CSV/JSON export for challenge results. This complements Law L2 (Spreadsheet 
 
 | Category                        | Count  |
 | ------------------------------- | ------ |
-| 🔴 Critical (blocks production) | 5      |
-| 🟠 Medium (functional issues)   | 10     |
-| 🟡 Low (hardening / QoL)        | 12     |
+| 🔴 Critical (blocks production) | 4      |
+| 🟠 Medium (functional issues)   | 7      |
+| 🟡 Low (hardening / QoL)        | 9      |
 | 💡 Feature suggestions          | 5      |
-| **Total findings**              | **32** |
+| **Total findings**              | **25** |
+
+> Closed since the audit: Session 80 — #7, #16, #17, #18; Session 81 — #5, #11, #13.
 
 ### Recommended Fix Order
 
 1. **#1** — Lock Results bug (challenge finalization + `resultsLockedAt` column)
 2. **#4** — Schema drift (generate catch-up migration files)
-3. **#5** — `npm audit fix` for high-severity CVEs
+3. ~~**#5** — `npm audit fix` for high-severity CVEs~~ ✅ done (Session 81)
 4. **#12** — Add missing Prisma foreign key indexes
 5. **#3** — Restore deleted P0 UIs (Punishment Wall, PFP download, Pardon, Discord Summary)
 6. **#6** — Remove hardcoded seed challenge ID
