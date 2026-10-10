@@ -20,7 +20,6 @@ export interface CockpitLogDay {
    logDate: string;
    durationSeconds: number;
    durationClock: string;
-   isLeave?: boolean;
 }
 
 export interface ParticipantIdentity {
@@ -54,11 +53,9 @@ export interface CockpitViewModel {
    todayDayNumber: number;
    todayLoggedSeconds: number;
    todayLoggedClock: string;
-   todayIsLeave?: boolean;
    yesterdayDate?: string;
    yesterdayDayNumber?: number;
    yesterdayLoggedSeconds: number;
-   yesterdayIsLeave?: boolean;
    isYesterdayMissed: boolean;
    teamRank: number | null;
    remainingDailyAllowanceSeconds: number;
@@ -173,7 +170,6 @@ export async function getParticipantCockpit(
          logDate: formatUtcDateKey(log.logDate),
          durationSeconds: log.durationSeconds,
          durationClock: formatSecondsToClock(log.durationSeconds),
-         isLeave: Boolean(log.isLeave),
       })),
       catchUp: buildCatchUpSummary({
          targetSeconds: participant.targetSeconds,
@@ -184,11 +180,9 @@ export async function getParticipantCockpit(
       todayDayNumber: challengeDayBuckets.current.dayNumber,
       todayLoggedSeconds,
       todayLoggedClock: formatSecondsToClock(todayLoggedSeconds),
-      todayIsLeave: Boolean(todayLog?.isLeave),
       yesterdayDate,
       yesterdayDayNumber: challengeDayBuckets.previous?.dayNumber,
       yesterdayLoggedSeconds,
-      yesterdayIsLeave: Boolean(yesterdayLog?.isLeave),
       isYesterdayMissed,
       teamRank,
       remainingDailyAllowanceSeconds,

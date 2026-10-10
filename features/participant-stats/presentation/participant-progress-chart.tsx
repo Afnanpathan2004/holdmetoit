@@ -32,10 +32,6 @@ export function ParticipantProgressChart({
                   Admin Override
                </span>
                <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#fcd34d]" />
-                  Leave
-               </span>
-               <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#262626]" />
                   Rest / 0h
                </span>
@@ -57,9 +53,7 @@ export function ParticipantProgressChart({
                         : 3;
 
                   let barColor = "bg-[#262626] hover:bg-[#333333]";
-                  if (day.isLeave) {
-                     barColor = "bg-[#e08a32] hover:bg-[#f59e0b]";
-                  } else if (day.isOverride) {
+                  if (day.isOverride) {
                      barColor = "bg-[#f59e0b] hover:bg-[#fbbf24]";
                   } else if (day.durationSeconds > 0) {
                      barColor = "bg-[#22c55e] hover:bg-[#4ade80]";
@@ -73,10 +67,7 @@ export function ParticipantProgressChart({
                         {/* Floating Tooltip */}
                         <div className="absolute -top-12 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none z-10 bg-[#1c1c1c] border border-[#383838] px-2.5 py-1.5 rounded-xl shadow-xl whitespace-nowrap text-center text-xs">
                            <p className="font-bold text-white">
-                              {day.label}:{" "}
-                              {day.isLeave
-                                 ? "🌴 On Leave (00:00:00)"
-                                 : day.durationClock}
+                              {day.label}: {day.durationClock}
                            </p>
                            <p className="text-[10px] text-[#868686]">
                               Cumulative: {day.cumulativeClock}
@@ -84,18 +75,8 @@ export function ParticipantProgressChart({
                         </div>
 
                         {/* Duration Label above Bar (Desktop only, if > 0) */}
-                        <span
-                           className={`hidden sm:block text-[10px] font-sans font-sans-tabular mb-1 group-hover:text-white transition-colors ${
-                              day.isLeave
-                                 ? "text-[#fcd34d] font-semibold"
-                                 : "text-[#868686]"
-                           }`}
-                        >
-                           {day.isLeave
-                              ? "Leave"
-                              : day.durationSeconds > 0
-                                ? day.durationHuman
-                                : "0m"}
+                        <span className="hidden sm:block text-[10px] font-sans font-sans-tabular text-[#868686] mb-1 group-hover:text-white transition-colors">
+                           {day.durationSeconds > 0 ? day.durationHuman : "0m"}
                         </span>
 
                         {/* The Bar */}

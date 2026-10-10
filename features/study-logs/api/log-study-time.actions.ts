@@ -34,7 +34,6 @@ const logStudyTimeSchema = z
       hours: z.number().int().min(0).max(24),
       minutes: z.number().int().min(0).max(59),
       seconds: z.number().int().min(0).max(59),
-      isLeave: z.boolean().optional(),
    })
    .refine(
       (data) => data.challengeDay !== undefined || data.date !== undefined,
@@ -120,7 +119,6 @@ export async function logStudyTimeAction(
          challengeId: parsed.data.challengeId,
          logDate,
          durationSeconds,
-         isLeave: Boolean(parsed.data.isLeave),
          actor: {
             id: user.id,
             username: user.name || user.displayName || "participant",
@@ -137,9 +135,6 @@ export async function logStudyTimeAction(
       revalidatePath("/");
       revalidatePath("/dashboard");
       revalidatePath(`/challenge/${parsed.data.challengeId}`);
-      revalidatePath(
-         `/challenge/${parsed.data.challengeId}/participant/${participant.id}`
-      );
       return { ok: true };
    } catch (error) {
       if (error instanceof AuthError) {

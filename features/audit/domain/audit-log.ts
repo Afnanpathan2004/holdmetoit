@@ -1,6 +1,5 @@
 export type AuditEventType =
    | "HOURS_OVERRIDE"
-   | "TARGET_HOURS_OVERRIDE"
    | "STUDY_LOG_ADDED"
    | "GOAL_EDIT"
    | "GOAL_UNLOCK"
@@ -105,8 +104,6 @@ export function formatAuditActionHuman(action: AuditEventType): string {
    switch (action) {
       case "HOURS_OVERRIDE":
          return "Study Hours Adjusted";
-      case "TARGET_HOURS_OVERRIDE":
-         return "Weekly Target Adjusted";
       case "STUDY_LOG_ADDED":
          return "Study Time Logged";
       case "GOAL_EDIT":

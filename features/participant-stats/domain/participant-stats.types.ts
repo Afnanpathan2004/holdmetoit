@@ -42,8 +42,6 @@ export interface ParticipantSummaryStats {
    excessHuman: string;
    paceStatus: ParticipantPaceStatus;
    paceLabel: string;
-   todayIsLeave: boolean;
-   leavesCount: number;
 }
 
 export interface ParticipantDailyHistoryEntry {
@@ -63,7 +61,6 @@ export interface ParticipantDailyHistoryEntry {
    isFuture: boolean;
    isPast: boolean;
    isOverride: boolean;
-   isLeave: boolean;
 }
 
 export interface ParticipantTeamStats {

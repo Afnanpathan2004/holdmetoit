@@ -13,7 +13,6 @@ import {
    ChevronDown,
    X,
    RotateCcw,
-   Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,10 +24,6 @@ import {
    AdminHoursOverrideModal,
    type AdminHoursOverrideParticipant,
 } from "@/features/study-logs/presentation/admin-hours-override-modal";
-import {
-   AdminTargetOverrideModal,
-   type AdminTargetOverrideParticipant,
-} from "@/features/challenges/presentation/admin-target-override-modal";
 import { DataPagination } from "@/components/ui/data-pagination";
 import {
    getTeamColorPalette,
@@ -147,12 +142,6 @@ export function ChallengeLeaderboardTab({
       useState<AdminHoursOverrideParticipant | null>(null);
    const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
 
-   // Admin Target Override State (FEAT-DECL-04)
-   const [targetOverrideParticipant, setTargetOverrideParticipant] =
-      useState<AdminTargetOverrideParticipant | null>(null);
-   const [isTargetOverrideModalOpen, setIsTargetOverrideModalOpen] =
-      useState(false);
-
    const handleOpenOverride = (entry: ScoreboardStandingEntry) => {
       setOverrideParticipant({
          participantId: entry.participantId,
@@ -165,21 +154,6 @@ export function ChallengeLeaderboardTab({
          dailyLogs: entry.dailyLogs,
       });
       setIsOverrideModalOpen(true);
-   };
-
-   const handleOpenTargetOverride = (entry: ScoreboardStandingEntry) => {
-      setTargetOverrideParticipant({
-         participantId: entry.participantId,
-         userId: entry.userId,
-         displayName: entry.displayName,
-         username: entry.username,
-         image: entry.image,
-         teamName: entry.teamName,
-         teamColor: entry.teamColor,
-         targetSeconds: entry.targetSeconds,
-         targetClock: entry.targetClock,
-      });
-      setIsTargetOverrideModalOpen(true);
    };
 
    const { matchHeader, teams, standings } = challenge;
@@ -931,36 +905,19 @@ export function ChallengeLeaderboardTab({
                                                    </p>
                                                 </div>
                                                 {isAdmin && (
-                                                   <div className="flex items-center gap-1 shrink-0">
-                                                      <button
-                                                         type="button"
-                                                         onClick={() =>
-                                                            handleOpenOverride(
-                                                               entry
-                                                            )
-                                                         }
-                                                         className="px-2 py-1 rounded-lg bg-[#242424] hover:bg-[#333333] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1 text-[10px] font-semibold"
-                                                         title="Admin: Edit Study Hours"
-                                                      >
-                                                         <Clock className="h-3 w-3 text-[#3b82f6]" />
-                                                         <span>Edit hr</span>
-                                                      </button>
-                                                      <button
-                                                         type="button"
-                                                         onClick={() =>
-                                                            handleOpenTargetOverride(
-                                                               entry
-                                                            )
-                                                         }
-                                                         className="px-2 py-1 rounded-lg bg-[#242424] hover:bg-[#333333] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1 text-[10px] font-semibold"
-                                                         title="Admin: Edit Weekly Target Hours"
-                                                      >
-                                                         <Target className="h-3 w-3 text-[#a855f7]" />
-                                                         <span>
-                                                            Edit target
-                                                         </span>
-                                                      </button>
-                                                   </div>
+                                                   <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                         handleOpenOverride(
+                                                            entry
+                                                         )
+                                                      }
+                                                      className="px-2 py-1 rounded-lg bg-[#242424] hover:bg-[#333333] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1 text-[10px] font-semibold shrink-0"
+                                                      title="Admin: Edit Study Hours"
+                                                   >
+                                                      <Clock className="h-3 w-3 text-[#3b82f6]" />
+                                                      <span>Edit hr</span>
+                                                   </button>
                                                 )}
                                              </div>
                                           </div>
@@ -1093,30 +1050,17 @@ export function ChallengeLeaderboardTab({
                                        </div>
                                     )}
                                     {isAdmin && (
-                                       <div className="flex items-center gap-1 shrink-0">
-                                          <button
-                                             type="button"
-                                             onClick={() =>
-                                                handleOpenOverride(entry)
-                                             }
-                                             className="px-2 py-1 rounded-lg bg-[#242424] hover:bg-[#333333] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1 text-[10px] font-semibold"
-                                             title="Admin: Edit Study Hours"
-                                          >
-                                             <Clock className="h-3 w-3 text-[#3b82f6]" />
-                                             <span>Edit hr</span>
-                                          </button>
-                                          <button
-                                             type="button"
-                                             onClick={() =>
-                                                handleOpenTargetOverride(entry)
-                                             }
-                                             className="px-2 py-1 rounded-lg bg-[#242424] hover:bg-[#333333] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1 text-[10px] font-semibold"
-                                             title="Admin: Edit Weekly Target Hours"
-                                          >
-                                             <Target className="h-3 w-3 text-[#a855f7]" />
-                                             <span>Edit target</span>
-                                          </button>
-                                       </div>
+                                       <button
+                                          type="button"
+                                          onClick={() =>
+                                             handleOpenOverride(entry)
+                                          }
+                                          className="px-2 py-1 rounded-lg bg-[#242424] hover:bg-[#333333] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1 text-[10px] font-semibold shrink-0"
+                                          title="Admin: Edit Study Hours"
+                                       >
+                                          <Clock className="h-3 w-3 text-[#3b82f6]" />
+                                          <span>Edit hr</span>
+                                       </button>
                                     )}
                                  </div>
                               </div>
@@ -1297,34 +1241,17 @@ export function ChallengeLeaderboardTab({
                                                 </span>
                                              </div>
                                              {isAdmin && (
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                   <button
-                                                      type="button"
-                                                      onClick={() =>
-                                                         handleOpenOverride(
-                                                            entry
-                                                         )
-                                                      }
-                                                      className="px-2.5 py-1 rounded-lg bg-[#1c1c1c] hover:bg-[#2e2e2e] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                                                      title="Admin: Edit Participant Study Hours"
-                                                   >
-                                                      <Clock className="h-3.5 w-3.5 text-[#3b82f6]" />
-                                                      <span>Edit hr</span>
-                                                   </button>
-                                                   <button
-                                                      type="button"
-                                                      onClick={() =>
-                                                         handleOpenTargetOverride(
-                                                            entry
-                                                         )
-                                                      }
-                                                      className="px-2.5 py-1 rounded-lg bg-[#1c1c1c] hover:bg-[#2e2e2e] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1.5 text-xs font-semibold"
-                                                      title="Admin: Edit Weekly Target Hours"
-                                                   >
-                                                      <Target className="h-3.5 w-3.5 text-[#a855f7]" />
-                                                      <span>Edit target</span>
-                                                   </button>
-                                                </div>
+                                                <button
+                                                   type="button"
+                                                   onClick={() =>
+                                                      handleOpenOverride(entry)
+                                                   }
+                                                   className="px-2.5 py-1 rounded-lg bg-[#1c1c1c] hover:bg-[#2e2e2e] text-[#d1d1d1] hover:text-white border border-[#383838] transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0"
+                                                   title="Admin: Edit Participant Study Hours"
+                                                >
+                                                   <Clock className="h-3.5 w-3.5 text-[#3b82f6]" />
+                                                   <span>Edit hr</span>
+                                                </button>
                                              )}
                                           </div>
                                        </td>
@@ -1351,39 +1278,15 @@ export function ChallengeLeaderboardTab({
 
          {/* Admin Hours Override Modal (FEAT-LOG-04) */}
          {isAdmin && (
-            <>
-               <AdminHoursOverrideModal
-                  isOpen={isOverrideModalOpen}
-                  onClose={() => setIsOverrideModalOpen(false)}
-                  challengeId={challenge.id}
-                  challengeStartDate={challenge.startAt}
-                  totalChallengeDays={challenge.totalDays || 7}
-                  participant={overrideParticipant}
-                  initialDayNumber={challenge.currentDayNumber || 1}
-                  onOpenTargetOverride={() => {
-                     if (overrideParticipant) {
-                        const found = challenge.standings.find(
-                           (s) =>
-                              s.participantId ===
-                              overrideParticipant.participantId
-                        );
-                        if (found) {
-                           handleOpenTargetOverride(found);
-                        }
-                     }
-                  }}
-               />
-
-               <AdminTargetOverrideModal
-                  isOpen={isTargetOverrideModalOpen}
-                  onClose={() => {
-                     setIsTargetOverrideModalOpen(false);
-                     setTargetOverrideParticipant(null);
-                  }}
-                  challengeId={challenge.id}
-                  participant={targetOverrideParticipant}
-               />
-            </>
+            <AdminHoursOverrideModal
+               isOpen={isOverrideModalOpen}
+               onClose={() => setIsOverrideModalOpen(false)}
+               challengeId={challenge.id}
+               challengeStartDate={challenge.startAt}
+               totalChallengeDays={challenge.totalDays || 7}
+               participant={overrideParticipant}
+               initialDayNumber={challenge.currentDayNumber || 1}
+            />
          )}
       </div>
    );
