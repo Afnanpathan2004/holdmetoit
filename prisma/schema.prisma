@@ -27,6 +27,7 @@ model User {
   username    String?
   displayName String?
   role        UserRole @default(PARTICIPANT)
+  yptId       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -165,6 +166,7 @@ model DailyStudyLog {
   participantId   String
   logDate         DateTime @db.Date
   durationSeconds Int      @default(0)
+  isLeave         Boolean  @default(false)
 
   isOverride     Boolean @default(false)
   overrideById   String?

@@ -80,6 +80,29 @@ describe("calculateParticipantDailyTimeline", () => {
       expect(timeline.length).toBe(5);
       expect(timeline.every((day) => day.durationSeconds === 0)).toBe(true);
       expect(timeline.every((day) => day.cumulativeSeconds === 0)).toBe(true);
+      expect(timeline.every((day) => day.isLeave === false)).toBe(true);
+   });
+
+   it("tracks leave days correctly in the timeline", () => {
+      const logs = [
+         {
+            logDate: "2026-10-01T00:00:00.000Z",
+            durationSeconds: 0,
+            isOverride: false,
+            isLeave: true,
+         },
+      ];
+
+      const timeline = calculateParticipantDailyTimeline(
+         startAt,
+         totalDays,
+         logs,
+         now
+      );
+
+      expect(timeline[0].isLeave).toBe(true);
+      expect(timeline[0].durationSeconds).toBe(0);
+      expect(timeline[1].isLeave).toBe(false);
    });
 });
 
@@ -138,6 +161,23 @@ describe("calculateParticipantSummaryStats", () => {
       expect(stats.remainingSeconds).toBe(0);
       expect(stats.excessSeconds).toBe(0);
       expect(Number.isNaN(stats.completionPercentage)).toBe(false);
+   });
+
+   it("preserves todayIsLeave and leavesCount in summary stats", () => {
+      const stats = calculateParticipantSummaryStats({
+         totalLoggedSeconds: 36_000,
+         todayLoggedSeconds: 0,
+         targetSeconds: 72_000,
+         rank: 1,
+         totalParticipants: 5,
+         paceStatus: "serene",
+         paceLabel: "Serene",
+         todayIsLeave: true,
+         leavesCount: 2,
+      });
+
+      expect(stats.todayIsLeave).toBe(true);
+      expect(stats.leavesCount).toBe(2);
    });
 });
 

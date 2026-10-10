@@ -58,6 +58,7 @@ export async function getChallengeParticipantStats(
                logDate: true,
                durationSeconds: true,
                isOverride: true,
+               isLeave: true,
             },
          },
          punishmentRecord: {
@@ -102,6 +103,10 @@ export async function getChallengeParticipantStats(
       new Date()
    );
 
+   const leavesCount = dailyHistory.filter((d) => d.isLeave).length;
+   const todayDay = dailyHistory.find((d) => d.isToday);
+   const todayIsLeave = Boolean(todayDay?.isLeave);
+
    // 5. Summary statistics
    const summary = calculateParticipantSummaryStats({
       totalLoggedSeconds,
@@ -111,6 +116,8 @@ export async function getChallengeParticipantStats(
       totalParticipants,
       paceStatus,
       paceLabel,
+      todayIsLeave,
+      leavesCount,
    });
 
    // 6. Team metrics (only for team-based challenges)

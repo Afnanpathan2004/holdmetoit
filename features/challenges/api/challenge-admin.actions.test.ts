@@ -4,6 +4,7 @@ import { extractManagedObjectPath } from "@/features/challenges/domain/punishmen
 
 import {
    adminEnrollParticipantAction,
+   adminUpdateParticipantTargetAction,
    createChallengeAction,
    deleteChallengeAction,
    kickoffChallengeAction,
@@ -64,6 +65,7 @@ vi.mock("@/features/challenges/data/challenge-admin.repository", () => ({
    updateAdminChallenge: vi.fn(),
    reassignParticipantTeam: vi.fn(),
    deleteAdminChallenge: vi.fn(),
+   adminUpdateParticipantTarget: vi.fn(),
 }));
 
 describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
@@ -880,6 +882,138 @@ describe("challenge-admin actions (FEAT-CHAL-02, FEAT-CHAL-05)", () => {
          });
          expect(pfpRepo.isChallengeImageReferenced).not.toHaveBeenCalled();
          expect(storage.deleteManagedChallengeImage).not.toHaveBeenCalled();
+      });
+   });
+
+   describe("adminUpdateParticipantTargetAction (Law L5 / FEAT-DECL-04)", () => {
+      it("successfully updates target hours with hours/minutes/seconds", async () => {
+         vi.mocked(
+            challengeAdminRepo.adminUpdateParticipantTarget
+         ).mockResolvedValue({
+            id: "p_1",
+            targetSeconds: 126000,
+         } as never);
+
+         const result = await adminUpdateParticipantTargetAction({
+            challengeId: "c_1",
+            participantId: "p_1",
+            hours: 35,
+            minutes: 0,
+            seconds: 0,
+            reason: "Adjusted by host",
+         });
+
+         expect(result).toEqual({
+            ok: true,
+            data: { targetSeconds: 126000 },
+         });
+         expect(
+            challengeAdminRepo.adminUpdateParticipantTarget
+         ).toHaveBeenCalledWith({
+            challengeId: "c_1",
+            participantId: "p_1",
+            targetSeconds: 126000,
+            reason: "Adjusted by host",
+            admin: ADMIN,
+         });
+         expect(revalidatePath).toHaveBeenCalledWith("/challenge/c_1");
+         expect(revalidatePath).toHaveBeenCalledWith(
+            "/challenge/c_1/participant/p_1"
+         );
+      });
+
+      it("successfully updates target hours when targetSeconds is passed directly", async () => {
+         vi.mocked(
+            challengeAdminRepo.adminUpdateParticipantTarget
+         ).mockResolvedValue({
+            id: "p_1",
+            targetSeconds: 72000,
+         } as never);
+
+         const result = await adminUpdateParticipantTargetAction({
+            challengeId: "c_1",
+            participantId: "p_1",
+            targetSeconds: 72000,
+         });
+
+         expect(result).toEqual({
+            ok: true,
+            data: { targetSeconds: 72000 },
+         });
+         expect(
+            challengeAdminRepo.adminUpdateParticipantTarget
+         ).toHaveBeenCalledWith({
+            challengeId: "c_1",
+            participantId: "p_1",
+            targetSeconds: 72000,
+            reason: undefined,
+            admin: ADMIN,
+         });
+      });
+
+      it("rejects non-admin user with AdminAccessError", async () => {
+         vi.mocked(requireAdminModule.requireAdminUser).mockRejectedValueOnce(
+            new requireAdminModule.AdminAccessError()
+         );
+
+         const result = await adminUpdateParticipantTargetAction({
+            challengeId: "c_1",
+            participantId: "p_1",
+            hours: 20,
+         });
+
+         expect(result).toMatchObject({
+            ok: false,
+            code: "FORBIDDEN_NOT_ADMIN",
+         });
+      });
+
+      it("rejects targets less than 1 hour (< 3600 seconds)", async () => {
+         const result = await adminUpdateParticipantTargetAction({
+            challengeId: "c_1",
+            participantId: "p_1",
+            hours: 0,
+            minutes: 30,
+            seconds: 0,
+         });
+
+         expect(result).toEqual({
+            ok: false,
+            code: "TARGET_TOO_LOW",
+            message: "Weekly target must be at least 1 hour.",
+         });
+      });
+
+      it("rejects targets greater than 105 hours", async () => {
+         const result = await adminUpdateParticipantTargetAction({
+            challengeId: "c_1",
+            participantId: "p_1",
+            targetSeconds: 400000,
+         });
+
+         expect(result).toEqual({
+            ok: false,
+            code: "TARGET_TOO_HIGH",
+            message: "Weekly target cannot exceed 105 hours.",
+         });
+      });
+
+      it("handles repository failure gracefully", async () => {
+         vi.mocked(
+            challengeAdminRepo.adminUpdateParticipantTarget
+         ).mockRejectedValueOnce(new Error("Participant not found."));
+
+         const result = await adminUpdateParticipantTargetAction({
+            challengeId: "c_1",
+            participantId: "p_1",
+            hours: 20,
+         });
+
+         expect(result).toEqual({
+            ok: false,
+            code: "UPDATE_TARGET_FAILED",
+            message: "Participant not found.",
+         });
       });
    });
 });
