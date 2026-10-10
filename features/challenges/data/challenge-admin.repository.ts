@@ -185,10 +185,10 @@ export async function lockChallengeResults(
    }
 
    const currentStatus = calculateChallengeStatus(challenge);
-   assertCanLockChallenge(currentStatus);
+   assertCanLockChallenge(currentStatus, challenge.resultsLockedAt);
 
    return prisma.$transaction(async (tx) => {
-      // 1. Transition challenge status to COMPLETED by adjusting endAt
+      // 1. Transition challenge status to COMPLETED by adjusting endAt (if ACTIVE) and setting resultsLockedAt
       const now = new Date();
       const completedChallenge = await tx.challenge.update({
          where: { id: challengeId },
@@ -197,6 +197,7 @@ export async function lockChallengeResults(
                now.getTime() < challenge.endAt.getTime()
                   ? now
                   : challenge.endAt,
+            resultsLockedAt: now,
          },
       });
 
@@ -254,9 +255,13 @@ export async function lockChallengeResults(
          targetEntityType: "CHALLENGE",
          targetEntityName: challenge.title,
          challengeId,
-         previousValue: { status: currentStatus },
+         previousValue: {
+            status: currentStatus,
+            resultsLockedAt: challenge.resultsLockedAt,
+         },
          newValue: {
             status: "COMPLETED",
+            resultsLockedAt: completedChallenge.resultsLockedAt,
             participantsEvaluated: challenge.participants.length,
          },
          auditReason:

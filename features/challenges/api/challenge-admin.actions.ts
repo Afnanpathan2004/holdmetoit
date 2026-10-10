@@ -646,7 +646,6 @@ export async function removeChallengeParticipantAction(
       };
    }
 }
-
 const adminUpdateParticipantTargetSchema = z.object({
    challengeId: z.string().min(1),
    participantId: z.string().min(1),

@@ -7,6 +7,17 @@ internal (engineering, tooling, and infrastructure) and are shown to admins only
 
 ## 2026-10-11
 
+### Lock results after natural expiry [user]
+
+Hosts can lock and finalize a challenge — and evaluate dual-failure punishments —
+even after its timer has naturally ended, instead of only before expiry. Results
+lock once and stay locked.
+
+### Challenge lock schema
+
+Added `resultsLockedAt` to `Challenge` with an idempotent migration, so
+finalization is persisted and repeat-safe.
+
 ### Structured event logging & failure diagnostics
 
 Unified, severity-filtered logger wired across all server actions, route handlers,
