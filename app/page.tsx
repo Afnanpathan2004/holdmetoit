@@ -2,8 +2,8 @@ import { cookies } from "next/headers";
 import { auth } from "@/core/auth";
 import { AppHeader } from "@/features/auth/presentation/auth-nav";
 import {
-  getEffectiveAdminState,
-  PARTICIPANT_PREVIEW_COOKIE,
+   getEffectiveAdminState,
+   PARTICIPANT_PREVIEW_COOKIE,
 } from "@/features/auth/domain/preview-mode";
 import { HomeCockpitView } from "@/features/study-logs/presentation/home-cockpit-view";
 import { getParticipantCockpit } from "@/features/study-logs/data/cockpit-data";
@@ -13,83 +13,87 @@ import { getUserCategorizedTasks } from "@/features/tasks/data/task.repository";
 export const dynamic = "force-dynamic";
 
 interface HomePageProps {
-  searchParams?: {
-    challenge?: string;
-    as?: string;
-    preview?: string;
-    role?: string;
-  };
+   searchParams?: {
+      challenge?: string;
+      as?: string;
+      preview?: string;
+      role?: string;
+   };
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const session = await auth();
-  const cookieStore = await cookies();
-  const previewCookie = cookieStore.get(PARTICIPANT_PREVIEW_COOKIE)?.value;
+   const session = await auth();
+   const cookieStore = await cookies();
+   const previewCookie = cookieStore.get(PARTICIPANT_PREVIEW_COOKIE)?.value;
 
-  const { isActualAdmin, isPreviewActive, isAdmin, effectiveRole } =
-    getEffectiveAdminState({
-      userRole: session?.user?.role,
-      previewCookie,
-      searchParamAs: searchParams?.as,
-    });
+   const { isActualAdmin, isPreviewActive, isAdmin, effectiveRole } =
+      getEffectiveAdminState({
+         userRole: session?.user?.role,
+         previewCookie,
+         searchParamAs: searchParams?.as,
+      });
 
-  let cockpit = null;
-  if (session?.user?.id) {
-    try {
-      cockpit = await getParticipantCockpit(session.user.id, searchParams?.challenge);
-    } catch {
-      cockpit = null;
-    }
-  }
+   let cockpit = null;
+   if (session?.user?.id) {
+      cockpit = await getParticipantCockpit(
+         session.user.id,
+         searchParams?.challenge
+      );
+   }
 
-  let userTasks = null;
-  if (session?.user?.id) {
-    try {
-      userTasks = cockpit?.userTasks ?? (await getUserCategorizedTasks(session.user.id));
-    } catch {
-      userTasks = null;
-    }
-  }
+   let userTasks = null;
+   if (session?.user?.id) {
+      try {
+         userTasks =
+            cockpit?.userTasks ??
+            (await getUserCategorizedTasks(session.user.id));
+      } catch {
+         userTasks = null;
+      }
+   }
 
-  let upcomingChallenge = null;
-  if (session?.user?.id && (!cockpit || cockpit.challengeStatus === "UPCOMING")) {
-    try {
-      upcomingChallenge = await findLatestAvailableChallenge();
-    } catch {
-      upcomingChallenge = null;
-    }
-  }
+   let upcomingChallenge = null;
+   if (
+      session?.user?.id &&
+      (!cockpit || cockpit.challengeStatus === "UPCOMING")
+   ) {
+      try {
+         upcomingChallenge = await findLatestAvailableChallenge();
+      } catch {
+         upcomingChallenge = null;
+      }
+   }
 
-  const displayName =
-    session?.user?.displayName ||
-    session?.user?.name ||
-    "";
+   const displayName = session?.user?.displayName || session?.user?.name || "";
 
-  const effectiveUser =
-    session?.user
+   const effectiveUser = session?.user
       ? { ...session.user, role: effectiveRole ?? session.user.role }
       : session?.user;
 
-  return (
-    <div className="min-h-screen bg-[#0d0d0d] text-[#f4f3f6]">
-      <AppHeader
-        user={session?.user}
-        isActualAdmin={isActualAdmin}
-        isPreviewActive={isPreviewActive}
-      />
-      <main className="w-full">
-        <HomeCockpitView
-          displayName={displayName}
-          challengeId={cockpit?.challengeId ?? upcomingChallenge?.id ?? "seed-honey-bees-vs-lavender-butterflies"}
-          todayLoggedSeconds={cockpit?.todayLoggedSeconds ?? 0}
-          todayLoggedClock={cockpit?.todayLoggedClock ?? "00:00:00"}
-          user={effectiveUser}
-          cockpit={cockpit}
-          upcomingChallenge={upcomingChallenge}
-          userTasks={userTasks}
-          isAdmin={isAdmin}
-        />
-      </main>
-    </div>
-  );
+   return (
+      <div className="min-h-screen bg-[#0d0d0d] text-[#f4f3f6]">
+         <AppHeader
+            user={session?.user}
+            isActualAdmin={isActualAdmin}
+            isPreviewActive={isPreviewActive}
+         />
+         <main className="w-full">
+            <HomeCockpitView
+               displayName={displayName}
+               challengeId={
+                  cockpit?.challengeId ??
+                  upcomingChallenge?.id ??
+                  "seed-honey-bees-vs-lavender-butterflies"
+               }
+               todayLoggedSeconds={cockpit?.todayLoggedSeconds ?? 0}
+               todayLoggedClock={cockpit?.todayLoggedClock ?? "00:00:00"}
+               user={effectiveUser}
+               cockpit={cockpit}
+               upcomingChallenge={upcomingChallenge}
+               userTasks={userTasks}
+               isAdmin={isAdmin}
+            />
+         </main>
+      </div>
+   );
 }
