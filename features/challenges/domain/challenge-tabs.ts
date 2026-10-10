@@ -6,7 +6,6 @@
 export const CHALLENGE_TABS = [
    "overview",
    "leaderboard",
-   "about",
    "manage",
    "audit",
 ] as const;
@@ -16,7 +15,6 @@ export type ChallengeTab = (typeof CHALLENGE_TABS)[number];
 export const PUBLIC_CHALLENGE_TABS: readonly ChallengeTab[] = [
    "overview",
    "leaderboard",
-   "about",
 ];
 
 export const ADMIN_CHALLENGE_TABS: readonly ChallengeTab[] = [
@@ -38,12 +36,17 @@ export function isChallengeTab(tab: unknown): tab is ChallengeTab {
 
 /**
  * Resolves the effective accessible ChallengeTab based on user permissions.
+ * Gracefully redirects legacy "about" tab to "overview".
  * Falls back to DEFAULT_CHALLENGE_TAB ("overview") if invalid or unauthorized.
  */
 export function resolveAllowedChallengeTab(
    requestedTab: unknown,
    isAdmin: boolean
 ): ChallengeTab {
+   if (requestedTab === "about") {
+      return DEFAULT_CHALLENGE_TAB;
+   }
+
    if (!isChallengeTab(requestedTab)) {
       return DEFAULT_CHALLENGE_TAB;
    }

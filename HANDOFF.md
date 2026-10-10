@@ -3,35 +3,35 @@
 > **Project:** HoldMeToIt (Gamified Study Accountability & Challenge Management Platform)  
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
-> **Last Updated:** 2026-10-10 (Session 76 — Leaderboard view mode URL sync & profile navigation preservation)  
+> **Last Updated:** 2026-10-10 (Session 77 — Overview Punishment PFP Disclosure & About Tab Merge)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-10, branch `dev`)                                                                                                                                                                                                                                     |
+| Gate                                         | Result (2026-10-10, branch `afnan-jr`)                                                                                                                                                                                                                                |
 | :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                                      |
-| `npm run test`                               | ✅ 75 files green (775/775 tests passing)                                                                                                                                                                                                                             |
+| `npm run test`                               | ✅ 75 files green (788/788 tests passing)                                                                                                                                                                                                                             |
 | `npm run build`                              | ✅ 10 routes compiled (9 app routes + `_not-found`)                                                                                                                                                                                                                   |
-| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~89%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
+| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~91%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
 | Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                                            |
 | Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                                        |
 
 ### 1.1 Live Routes
 
-| Route                                         | Purpose                                                                                        | Access                                 |
-| :-------------------------------------------- | :--------------------------------------------------------------------------------------------- | :------------------------------------- |
-| `/`                                           | Home cockpit: banner variants, progress/deficit card, Log Hours modal, Daily/Weekly task board | Guest (local tasks only) / Participant |
-| `/challenges`                                 | Dedicated public challenges directory (Events card grid, role-gated Create Challenge button)   | Public spectator / Participant / Admin |
-| `/challenge/[id]`                             | Tabs: Overview · Leaderboard · About · Manage (admin only)                                     | Public spectator                       |
-| `/challenge/[id]/participant/[participantId]` | Challenge-specific participant statistics, targets, daily history & read-only profile          | Public spectator / Participant / Admin |
-| `/challenge/[id]/manual`                      | Manual weekly slot-hours leaderboard (host-entered)                                            | Public view, admin entry               |
-| `/admin`                                      | Server redirect to `/challenges`                                                               | `ADMIN` / `DEV`                        |
-| `/admin/challenges/new`                       | Challenge creator wizard (2 required image uploads)                                            | `ADMIN` / `DEV`                        |
-| `POST /api/feedback`                          | Bug/suggestion intake → DB + Discord embed                                                     | Anyone                                 |
-| `POST /api/tasks/sync`                        | Offline task queue batch sync                                                                  | Authenticated                          |
+| Route                                         | Purpose                                                                                                | Access                                 |
+| :-------------------------------------------- | :----------------------------------------------------------------------------------------------------- | :------------------------------------- |
+| `/`                                           | Home cockpit: banner variants, progress/deficit card, Log Hours modal, Daily/Weekly task board         | Guest (local tasks only) / Participant |
+| `/challenges`                                 | Dedicated public challenges directory (Events card grid, role-gated Create Challenge button)           | Public spectator / Participant / Admin |
+| `/challenge/[id]`                             | Tabs: Overview (includes Timetable & Forfeit Avatar) · Leaderboard · Manage (admin only) · Event Audit | Public spectator                       |
+| `/challenge/[id]/participant/[participantId]` | Challenge-specific participant statistics, targets, daily history & read-only profile                  | Public spectator / Participant / Admin |
+| `/challenge/[id]/manual`                      | Manual weekly slot-hours leaderboard (host-entered)                                                    | Public view, admin entry               |
+| `/admin`                                      | Server redirect to `/challenges`                                                                       | `ADMIN` / `DEV`                        |
+| `/admin/challenges/new`                       | Challenge creator wizard (2 required image uploads)                                                    | `ADMIN` / `DEV`                        |
+| `POST /api/feedback`                          | Bug/suggestion intake → DB + Discord embed                                                             | Anyone                                 |
+| `POST /api/tasks/sync`                        | Offline task queue batch sync                                                                          | Authenticated                          |
 
 > **Removed routes:** `/dashboard` (replaced by `/`) and `/admin/challenges/[id]/roster` (replaced by the Manage tab). Several `revalidatePath("/dashboard")` calls remain and do nothing; they're harmless but should be cleaned up.
 
@@ -69,7 +69,7 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 | `FEAT-LEAD-03`  | Catch-up deficit engine            |   ✅   | `deficit.ts` + `cockpit-progress-card.tsx`                                                                                                                                                                                             |
 | `FEAT-PUN-01`   | Dual-failure auto-flagging         |   ⚠️   | `lockChallengeResults` passes `[]` as goals, so **Law L6 runs on hours only**                                                                                                                                                          |
 | `FEAT-PUN-02`   | Punishment Wall                    |   ❌   | `punishment-wall.tsx` was deleted in `88779bd`. The Overview tab only mentions it in copy                                                                                                                                              |
-| `FEAT-PUN-03`   | Punishment PFP download button     |   ❌   | PFP upload works; there's no download button anywhere in the UI                                                                                                                                                                        |
+| `FEAT-PUN-03`   | Punishment PFP download button     |   ✅   | Overview tab contains dedicated Forfeit Avatar & Accountability card with image preview, Law L6 explanation, and direct "Download Forfeit PFP" button                                                                                  |
 | `FEAT-PUN-04`   | Host pardon                        |   ⚠️   | `adminPardonAction` exists; **no UI** (`admin-goals-pardons.tsx` was deleted in `364c7a1`)                                                                                                                                             |
 | `FEAT-DISC-01`  | 1-click Discord summary copy       |   ⚠️   | `generateDiscordSummary()` is a pure domain function; **no UI** (`discord-summary-card.tsx` was deleted in `364c7a1`)                                                                                                                  |
 
@@ -93,7 +93,7 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 | :-: | :------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | 🔴 High  | Lock Results fails after natural expiry, so punishments are never evaluated (`assertCanLockChallenge` rejects `COMPLETED`)                                                                                                     | Allow lock/evaluate when status is `COMPLETED` and the challenge hasn't been finalized yet. That needs a persisted `finalizedAt` (or `resultsLockedAt`) column to stay idempotent |
 | D2  | 🔴 High  | Audit trail in-memory fallback needs full persistence validation                                                                                                                                                               | Add migration check and verify Prisma `audit_logs` model insertion across all environments                                                                                        |
-| D3  | 🔴 High  | Five P0 features have backend code but no UI: override grid, pardon, Discord summary copy, Punishment Wall, PFP download                                                                                                       | Rebuild them in Obsidian styling inside the Manage tab (admin) and the Overview tab (public wall + download)                                                                      |
+| D3  | 🔴 High  | Three P0 features have backend code but no UI: pardon modal, Discord summary copy, Punishment Wall                                                                                                                             | Rebuild them in Obsidian styling inside the Manage tab (admin pardon & Discord summary) and the Overview tab (public wall)                                                        |
 | D4  |  🟠 Med  | Law L6 runs on hours only: goals aren't challenge-scoped any more                                                                                                                                                              | **Product decision needed** (see §4)                                                                                                                                              |
 | D5  |  🟠 Med  | Schema drift: the `feedbacks` table and the `sort_order` columns on `categories`/`tasks` were applied with `db push` and have **no migration files**. `prisma migrate deploy` on a fresh DB would produce an incomplete schema | Generate catch-up migrations (`prisma migrate diff`) and `migrate resolve` them on existing DBs                                                                                   |
 | D6  |  🟡 Low  | `leaveDays` is collected in the enrollment modal and then discarded                                                                                                                                                            | Either persist it and feed it into the deficit/target math, or remove it from the UI                                                                                              |
@@ -145,139 +145,11 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 
 ## 7. Session Changelog (Last 3–5 Sessions)
 
-### Sessions 1–66 (Summarized)
+### Sessions 1–73 (Summarized)
 
-- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours prevention, past challenge day task-adding guards, cross-day task moving/rescheduling with validation, participant study log audit trail integration (`STUDY_LOG_ADDED`), and dedicated public challenges catalog (`/challenges`) with role-gated admin controls.
+- Core domain math, Prisma models, Discord OAuth, participant cockpit, mobile pass, drag & drop across Daily/Weekly boards, offline-first IndexedDB task sync (`holdmetoit_db`), 2-card participant logging, admin 7-day hours overrides, law labels UI cleanup, moderator future hours prevention, cross-day task moving/rescheduling with validation, participant study log audit trail integration (`STUDY_LOG_ADDED`), dedicated public challenges catalog (`/challenges`) with role-gated admin controls, multi-view pagination guards (`DataPagination`), challenge-specific participant statistics profiles (`/challenge/[id]/participant/[participantId]`), multi-view search & team filtering with "View by Team" mode, dynamic team color palettes with WCAG AA contrast calculation (`team-colors.ts`), overall time reset to 0 (`executeAdminResetOverallHours`), and challenge tab reload URL sync (`challenge-tabs.ts`).
 
-### Session 67 — 2026-10-09 (krish)
-
-- **Agent Role:** Participant UI & Scoring / Engine Agent.
-- **Multi-View Pagination & Overflow Guards Across Platform:**
-   - Created reusable Obsidian Dark `DataPagination` component (`components/ui/data-pagination.tsx`):
-      - Responsive: Mobile compact indicator (`Page X of Y` / `X–Y of Z`) and desktop numbered pills with smart ellipsis for large page ranges (`1, 2, ..., 10`).
-      - Compact variant for narrow cards and sidebars.
-      - Auto-hides gracefully when `totalPages <= 1`.
-      - Comprehensive unit test suite in `data-pagination.test.tsx` (4/4 tests green).
-   - Leaderboard standings (`challenge-leaderboard-tab.tsx`), participant overview roster (`challenge-overview-tab.tsx`), event audit log (`event-audit-tab.tsx`), admin roster (`challenge-manage-tab.tsx`), public challenges grid (`challenges-list-view.tsx`), and manual leaderboard (`manual-leaderboard-view.tsx`) all paginated and protected against layout overflows.
-- **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (all tests green) · `npx next build` ✅.
-
-### Session 68 — 2026-10-09 (afnan)
-
-- **Agent Role:** Participant UI & Scoring / Engine Agent.
-- **Challenge-Specific Participant Statistics & Read-Only Profiles (`FEAT-LEAD-06`):**
-   - **Dedicated Route (`/challenge/[id]/participant/[participantId]`):** dynamic server-rendered page and skeleton loader. Cross-challenge validation returns empty state if mismatched.
-   - **Pure Domain Calculations (`features/participant-stats/domain/`):** chronological timeline with zero-hour rest days, summary stats, team contribution meter, and deficit accountability.
-   - **Repository & Presentation Layers:** joined scoreboard rank, profile header with breadcrumbs, Obsidian summary cards, responsive SVG/HTML daily bar chart, daily history table/cards.
-   - Clickable participant names/avatars across Leaderboard tab, Overview tab, and Admin Roster.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green) · `npm run build` ✅.
-
-### Session 69 — 2026-10-09 (afnan)
-
-- **Agent Role:** Participant UI & Scoring / Engine Agent.
-- **Bug Fix — House Standing Participant Rank (`FEAT-LEAD-06`):**
-   - Corrected "House Standing" card in `ParticipantTeamStats` to calculate and display participant's rank within their own team (`participantTeamRank`) rather than the overall team standing.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green).
-
-### Session 70 — 2026-10-09 (krish)
-
-- **Agent Role:** Participant UI & Scoring / Engine Agent.
-- **Multi-View Search, Filtering & "View by Team" Mode Across Data Lists:**
-   - **Leaderboard Tab (`challenge-leaderboard-tab.tsx`):**
-      - Instant text search across display name, `@username`, and team/house name with live match counts.
-      - House/Team filter dropdown (`All Teams`, individual teams with icons, name, and member counts).
-      - Pace/Status filter dropdown (`All Pace Statuses`, `On Track / Ahead`, `Catch-Up / Behind`).
-      - High-level View Mode toggle: **`Overall Rank`** vs **`View by Team`**.
-      - In **`View by Team`** mode: Renders distinct house cards grouping enrolled scholars by competing house, featuring house emoji, name, leader badge, house logged clock vs house target clock, visual progress bar, and intra-house scholar rankings (`#1 in House (#X Overall)`), avatars, today's hours, total hours, pace badges, and admin hour overrides.
-      - Active filter badge pills with 1-click dismissal and styled empty filter state with reset action.
-   - **Overview Tab Enrolled Roster (`challenge-overview-tab.tsx`):**
-      - Added instant text search and House/Team filter dropdown with active filter count and reset button.
-   - **Manage Tab Admin Roster Grid (`challenge-manage-tab.tsx`):**
-      - Added House filter dropdown (`All Houses`, individual houses, `Unassigned Scholars`) with counter badge (`X of Y scholars`) and reset controls beside the existing roster search.
-   - **Public Challenges Directory Grid (`challenges-list-view.tsx`):**
-      - Added instant text search across challenge title, format, host name/username, and participating team names.
-      - Added status filter tabs (`All`, `Active`, `Upcoming`, `Completed`) with real-time challenge counts.
-      - Added format filter dropdown (`All Formats`, `Team vs Team`, `Solo Battles`, `Duo Battles`, `Squad Battles`).
-      - Styled empty filter state with 1-click filter reset.
-   - **Manual Leaderboard Standings (`manual-leaderboard-view.tsx`):**
-      - Added search input and team filter dropdown for manual slot standings with empty state reset.
-   - **Test Suite Updates:**
-      - Added unit and interaction tests across `challenge-leaderboard-tab.test.tsx`, `challenge-overview-tab.test.tsx`, `challenges-list-view.test.tsx`, and created `manual-leaderboard-view.test.tsx`.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 713/713 green) · `npm run build` ✅ (10 routes compiled successfully).
-
-### Session 71 — 2026-10-09 (afnan-jr)
-
-- **Agent Role:** Scoring & Engine Agent & Data / Identity Agent.
-- **Dynamic Single-Hex Team Colors, Hardening & Dual-Layer 5-Minute Caching Engine:**
-   - **Pure Domain Color Engine (`features/challenges/domain/team-colors.ts`):**
-      - Pure TypeScript functional engine adhering to **Law L7** (zero React/Next.js/ORM dependencies).
-      - Converts hex into RGB and HSL space; `getReadableTextColor(hex)` locks Hue and Saturation and lifts Lightness ($L \ge 76\%$) for WCAG AA contrast ($>6.5:1$) on Obsidian dark surfaces (`#0d0d0d` / `#141414`).
-      - Generates complete 10-token dark palette (`palette.solid`, `subtleBg`, `cardBg`, `border`, `subtleBorder`, `text`, `glow`, `hoverBorder`, `headerBg`, `avatarBg`).
-      - Pitch-black `#000000` luminance guard and CSS 4-character `#rgba` shorthand support.
-      - In-memory 5-minute TTL palette cache (`clearTeamColorCache()`).
-   - **ViewModel & Presentation Layer Migration:**
-      - Team A & Team B cards, Tug-of-War Split Share Bar, Rank 1 podium card, mobile cards, desktop table rows, and overview roster dynamically adopt admin-configured team hex values.
-   - **Server-Side 5-Minute Data Caching (`leaderboard-data.ts`) & Admin Instant Invalidation:**
-      - Cached scoreboard uses `revalidate: 300` (5 minutes) with instant admin tag invalidation (`invalidateTags`).
-   - **Unit Tests:** 20 unit tests in `team-colors.test.ts` (100% green).
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 730/730 green) · `npm run build` ✅ (10 routes compiled successfully).
-
-### Session 72 — 2026-10-09 (krish)
-
-- **Agent Role:** Admin Operations & Broadcaster Agent / Data & Identity Agent.
-- **Overall Time Reset to 0 & Zero-Hour Override Unblock (`Law L5` / `FEAT-LOG-04`):**
-   - **Problem Resolved:** Moderators and developers were unable to update study time to 0 (`00:00:00`) because:
-      1. Submit buttons were unconditionally disabled when audit reasons were empty, even when clearing time to 0.
-      2. Backend validation strictly rejected empty reasons even when clearing/resetting hours.
-      3. Mods could only adjust day-by-day (D1..D7), with no way to reset a participant's overall challenge time to 0 in one action.
-      4. Manual leaderboard entry modal had `hours <= 0` and `min="0.1"` preventing 0 hour submissions.
-   - **Repository Layer (`features/study-logs/data/admin-override.repository.ts`):**
-      - Added `executeAdminResetOverallHours`: batch updates all existing `DailyStudyLog` entries for a participant to `durationSeconds = 0` (`isOverride = true`, `overrideById`, `overrideReason`), or provisions a baseline 0s log if none exist.
-      - Logs immutable `HOURS_OVERRIDE` audit event on `PARTICIPANT` recording previous and new totals.
-   - **Action Layer (`features/study-logs/api/admin-override.actions.ts`):**
-      - Added `adminResetParticipantOverallHoursAction` with tag invalidation (`cacheTags.challengeScoreboard`) and path revalidations.
-      - Updated `adminOverrideStudyHoursAction` so that when `durationSeconds === 0`, reasons default gracefully to `"Set study hours to 00:00:00 by moderator"` without failing schema validation.
-   - **Presentation Layer (`admin-hours-override-modal.tsx`):**
-      - Added scope toggle: **`Single Day (D1–D7)`** vs **`Overall Time (Reset to 0)`**.
-      - In **`Overall Time`** mode: displays current overall logged clock, new `00:00:00` clock, confirmation notice, and a prominent 1-click `Reset Overall Time to 0` action.
-      - In **`Single Day`** mode: when clearing time to 0 or entering `00:00:00`, the reason is marked optional, automatically defaulted, and the submit button is never disabled.
-   - **Modal Callers Updated:**
-      - Hydrated `totalLoggedSeconds` into `AdminHoursOverrideParticipant` in `challenge-manage-tab.tsx`, `challenge-overview-tab.tsx`, and `challenge-leaderboard-tab.tsx`.
-   - **Manual Leaderboard Updated (`manual-leaderboard-view.tsx`):**
-      - Changed `hours <= 0` to `hours < 0` and `min="0.1"` to `min="0"` so manual logging supports 0 hours.
-   - **Unit Tests:**
-      - Added 8 new tests across `admin-override.actions.test.ts`, `admin-hours-override-modal.test.tsx`, and `manual-leaderboard-view.test.tsx`.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 723/723 green) · `npx next build` ✅ (10 routes compiled successfully).
-
-### Session 73 — 2026-10-09 (afnan-jr)
-
-- **Agent Role:** Participant UI Agent & Scoring / Engine Agent.
-- **Bug Fix — Challenge View Tab Reload Reset & URL Sync (`BUG-CHAL-01`):**
-   - **Problem:** Reloading `/challenge/[id]` always reset the view back to the initial entry tab (e.g. `?tab=leaderboard` from cockpit banner card) because tab switches in `<ChallengeView>` only modified internal React state without synchronizing with browser address bar.
-   - **Pure Domain Tab Layer (`features/challenges/domain/challenge-tabs.ts`):**
-      - Pure TypeScript module isolated from UI/Next.js/ORM per **Law L7**.
-      - Exported `CHALLENGE_TABS = ["overview", "leaderboard", "about", "manage", "audit"]`, `PUBLIC_CHALLENGE_TABS`, `ADMIN_CHALLENGE_TABS`, `DEFAULT_CHALLENGE_TAB = "overview"`.
-      - Exported pure validation helpers `isChallengeTab` and `resolveAllowedChallengeTab(requestedTab, isAdmin)` which strictly clamps unauthorized admin tabs (`manage`, `audit`) to `"overview"` for non-admins.
-      - 9 unit tests in `challenge-tabs.test.ts` (100% green).
-   - **Server-Side Page Sanitization (`app/challenge/[id]/page.tsx`):**
-      - Sanitized `searchParams?.tab` using `resolveAllowedChallengeTab(searchParams?.tab, isAdmin)` prior to rendering `<ChallengeView>`.
-      - 7 unit tests in `app/challenge/[id]/page.test.tsx` (100% green).
-   - **Client Presentation Layer (`features/challenges/presentation/challenge-view.tsx`):**
-      - **Ratified History Strategy (Option A):** Uses `window.history.replaceState` on tab click; tabs represent views of the same page entity without polluting browser back-button stack.
-      - **Query Parameter Preservation:** Preserves all existing query parameters (e.g. `?as=participant`, filters) using `URLSearchParams`.
-      - **Canonical Default Cleanup:** Automatically deletes `?tab=overview` to keep canonical URLs clean.
-      - Synchronized `activeTab` on `initialTab`/`isAdmin` prop changes using `useEffect`.
-      - 12 unit tests in `challenge-view.test.tsx` (100% green).
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (74 files, 758/758 green) · `npm run build` ✅ (10 routes compiled successfully).
-
-### Session 74a — 2026-10-10 (krish)
-
-- **Agent Role:** Data & Identity Agent / Admin Operations Agent.
-- **Codebase Audit & Upstream Dev Sync:**
-   - Authored comprehensive project audit and known issues tracker in [`ISSUES.md`](file:///home/afnan/Projects/holdmetoit/ISSUES.md) cataloging 32 prioritized findings across critical, medium, low, and QoL improvements.
-   - Synchronized upstream `dev` branch changes (dynamic team color badge styling and tab URL synchronization) with overall time reset and zero-hour unblock logic.
-- **Quality Gates:** `npx tsc --noEmit` ✅ · `npm run test` ✅.
-
-### Session 74b — 2026-10-10 (afnan)
+### Session 74 — 2026-10-10 (afnan)
 
 - **Agent Role:** Participant UI Agent, Scoring & Engine Agent, Data & Identity Agent.
 - **Yeolpumta (YPT) Study Logs V2 Integration & "Today's LB" View Mode:**
@@ -361,5 +233,30 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
 - **Quality Gates Verified:**
    - `npm run typecheck` ✅ (0 errors)
    - `npm run test` ✅ (75/75 test files passing, 775/775 tests green)
+   - `npm run build` ✅ (10 routes compiled successfully)
+
+### Session 77 — 2026-10-10 (afnan-jr)
+
+- **Agent Role:** Participant UI Agent, Scoring & Engine Agent, Data & Identity Agent.
+- **Punishment Picture Disclosure in Overview & About Tab Merge:**
+   - **Domain Layer (`features/challenges/domain/challenge-tabs.ts`):**
+      - Merged `"about"` into `"overview"`. Updated `CHALLENGE_TABS = ["overview", "leaderboard", "manage", "audit"]` and `PUBLIC_CHALLENGE_TABS = ["overview", "leaderboard"]`.
+      - Added automatic fallback in `resolveAllowedChallengeTab` where `requestedTab === "about"` redirects safely to `"overview"`, preserving backwards compatibility with legacy bookmarks and external links without 404s.
+      - Updated `challenge-tabs.test.ts` (10/10 tests green).
+   - **Presentation Layer (`features/challenges/presentation/`):**
+      - **Navigation Bar (`challenge-view.tsx`):** Removed the standalone "About" tab button and its rendering branch; tabs now cleanly present Overview, Leaderboard, and role-gated admin tabs.
+      - **Timetable (UTC) Merge (`challenge-overview-tab.tsx`):** Integrated the challenge timetable (Kickoff and Conclusion timestamps formatted in UTC) and challenge description into the Welcome card on the Overview tab.
+      - **Forfeit Avatar & Accountability Disclosure Card (`challenge-overview-tab.tsx`):** Added dedicated card for challenge forfeit preview:
+         - Clean header with card title "Forfeit Avatar & Accountability" (red alert icon, Forfeit Discord PFP pill badge, Law L6 subtitle, and bottom accountability rule note removed per user feedback for minimal Obsidian styling).
+         - High-resolution preview of `challenge.punishmentPfpUrl` (`next/image`).
+         - Direct "Download Forfeit PFP" button (`<a>` with `download` attribute and `target="_blank"`).
+         - Graceful fallback state ("No Custom Forfeit Avatar Set") when no PFP is uploaded.
+   - **Server Page (`app/challenge/[id]/page.test.tsx`):**
+      - Updated page server tests to assert that `searchParams.tab = "about"` resolves cleanly to `data-initial-tab="overview"`.
+   - **Unit Tests:**
+      - Added unit tests in `challenge-overview-tab.test.tsx` covering Timetable rendering, Punishment PFP preview + download button, null fallback state, and absence of removed badges/labels (8/8 tests green).
+- **Quality Gates Verified:**
+   - `npm run typecheck` ✅ (0 errors)
+   - `npm run test` ✅ (75/75 test files passing, 788/788 tests green)
    - `npm run build` ✅ (10 routes compiled successfully)
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).

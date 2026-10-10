@@ -103,14 +103,24 @@ describe("ChallengePage (Server Component)", () => {
       expect(html).toContain('data-initial-tab="overview"');
    });
 
-   it("passes valid public initialTab (e.g. 'about', 'leaderboard') for non-admin", async () => {
+   it("passes valid public initialTab (e.g. 'leaderboard') for non-admin", async () => {
+      const pageJsx = await ChallengePage({
+         params: { id: "chal-1" },
+         searchParams: { tab: "leaderboard" },
+      });
+      const html = renderToStaticMarkup(pageJsx);
+
+      expect(html).toContain('data-initial-tab="leaderboard"');
+   });
+
+   it("resolves legacy 'about' tab to 'overview'", async () => {
       const pageJsx = await ChallengePage({
          params: { id: "chal-1" },
          searchParams: { tab: "about" },
       });
       const html = renderToStaticMarkup(pageJsx);
 
-      expect(html).toContain('data-initial-tab="about"');
+      expect(html).toContain('data-initial-tab="overview"');
    });
 
    it("clamps admin tab 'manage' to 'overview' when user is not an admin", async () => {
