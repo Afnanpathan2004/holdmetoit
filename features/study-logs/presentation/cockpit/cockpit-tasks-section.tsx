@@ -30,10 +30,7 @@ import {
 } from "@/features/tasks/domain/task-reorder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-   captureLogRocketException,
-   trackLogRocketEvent,
-} from "@/core/observability/logrocket";
+import { trackLogRocketEvent } from "@/core/observability/logrocket";
 import {
    createTaskAction,
    deleteCategoryAction,
