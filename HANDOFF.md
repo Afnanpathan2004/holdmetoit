@@ -4,21 +4,21 @@
 > **Repository:** `github.com/Afnanpathan2004/holdmetoit`  
 > **Integration Branch:** `main` (latest: `c174a58`, PR #12) · Personal branches: `krish`, `afnan`, `afnan-jr`, `dev`  
 > **Document Status:** Active Operational Relay (Living Document)  
-> **Last Updated:** 2026-10-09 (Session 71 — team colors review, edge cases & 5-minute dual-layer caching engine)  
+> **Last Updated:** 2026-10-10 (Session 76 — Leaderboard view mode URL sync & profile navigation preservation)  
 > **Governance:** Subject to strict **Handoff Pruning & Obsolescence Rule (§9.3 in `AGENTS.md`)**
 
 ---
 
 ## 1. Current State at a Glance
 
-| Gate                                         | Result (2026-10-09, branch `afnan-jr`)                                                                                                                                                                                                            |
-| :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                  |
-| `npm run test`                               | ✅ 74 files green (758/758 tests passing)                                                                                                                                                                                                         |
-| `npm run build`                              | ✅ 9 routes compiled                                                                                                                                                                                                                              |
-| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~86%** — Dedicated public /challenges catalog, challenge-specific participant statistics cockpit (/challenge/[id]/participant/[participantId]), multi-view pagination guards, 2-card hours logging, mod audit log & hours overrides complete |
-| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                        |
-| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                    |
+| Gate                                         | Result (2026-10-10, branch `dev`)                                                                                                                                                                                                                                     |
+| :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`                          | ✅ 0 errors (`npx tsc --noEmit`)                                                                                                                                                                                                                                      |
+| `npm run test`                               | ✅ 75 files green (775/775 tests passing)                                                                                                                                                                                                                             |
+| `npm run build`                              | ✅ 10 routes compiled (9 app routes + `_not-found`)                                                                                                                                                                                                                   |
+| Phase 0 feature parity (vs `FEATURES.md`)    | ⚠️ **~89%** — Dedicated public /challenges catalog with status & format filters, challenge-specific participant statistics cockpit, multi-view search & team filtering with View by Team mode, multi-view pagination guards, mod audit log & hours overrides complete |
+| Phase 0 Milestone Gate 1 (`ROADMAP.md` §3.4) | ❌ Not passed: no live pilot challenge has run; Vercel deployment not recorded in the repo                                                                                                                                                                            |
+| Phase 1 (P1)                                 | ⏸️ Not started                                                                                                                                                                                                                                                        |
 
 ### 1.1 Live Routes
 
@@ -159,124 +159,92 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - Compact variant for narrow cards and sidebars.
       - Auto-hides gracefully when `totalPages <= 1`.
       - Comprehensive unit test suite in `data-pagination.test.tsx` (4/4 tests green).
-   - **Leaderboard Standings (`challenge-leaderboard-tab.tsx`):**
-      - Paginated standings list to `10` scholars per page across desktop table and mobile cards.
-      - Integrated search query reset (`setCurrentPage(1)` on typing) and test verification in `challenge-leaderboard-tab.test.tsx`.
-   - **Participant Overview List (`challenge-overview-tab.tsx`):**
-      - Paginated participant card to `8` scholars per page with compact pagination controls.
-      - Replaced unbounded "View all participants" toggle to eliminate vertical overflow.
-      - Unit test verification in `challenge-overview-tab.test.tsx`.
-   - **Event Audit Log (`event-audit-tab.tsx`):**
-      - Paginated audit log timeline to `10` events per page.
-      - Reset page to 1 upon searching or changing category filters ("All", "Details", "Roster", "Hours", "Study Logs", "Lifecycle").
-   - **Participant Rosters & Study Hours Management (`challenge-manage-tab.tsx`):**
-      - Section 4 roster list paginated to `8` participants per page.
-      - Added instant text search filter (`Search roster...`) for admin management.
-   - **Public Challenges Directory Grid (`challenges-list-view.tsx`):**
-      - Integrated `DataPagination` to paginate challenge cards to `9` challenges per page ($3 \times 3$ grid layout).
-   - **Manual Leaderboard Standings (`manual-leaderboard-view.tsx`):**
-      - Paginated participant standings to `10` scholars per page.
-   - Reconciled and merged PR #45 (`dev` branch) into `krish`.
+   - Leaderboard standings (`challenge-leaderboard-tab.tsx`), participant overview roster (`challenge-overview-tab.tsx`), event audit log (`event-audit-tab.tsx`), admin roster (`challenge-manage-tab.tsx`), public challenges grid (`challenges-list-view.tsx`), and manual leaderboard (`manual-leaderboard-view.tsx`) all paginated and protected against layout overflows.
 - **Quality Gates:** `npx tsc --noEmit` ✅ (0 errors) · `npm run test` ✅ (all tests green) · `npx next build` ✅.
 
 ### Session 68 — 2026-10-09 (afnan)
 
 - **Agent Role:** Participant UI & Scoring / Engine Agent.
 - **Challenge-Specific Participant Statistics & Read-Only Profiles (`FEAT-LEAD-06`):**
-   - **Dedicated Route (`/challenge/[id]/participant/[participantId]`):**
-      - Created dynamic server-rendered page (`app/challenge/[id]/participant/[participantId]/page.tsx`) and skeleton loader (`loading.tsx`).
-      - Generated dynamic page metadata with participant display name and challenge title.
-      - Enforced strict server-side cross-challenge isolation: checks `participant.challengeId === challengeId`, returning an empty state if mismatched or missing.
-   - **Pure Domain Calculations (`features/participant-stats/domain/`):**
-      - `calculateParticipantDailyTimeline`: Computes full chronological timeline (Day 1..Day N), preserving zero-study rest days (`00:00:00`), second-level duration precision, cumulative durations, and override flags.
-      - `calculateParticipantSummaryStats`: Safe division handling for goal completion %, total logged clock, today's logged clock, rank, remaining duration, and target completion excess.
-      - `calculateParticipantTeamStats`: House contribution percentage and house cumulative hours for team-based challenges.
-      - `calculateParticipantAccountability`: Deficit, dynamic daily required pace, and pardon/forfeit statuses.
-      - 11 unit tests in `participant-stats.test.ts` (100% green).
-   - **Repository Layer (`features/participant-stats/data/`):**
-      - `getChallengeParticipantStats`: Scoped data retrieval joining user profile, team identity, daily study logs, and authoritative scoreboard standing to ensure rank consistency.
-      - 5 integration tests in `participant-stats.repository.test.ts` (100% green).
-   - **Presentation Layer (`features/participant-stats/presentation/`):**
-      - `ParticipantProfileHeader`: Avatar with initials fallback, display name, `@username`, house badge, challenge rank pill, pace status, and breadcrumbs (`Challenges / [Challenge] / Leaderboard / [Participant]`).
-      - `ParticipantSummaryCards`: 6 responsive metric cards matching Obsidian Dark palette.
-      - `ParticipantProgressChart`: Lightweight, responsive SVG/HTML bar chart of daily study duration with hover tooltips and accessible screen-reader table.
-      - `ParticipantDailyHistory`: Full chronological table (desktop) and card list (mobile) with override indicators.
-      - `ParticipantTeamStats`: Team standing, team total, and member contribution meter (omitted for `SOLOS`).
-      - `ParticipantAccountability`: Target deficit, required catch-up pace per day, and pardon/forfeit badges.
-      - 7 component tests in `participant-stats-view.test.tsx` (100% green).
-   - **Interactive Navigation Entry Points:**
-      - Made participant names and avatars clickable across `challenge-leaderboard-tab.tsx` (top 3 podium cards, mobile cards, desktop table rows), `challenge-overview-tab.tsx` (participant list), and `challenge-manage-tab.tsx` (admin roster).
-   - **Read-Only Security Guarantee:**
-      - Ordinary viewers and spectators have strictly read-only views with zero form inputs or mutation buttons.
-      - Admins have an intentional "Admin Controls" link to the challenge manage tab.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green) · `npm run build` ✅ (10 routes compiled successfully).
+   - **Dedicated Route (`/challenge/[id]/participant/[participantId]`):** dynamic server-rendered page and skeleton loader. Cross-challenge validation returns empty state if mismatched.
+   - **Pure Domain Calculations (`features/participant-stats/domain/`):** chronological timeline with zero-hour rest days, summary stats, team contribution meter, and deficit accountability.
+   - **Repository & Presentation Layers:** joined scoreboard rank, profile header with breadcrumbs, Obsidian summary cards, responsive SVG/HTML daily bar chart, daily history table/cards.
+   - Clickable participant names/avatars across Leaderboard tab, Overview tab, and Admin Roster.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green) · `npm run build` ✅.
 
 ### Session 69 — 2026-10-09 (afnan)
 
 - **Agent Role:** Participant UI & Scoring / Engine Agent.
 - **Bug Fix — House Standing Participant Rank (`FEAT-LEAD-06`):**
-   - **Problem:** "House Standing" card in `ParticipantTeamStats` previously displayed `teamStats.teamRank` (the overall team's rank among all houses in the challenge), causing every member of that team to display the identical rank (e.g. "Rank #1, 14 house members").
-   - **Resolution:**
-      - Added `participantTeamRank: number` to `ParticipantTeamStats` domain type and calculation function (`calculateParticipantTeamStats`).
-      - In `participant-stats.repository.ts`, filtered `scoreboard.standings` by `s.teamId === participant.teamId` and calculated `participantTeamRankIndex + 1` to determine the participant's exact individual standing within their team.
-      - Updated `ParticipantTeamStats` presentation component to render `Rank #{teamStats.participantTeamRank}` and `of {teamStats.companionCount} house members`.
-      - Moved overall house standing into the header badge next to the house name: `<span>{teamStats.teamName}</span> (House #{teamStats.teamRank})`.
-   - **Test Updates:**
-      - Updated `features/participant-stats/domain/participant-stats.test.ts` to assert `participantTeamRank`.
-      - Updated `features/participant-stats/data/participant-stats.repository.test.ts` to verify `participantTeamRank` calculation from team standings.
-      - Updated `features/participant-stats/presentation/participant-stats-view.test.tsx` to assert "Rank #2", "of 3 house members", and "(House #1)" badge.
+   - Corrected "House Standing" card in `ParticipantTeamStats` to calculate and display participant's rank within their own team (`participantTeamRank`) rather than the overall team standing.
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (70 files, 709/709 green).
 
-### Session 70 — 2026-10-09 (afnan-jr)
+### Session 70 — 2026-10-09 (krish)
 
-- **Agent Role:** Scoring & Engine Agent & Participant UI Agent.
-- **Dynamic Single-Hex Team Color System Migration:**
-   - **Problem:** Team match cards, split-share tug-of-war meter, and participant rows previously hardcoded Team A as green (`#22c55e`) and Team B as blue (`#3b82f6`), ignoring dynamic admin-configured team hex values (such as Honey Bees `#d9822b` and Lavender Butterflies `#9986b8`).
-   - **Pure Domain Color Engine (`features/challenges/domain/team-colors.ts`):**
-      - Created pure TypeScript functional engine adhering to **Law L7** (zero React/Next.js/ORM dependencies).
-      - Converts any 3 or 6 digit hex into RGB and HSL space.
-      - Implemented `getReadableTextColor(hex)`: locks the team's Hue ($H$) and Saturation ($S$) and dynamically lifts Lightness ($L \ge 76\%$, or $\ge 82\%$ if low saturation) to ensure WCAG AA contrast ($>6.5:1$) on Obsidian dark surfaces (`#0d0d0d` / `#141414`).
-      - Generates complete 10-token dark palette (`palette.solid`, `subtleBg`, `cardBg`, `border`, `subtleBorder`, `text`, `glow`, `hoverBorder`, `headerBg`, `avatarBg`).
-      - Created helper style utilities `getTeamBadgeStyle` and `getTeamCardStyle`.
-      - Comprehensive unit test suite in `team-colors.test.ts` (14/14 tests green).
-   - **ViewModel Hydration (`cockpit-data.ts`):**
-      - Added `teamColor: string | null` to `CockpitViewModel` and hydrated it from `participant.team.color`.
-   - **Presentation Layer Migration:**
-      - **Leaderboard Tab (`challenge-leaderboard-tab.tsx`):**
-         - Team A & Team B cards dynamically render `paletteA` and `paletteB` for surfaces, borders, and progress bar fills.
-         - Tug-of-War Split Share Bar renders dynamic `paletteA.solid` / `paletteB.solid` and `paletteA.text` / `paletteB.text`.
-         - Rank 1 (MVP) podium card dynamically adopts leader's `top1Palette`.
-         - Mobile cards and desktop table rows/team badges render dynamic `entryPalette` via `getTeamColorPalette(entry.teamColor, entry.rank)`.
-      - **Overview Tab (`challenge-overview-tab.tsx`):** Participant list renders dynamic house badge pills with `pPalette`.
-      - **Participant Statistics (`participant-profile-header.tsx`, `participant-team-stats.tsx`):** House badge and contribution meter use `palette.solid` and `palette.text`.
-      - **Admin Hours Override Modal (`admin-hours-override-modal.tsx`):** Renders team badge using `getTeamBadgeStyle`.
-      - **Cockpit Progress Card (`cockpit-progress-card.tsx`):** Added participant's dynamic house badge pill next to weekly progress title.
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 724/724 green) · `npm run build` ✅ (10 routes compiled successfully).
+- **Agent Role:** Participant UI & Scoring / Engine Agent.
+- **Multi-View Search, Filtering & "View by Team" Mode Across Data Lists:**
+   - **Leaderboard Tab (`challenge-leaderboard-tab.tsx`):**
+      - Instant text search across display name, `@username`, and team/house name with live match counts.
+      - House/Team filter dropdown (`All Teams`, individual teams with icons, name, and member counts).
+      - Pace/Status filter dropdown (`All Pace Statuses`, `On Track / Ahead`, `Catch-Up / Behind`).
+      - High-level View Mode toggle: **`Overall Rank`** vs **`View by Team`**.
+      - In **`View by Team`** mode: Renders distinct house cards grouping enrolled scholars by competing house, featuring house emoji, name, leader badge, house logged clock vs house target clock, visual progress bar, and intra-house scholar rankings (`#1 in House (#X Overall)`), avatars, today's hours, total hours, pace badges, and admin hour overrides.
+      - Active filter badge pills with 1-click dismissal and styled empty filter state with reset action.
+   - **Overview Tab Enrolled Roster (`challenge-overview-tab.tsx`):**
+      - Added instant text search and House/Team filter dropdown with active filter count and reset button.
+   - **Manage Tab Admin Roster Grid (`challenge-manage-tab.tsx`):**
+      - Added House filter dropdown (`All Houses`, individual houses, `Unassigned Scholars`) with counter badge (`X of Y scholars`) and reset controls beside the existing roster search.
+   - **Public Challenges Directory Grid (`challenges-list-view.tsx`):**
+      - Added instant text search across challenge title, format, host name/username, and participating team names.
+      - Added status filter tabs (`All`, `Active`, `Upcoming`, `Completed`) with real-time challenge counts.
+      - Added format filter dropdown (`All Formats`, `Team vs Team`, `Solo Battles`, `Duo Battles`, `Squad Battles`).
+      - Styled empty filter state with 1-click filter reset.
+   - **Manual Leaderboard Standings (`manual-leaderboard-view.tsx`):**
+      - Added search input and team filter dropdown for manual slot standings with empty state reset.
+   - **Test Suite Updates:**
+      - Added unit and interaction tests across `challenge-leaderboard-tab.test.tsx`, `challenge-overview-tab.test.tsx`, `challenges-list-view.test.tsx`, and created `manual-leaderboard-view.test.tsx`.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 713/713 green) · `npm run build` ✅ (10 routes compiled successfully).
 
 ### Session 71 — 2026-10-09 (afnan-jr)
 
 - **Agent Role:** Scoring & Engine Agent & Data / Identity Agent.
-- **Team Colors Code Review, Edge Case Hardening & Dual-Layer 5-Minute Caching Engine:**
-   - **Senior Engineering Code Review & Bug Fixes (`features/challenges/domain/team-colors.ts`):**
-      - **Strict Hex Regex Guard:** Replaced permissive `parseInt` validation with `/^(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/`, preventing strings with trailing non-hex characters (e.g. `#d9822z`, `#12345!`) from silently producing corrupted RGB values.
-      - **CSS 4-Character Hex Support:** Added support for `#rgba` shorthand (e.g. `#f0a8`), expanding RGB from characters 0, 1, and 2.
-      - **Float & NaN `fallbackIndex` Sanitization:** Implemented `sanitizeFallbackIndex`, eliminating unhandled `TypeError` crashes when non-integer or float indices are provided.
-      - **Dark Mode Pitch-Black Visibility Safeguard:** Added relative luminance threshold guard ($L_{rel} < 0.05$); pitch-black `#000000` receives an ambient charcoal border (`rgba(70, 70, 70, 0.45)`) and surface tint (`rgba(35, 35, 35, 0.40)`) preventing card disappearance on `#0d0d0d` Obsidian canvas.
-      - **In-Memory 5-Minute TTL Palette Cache:** Created pure domain in-memory cache (`PALETTE_CACHE_TTL_MS = 300_000ms`, max 256 entries) with `clearTeamColorCache()` and `getTeamColorCacheSize()`, eliminating repetitive trigonometric and parsing overhead on table/card renders.
-   - **Server-Side 5-Minute Data Caching (`features/leaderboard/data/leaderboard-data.ts`):**
-      - Updated `getCachedChallengeScoreboardPayload` to use `revalidate: CACHE_REVALIDATE_SECONDS.stable` (300 seconds = 5 minutes).
-   - **Admin Instant Tag Invalidation (`features/challenges/api/challenge-admin.actions.ts`):**
-      - Added `invalidateTags([cacheTags.challengeScoreboard(challengeId), cacheTags.challengeMetadata(challengeId)])` and `clearTeamColorCache()` to `updateChallengeAction`, `reassignParticipantTeamAction`, `adminEnrollParticipantAction`, `kickoffChallengeAction`, `lockChallengeResultsAction`, and `deleteChallengeAction`, ensuring admin changes flush instantly while preserving 5-minute cached TTL for public and participant read traffic.
-   - **Unit Tests:** Added 6 new unit tests in `team-colors.test.ts` (20/20 green) and updated mocks in `challenge-admin.actions.test.ts` (71/71 green).
+- **Dynamic Single-Hex Team Colors, Hardening & Dual-Layer 5-Minute Caching Engine:**
+   - **Pure Domain Color Engine (`features/challenges/domain/team-colors.ts`):**
+      - Pure TypeScript functional engine adhering to **Law L7** (zero React/Next.js/ORM dependencies).
+      - Converts hex into RGB and HSL space; `getReadableTextColor(hex)` locks Hue and Saturation and lifts Lightness ($L \ge 76\%$) for WCAG AA contrast ($>6.5:1$) on Obsidian dark surfaces (`#0d0d0d` / `#141414`).
+      - Generates complete 10-token dark palette (`palette.solid`, `subtleBg`, `cardBg`, `border`, `subtleBorder`, `text`, `glow`, `hoverBorder`, `headerBg`, `avatarBg`).
+      - Pitch-black `#000000` luminance guard and CSS 4-character `#rgba` shorthand support.
+      - In-memory 5-minute TTL palette cache (`clearTeamColorCache()`).
+   - **ViewModel & Presentation Layer Migration:**
+      - Team A & Team B cards, Tug-of-War Split Share Bar, Rank 1 podium card, mobile cards, desktop table rows, and overview roster dynamically adopt admin-configured team hex values.
+   - **Server-Side 5-Minute Data Caching (`leaderboard-data.ts`) & Admin Instant Invalidation:**
+      - Cached scoreboard uses `revalidate: 300` (5 minutes) with instant admin tag invalidation (`invalidateTags`).
+   - **Unit Tests:** 20 unit tests in `team-colors.test.ts` (100% green).
 - **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 730/730 green) · `npm run build` ✅ (10 routes compiled successfully).
 
-### Session 72 — 2026-10-09 (afnan-jr)
+### Session 72 — 2026-10-09 (krish)
+
+- **Agent Role:** Participant UI & Scoring / Engine Agent.
+- **Side-by-Side "View by Team" Responsive Grid Layout:**
+   - **Side-by-Side Teams Layout (`challenge-leaderboard-tab.tsx`):**
+      - Upgraded the "View by Team" section from a stacked vertical list to a responsive 2-column grid (`grid grid-cols-1 lg:grid-cols-2 gap-6 items-start`) whenever multiple teams exist.
+      - On desktop / laptop viewports (`lg: 1024px+`), competing houses are presented side-by-side, utilizing horizontal screen real estate effectively.
+      - Preserved full responsiveness: mobile viewports (< 1024px, 360px+) gracefully render in a single column without horizontal overflow or clipped text.
+      - Applied `items-start` so competing houses with different roster sizes keep their natural card height without empty stretched bottom areas.
+      - Added dynamic column adjustment: when filtered to a single house via dropdown, the card cleanly takes full width (`grid-cols-1`).
+      - Fine-tuned intra-card scholar rows and summary headers: flex-wrap badges, compact progress bars (`w-20 sm:w-28`), and responsive width caps.
+      - Added `initialViewMode` prop support (`"individual"` | `"team"`) for deep linking and robust SSR unit testing.
+   - **Test Suite Updates (`challenge-leaderboard-tab.test.tsx`):**
+      - Added unit tests verifying side-by-side grid rendering (`lg:grid-cols-2`) when multiple teams exist in team view mode, and single column fallback when only one team exists.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (71 files, 715/715 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 73 — 2026-10-09 (afnan-jr)
 
 - **Agent Role:** Participant UI Agent & Scoring / Engine Agent.
 - **Bug Fix — Challenge View Tab Reload Reset & URL Sync (`BUG-CHAL-01`):**
    - **Problem:** Reloading `/challenge/[id]` always reset the view back to the initial entry tab (e.g. `?tab=leaderboard` from cockpit banner card) because tab switches in `<ChallengeView>` only modified internal React state without synchronizing with browser address bar.
    - **Pure Domain Tab Layer (`features/challenges/domain/challenge-tabs.ts`):**
-      - Created pure TypeScript module isolated from UI/Next.js/ORM per **Law L7**.
+      - Pure TypeScript module isolated from UI/Next.js/ORM per **Law L7**.
       - Exported `CHALLENGE_TABS = ["overview", "leaderboard", "about", "manage", "audit"]`, `PUBLIC_CHALLENGE_TABS`, `ADMIN_CHALLENGE_TABS`, `DEFAULT_CHALLENGE_TAB = "overview"`.
       - Exported pure validation helpers `isChallengeTab` and `resolveAllowedChallengeTab(requestedTab, isAdmin)` which strictly clamps unauthorized admin tabs (`manage`, `audit`) to `"overview"` for non-admins.
       - 9 unit tests in `challenge-tabs.test.ts` (100% green).
@@ -289,5 +257,91 @@ Legend: ✅ Done end-to-end · ⚠️ Partial / backend-only / deviates from spe
       - **Canonical Default Cleanup:** Automatically deletes `?tab=overview` to keep canonical URLs clean.
       - Synchronized `activeTab` on `initialTab`/`isAdmin` prop changes using `useEffect`.
       - 12 unit tests in `challenge-view.test.tsx` (100% green).
-- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (74 files, 758/758 green) · `npm run build` ✅ (9 routes compiled successfully).
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (74 files, 758/758 green) · `npm run build` ✅ (10 routes compiled successfully).
+
+### Session 74 — 2026-10-10 (afnan)
+
+- **Agent Role:** Participant UI Agent, Scoring & Engine Agent, Data & Identity Agent.
+- **Yeolpumta (YPT) Study Logs V2 Integration & "Today's LB" View Mode:**
+   - **Database & Prisma Schema Layer (`prisma/schema.prisma`):**
+      - Added `User.yptId String? @unique` for reverse-engineered YPT identity binding without schema friction.
+      - Cloned `study_logs_v2` (`DailyStudyLogV2` model) with foreign keys and unique composite key `[participantId, logDate]` plus live `status String?` field.
+      - Applied non-destructive database migration on PostgreSQL/Supabase and executed `npx prisma generate` cleanly without data loss.
+   - **Leaderboard Data Fetcher (`features/leaderboard/data/leaderboard-data.ts`):**
+      - Switched `dailyStudyLogs` queries to read from `dailyStudyLogsV2` (including `status: true`).
+      - Populated `ScoreboardStandingEntry.status` from latest log entry for live user activity.
+   - **Curved YPT Status Badge (`challenge-leaderboard-tab.tsx`):**
+      - Rendered status indicator capsule (`YptStatusPill`) matching team badge curved pill radius (`rounded-full`).
+      - Strictly 2 text options: `"Studying"` (emerald tint `#132717`, border `#225028`, text `#86efac`) and `"Offline"` (slate tint `#1a1a1a`, border `#2e2e2e`, text `#a3a3a3`).
+      - Emojis stripped per design directive.
+   - **Dedicated "Today's LB" View Mode:**
+      - Added pure domain ranking function `rankByTodaySeconds<T>()` in `features/leaderboard/domain/leaderboard.ts` adhering to **Law L7** (pure TypeScript domain function, zero ORM/React imports).
+      - Ranks participants by `todayLoggedSeconds` descending, with secondary tie-breaker using `totalLoggedSeconds`.
+      - Segmented switcher upgraded with 3 options: **`Overall Rank`** (Trophy), **`Today's LB`** (Clock, emerald accent), and **`View by Team`** (Users).
+      - In **`Today's LB`** view:
+         - Displays dynamic `todayRank` for mobile and desktop views.
+         - Highlights `todayLoggedClock` as primary metric in emerald text (`text-[#4ade80]`), with cumulative hours as secondary.
+         - Highlights table header with active indicator.
+   - **V2 Alignment Across Edit Menus, Results Lock & Cockpit Data:**
+      - **Admin Hours Override (`admin-override.repository.ts`):** Migrated `executeAdminHoursOverride` to query and upsert `prisma.dailyStudyLogV2` with `isOverride = true`, admin audit ID, and override reason. Host overrides now instantly update the V2 leaderboard and participant profile stats.
+      - **Challenge Finalization & Dual-Failure Lock (`challenge-admin.repository.ts`):** Updated `lockChallengeResults` to evaluate participant punishment totals using `dailyStudyLogsV2` (with safe V1 fallback).
+      - **Cascading Challenge Deletion (`challenge-admin.repository.ts`):** Updated `deleteChallenge` transaction to delete `dailyStudyLogV2` records alongside V1 records, preventing orphan logs.
+      - **Home Cockpit Sync (`participant.repository.ts` & `cockpit-data.ts`):** Included `dailyStudyLogsV2` in `findParticipantForUser` and updated `cockpit-data.ts` to prioritize V2 study logs for total hours, today's study time, and catch-up deficit calculations.
+   - **Unit Tests:**
+      - Added 5 unit tests for `rankByTodaySeconds` in `features/leaderboard/domain/leaderboard.test.ts`.
+      - Added interaction/render tests for `initialViewMode: "today"` in `challenge-leaderboard-tab.test.tsx`.
+      - Updated Journey J5 in `quality-matrix-j1-j6.test.ts`, `challenge-admin.repository.test.ts`, and `participant.repository.test.ts`.
+- **Quality Gates:** `npm run typecheck` ✅ (0 errors) · `npm run test` ✅ (75 files, 770/770 green).
+
+### Session 75 — 2026-10-10 (afnan)
+
+- **Agent Role:** Data & Identity Agent, Participant UI Agent, Scoring & Engine Agent.
+- **Complete Removal of Legacy Daily Study Logs (V1) from Application Codebase:**
+   - **Schema & Database Safety:**
+      - Preserved PostgreSQL `daily_study_logs` table intact with all historic rows (zero data loss, zero destructive DB operations).
+      - Retained `DailyStudyLog` model definition in `prisma/schema.prisma` per explicit user instruction.
+   - **Application Codebase Migration to V2 (`DailyStudyLogV2`):**
+      - **Study Logs Repository (`features/study-logs/data/daily-study-log.repository.ts`):** `upsertDailyStudyLog` and `findDailyLog` migrated exclusively to `prisma.dailyStudyLogV2` with default `status: "Offline"`.
+      - **Participant Repository (`features/challenges/data/participant.repository.ts`):** Removed `dailyStudyLogs` from `include` queries; only `dailyStudyLogsV2` is requested from Prisma.
+      - **Admin Challenge Repository (`features/challenges/data/challenge-admin.repository.ts`):**
+         - `findAdminChallengeDetails`: Query now includes `dailyStudyLogsV2` with `overrideBy`.
+         - `lockChallengeResults`: Dual-failure calculation evaluates participant totals purely from `dailyStudyLogsV2`.
+         - `deleteChallenge`: Purged explicit transaction calls to legacy V1 study logs.
+      - **Home Cockpit & Participant Stats (`cockpit-data.ts`, `participant-stats.repository.ts`):** Simplified log resolution to directly consume `participant.dailyStudyLogsV2 ?? []`.
+   - **Test Suite Updates:**
+      - Updated `daily-study-log.repository.test.ts`, `challenge-admin.repository.test.ts`, `participant.repository.test.ts`, `participant-stats.repository.test.ts`, and `quality-matrix-j1-j6.test.ts` to mock and assert `dailyStudyLogV2`.
+   - **UI Polish:**
+      - Removed team name and icon badge pill from `CockpitProgressCard` (`cockpit-progress-card.tsx`), keeping the Weekly Commitment Progress header minimal and focused on individual hours vs target commitments.
+- **Quality Gates Verified:**
+   - `npm run typecheck` ✅ (0 errors)
+   - `npm run test` ✅ (75/75 test files passing, 770/770 tests green)
+   - `npm run build` ✅ (10 routes compiled successfully)
+
+### Session 76 — 2026-10-10 (afnan)
+
+- **Agent Role:** Participant UI Agent, Scoring & Engine Agent.
+- **Leaderboard View Mode URL Sync & Participant Profile Navigation Context Preservation:**
+   - **Problem:** When viewing "Today's LB" (`viewMode = "today"`), clicking on any scholar's profile and returning back (via browser Back or profile breadcrumbs) reset the view to the default "Overall Rank" leaderboard because the view mode was stored only in component state.
+   - **Pure Domain Resolution (`features/leaderboard/domain/leaderboard.ts`):**
+      - Exported `LeaderboardViewMode` type (`"individual" | "today" | "team"`).
+      - Added pure domain helper `resolveLeaderboardViewMode(value?: string | null): LeaderboardViewMode` adhering to **Law L7** (pure TypeScript, zero UI or framework dependencies). Defaults safely to `"individual"`.
+      - Added 5 unit tests in `features/leaderboard/domain/leaderboard.test.ts`.
+   - **Server Page Query Parameter Handling (`app/challenge/[id]/page.tsx`):**
+      - Accepted optional `view?: string` in `searchParams`.
+      - Sanitized initial view mode using `resolveLeaderboardViewMode(searchParams?.view)` and forwarded `initialLeaderboardViewMode` to `<ChallengeView>`.
+   - **Client Presentation State & History Synchronization (`challenge-leaderboard-tab.tsx` & `challenge-view.tsx`):**
+      - On view mode switch, `handleViewModeChange` updates component state, resets pagination to page 1, and updates browser URL query string via `window.history.replaceState` (setting `?view=today` or `?view=team`, while cleanly deleting `view` when `"individual"` for canonical cleanliness).
+      - Listens to `popstate` events to restore view mode seamlessly on browser back/forward navigation.
+      - Cleans up `view` parameter when switching away from the Leaderboard tab.
+      - Added `getParticipantProfileUrl(participantId: string)` helper which automatically appends `?view=${viewMode}` when `viewMode !== "individual"`.
+      - Updated all participant profile navigation links across podium cards, team view members, desktop table rows, and mobile cards to use `getParticipantProfileUrl`.
+   - **Profile Breadcrumb & Empty State Context (`participant-profile-header.tsx`, `participant-stats-view.tsx`, `page.tsx`):**
+      - Forwarded `viewParam` from profile `searchParams.view` down through `ParticipantStatsView` to `ParticipantProfileHeader`.
+      - Updated the "Leaderboard" breadcrumb link and Empty State "Return to Leaderboard" button to navigate to `/challenge/[id]?tab=leaderboard&view=${viewParam}` when `viewParam` is present, restoring the exact previous view.
+   - **Unit Tests:**
+      - Added test in `challenge-leaderboard-tab.test.tsx` verifying profile links preserve `?view=today` in "today" mode and omit `?view` in "individual" mode.
+- **Quality Gates Verified:**
+   - `npm run typecheck` ✅ (0 errors)
+   - `npm run test` ✅ (75/75 test files passing, 775/775 tests green)
+   - `npm run build` ✅ (10 routes compiled successfully)
 - **NEXT STEP:** Fix D1 + D2 (challenge finalization & audit log persistence).

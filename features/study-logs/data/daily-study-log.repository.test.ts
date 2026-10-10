@@ -13,7 +13,7 @@ vi.mock("@/features/audit/data/audit-log.repository", () => ({
 
 vi.mock("@/core/db", () => ({
    prisma: {
-      dailyStudyLog: {
+      dailyStudyLogV2: {
          upsert: vi.fn(),
          findUnique: vi.fn(),
       },
@@ -35,7 +35,7 @@ describe("dailyStudyLog repository", () => {
             isOverride: false,
          };
 
-         vi.mocked(prisma.dailyStudyLog.upsert).mockResolvedValue(
+         vi.mocked(prisma.dailyStudyLogV2.upsert).mockResolvedValue(
             mockResult as never
          );
 
@@ -48,7 +48,7 @@ describe("dailyStudyLog repository", () => {
          expect(result).toEqual(mockResult);
 
          const expectedUtcDate = new Date(Date.UTC(2026, 8, 6));
-         expect(prisma.dailyStudyLog.upsert).toHaveBeenCalledWith({
+         expect(prisma.dailyStudyLogV2.upsert).toHaveBeenCalledWith({
             where: {
                participantId_logDate: {
                   participantId: "part_1",
@@ -59,6 +59,7 @@ describe("dailyStudyLog repository", () => {
                participantId: "part_1",
                logDate: expectedUtcDate,
                durationSeconds: 16_200,
+               status: "Offline",
             },
             update: {
                durationSeconds: 16_200,
@@ -70,7 +71,9 @@ describe("dailyStudyLog repository", () => {
       });
 
       it("resets override flags on self-logging update", async () => {
-         vi.mocked(prisma.dailyStudyLog.upsert).mockResolvedValue({} as never);
+         vi.mocked(prisma.dailyStudyLogV2.upsert).mockResolvedValue(
+            {} as never
+         );
 
          await upsertDailyStudyLog({
             participantId: "part_2",
@@ -78,7 +81,7 @@ describe("dailyStudyLog repository", () => {
             durationSeconds: 7_200,
          });
 
-         const callArgs = vi.mocked(prisma.dailyStudyLog.upsert).mock
+         const callArgs = vi.mocked(prisma.dailyStudyLogV2.upsert).mock
             .calls[0][0];
          expect(callArgs.update).toEqual({
             durationSeconds: 7_200,
@@ -97,8 +100,8 @@ describe("dailyStudyLog repository", () => {
             isOverride: false,
          };
 
-         vi.mocked(prisma.dailyStudyLog.findUnique).mockResolvedValue(null);
-         vi.mocked(prisma.dailyStudyLog.upsert).mockResolvedValue(
+         vi.mocked(prisma.dailyStudyLogV2.findUnique).mockResolvedValue(null);
+         vi.mocked(prisma.dailyStudyLogV2.upsert).mockResolvedValue(
             mockResult as never
          );
 
@@ -152,10 +155,10 @@ describe("dailyStudyLog repository", () => {
             isOverride: false,
          };
 
-         vi.mocked(prisma.dailyStudyLog.findUnique).mockResolvedValue(
+         vi.mocked(prisma.dailyStudyLogV2.findUnique).mockResolvedValue(
             existingLog as never
          );
-         vi.mocked(prisma.dailyStudyLog.upsert).mockResolvedValue(
+         vi.mocked(prisma.dailyStudyLogV2.upsert).mockResolvedValue(
             updatedResult as never
          );
 
@@ -205,7 +208,7 @@ describe("dailyStudyLog repository", () => {
             durationSeconds: 3_600,
          };
 
-         vi.mocked(prisma.dailyStudyLog.findUnique).mockResolvedValue(
+         vi.mocked(prisma.dailyStudyLogV2.findUnique).mockResolvedValue(
             mockLog as never
          );
 
@@ -213,7 +216,7 @@ describe("dailyStudyLog repository", () => {
          expect(log).toEqual(mockLog);
 
          const expectedUtcDate = new Date(Date.UTC(2026, 8, 8));
-         expect(prisma.dailyStudyLog.findUnique).toHaveBeenCalledWith({
+         expect(prisma.dailyStudyLogV2.findUnique).toHaveBeenCalledWith({
             where: {
                participantId_logDate: {
                   participantId: "part_3",
