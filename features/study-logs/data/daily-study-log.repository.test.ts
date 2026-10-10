@@ -95,7 +95,9 @@ describe("dailyStudyLog repository", () => {
       });
 
       it("persists isLeave when marked as leave", async () => {
-         vi.mocked(prisma.dailyStudyLog.upsert).mockResolvedValue({} as never);
+         vi.mocked(prisma.dailyStudyLogV2.upsert).mockResolvedValue(
+            {} as never
+         );
 
          await upsertDailyStudyLog({
             participantId: "part_3",
@@ -104,7 +106,7 @@ describe("dailyStudyLog repository", () => {
             isLeave: true,
          });
 
-         const callArgs = vi.mocked(prisma.dailyStudyLog.upsert).mock
+         const callArgs = vi.mocked(prisma.dailyStudyLogV2.upsert).mock
             .calls[0][0];
          expect(callArgs.create.isLeave).toBe(true);
          expect(callArgs.update.isLeave).toBe(true);
