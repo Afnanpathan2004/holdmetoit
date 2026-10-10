@@ -59,6 +59,7 @@ import {
    isUtcDateRangeValid,
    parseUtcInputStringToIso,
 } from "@/features/challenges/domain/challenge-date-time";
+import { canLockChallenge } from "@/features/challenges/domain/challenge-lifecycle";
 
 interface ChallengeManageTabProps {
    challenge: ChallengeScoreboardViewModel;
@@ -600,7 +601,10 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                      </Button>
                   )}
 
-                  {challenge.status === "ACTIVE" && (
+                  {canLockChallenge(
+                     challenge.status,
+                     challenge.resultsLockedAt
+                  ) && (
                      <Button
                         type="button"
                         onClick={handleLockResults}
@@ -614,6 +618,13 @@ export function ChallengeManageTab({ challenge }: ChallengeManageTabProps) {
                         )}
                         Lock Final Results
                      </Button>
+                  )}
+
+                  {Boolean(challenge.resultsLockedAt) && (
+                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#262626] border border-[#383838] text-xs text-[#a3a3a3]">
+                        <Lock className="h-3.5 w-3.5 text-[#eab308]" />
+                        <span>Results Locked</span>
+                     </div>
                   )}
                </div>
             </div>

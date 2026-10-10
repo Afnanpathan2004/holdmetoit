@@ -8,16 +8,15 @@
 
 ## 🔴 Critical / Immediate Fixes (Blocks Production)
 
-### 1. Lock Results Fails After Natural Expiry (D1)
+### 1. Lock Results Fails After Natural Expiry (D1) — ✅ RESOLVED (2026-10-11)
 
-**The single biggest bug in the platform.**
+**Resolution:**
 
-`features/challenges/domain/challenge-lifecycle.ts` L78-L87 — `assertCanLockChallenge()` throws `"Challenge results are already locked and finalized"` when status is `COMPLETED`. But challenge status is **derived from timestamps** via `calculateChallengeStatus()`: once `endAt` passes naturally, status becomes `COMPLETED` automatically. This means:
-
-- **Punishments are never evaluated** unless the host clicks "Lock" _before_ the clock runs out.
-- The entire Law L6 accountability system is broken for challenges that end naturally.
-
-**Fix:** Add a `resultsLockedAt DateTime?` column to `Challenge`. Let `assertCanLockChallenge` accept `COMPLETED` when `resultsLockedAt IS NULL`. Already documented in `HANDOFF.md` §6 as the exact next step.
+- Added `resultsLockedAt DateTime?` column to `Challenge` in `prisma/schema.prisma` and applied migration `20261011000000_add_results_locked_at_to_challenge`.
+- Updated `canLockChallenge` and `assertCanLockChallenge` in `features/challenges/domain/challenge-lifecycle.ts` to accept `resultsLockedAt`, permitting lock/finalization when status is `COMPLETED` and `resultsLockedAt` is null/undefined.
+- Updated `lockChallengeResults` in `challenge-admin.repository.ts` to pass `challenge.resultsLockedAt`, persist `resultsLockedAt = now` inside the transaction, and record audit details.
+- Updated `challenge-manage-tab.tsx` to conditionally display the "Lock Final Results" button whenever `canLockChallenge(challenge.status, challenge.resultsLockedAt)` is true, and display a "Results Locked" indicator once finalized.
+- Verified with unit tests (`challenge-lifecycle.test.ts`, `challenge-admin.repository.test.ts`), full typecheck, 833 green tests, and production build.
 
 ---
 
